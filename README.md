@@ -2,9 +2,6 @@
 
 Plateforme web multi-laboratoires permettant de digitaliser et de fiabiliser le cycle complet d'analyse d'un laboratoire, de la demande client à la diffusion du rapport validé.
 
-> Projet académique - Module *Frameworks Technologie Web* - Génie Informatique, filière SIAD
-> Année universitaire 2026-2027 - ENSA Tétouan
-
 ---
 
 ## Sommaire
@@ -197,13 +194,4 @@ La documentation interactive de l'API (Swagger / OpenAPI) est disponible une foi
 ```
 http://localhost:8080/swagger-ui.html
 ```
-
-## Équipe
-
-| Rôle | Nom |
-|---|---|
-| Développement | Douae Rohan |
-| Développement | Sanae Tafraouti |
-| Encadrement | Oussama El Hajjamy |
-
 ---
