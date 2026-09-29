@@ -165,7 +165,7 @@
                 <artifactId>frontend-maven-plugin</artifactId>
                 <version>1.15.0</version>
                 <configuration>
-                    <workingDirectory>../frontend/lims-frontend</workingDirectory>
+                    <workingDirectory>../frontend</workingDirectory>
                     <nodeVersion>v18.17.0</nodeVersion>
                     <npmVersion>9.6.7</npmVersion>
                 </configuration>
@@ -202,7 +202,7 @@
                             <outputDirectory>${project.build.directory}/classes/static</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>../frontend/lims-frontend/dist</directory>
+                                    <directory>../frontend/dist</directory>
                                 </resource>
                             </resources>
                         </configuration>
