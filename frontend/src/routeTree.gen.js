@@ -9,6 +9,7 @@ import { Route as IndexRouteImport } from './routes/index';
 import { Route as IntegrationRouteImport } from './routes/integration';
 import { Route as LoginRouteImport } from './routes/login';
 import { Route as UiKitRouteImport } from './routes/ui-kit';
+import { Route as TestConnexionRouteImport } from './routes/test-connexion';
 const IndexRoute = IndexRouteImport.update({
     id: '/',
     path: '/',
@@ -29,11 +30,17 @@ const UiKitRoute = UiKitRouteImport.update({
     path: '/ui-kit',
     getParentRoute: () => rootRouteImport,
 });
+const TestConnexionRoute = TestConnexionRouteImport.update({
+    id: '/test-connexion',
+    path: '/test-connexion',
+    getParentRoute: () => rootRouteImport,
+});
 const rootRouteChildren = {
     IndexRoute: IndexRoute,
     IntegrationRoute: IntegrationRoute,
     LoginRoute: LoginRoute,
     UiKitRoute: UiKitRoute,
+    TestConnexionRoute: TestConnexionRoute,
 };
 export const routeTree = rootRouteImport
     ._addFileChildren(rootRouteChildren)

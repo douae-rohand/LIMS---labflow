@@ -67,7 +67,7 @@ public class SecurityConfig {
                     "/swagger-ui.html",
                     "/v3/api-docs/**",
                     "/ws/**",
-                    "/actuator/health"
+                    "/actuator/**"
                 ).permitAll()
                 // Super-admin uniquement
                 .requestMatchers("/api/plateforme/**").hasRole("SUPER_ADMINISTRATEUR")

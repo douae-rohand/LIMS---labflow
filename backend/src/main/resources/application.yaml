@@ -86,10 +86,17 @@ spring:
           temperature: 0.7
 
 # ============================================================
+# CORS
+# ============================================================
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+# ============================================================
 # Serveur
 # ============================================================
 server:
   port: ${SERVER_PORT}
+
   servlet:
     context-path: /
   compression:
@@ -155,6 +162,9 @@ management:
   endpoint:
     health:
       show-details: never
+  health:
+    mail:
+      enabled: false
 
 # ============================================================
 # Logging
@@ -165,8 +175,6 @@ logging:
     com.backend: DEBUG
     org.springframework.security: WARN
     org.hibernate.SQL: WARN
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
 
 ---
 # ============================================================
