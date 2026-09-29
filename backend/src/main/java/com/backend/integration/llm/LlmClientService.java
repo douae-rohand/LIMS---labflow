@@ -1,53 +1,44 @@
 package com.backend.integration.llm;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
-
-import java.util.List;
-import java.util.Map;
 
 /**
- * Client HTTP vers l'API LLM (OpenAI-compatible ou modèle auto-hébergé).
+ * Service d'intégration LLM basé sur Spring AI.
  *
- * <p>Supporte les endpoints compatibles avec l'API OpenAI Chat Completions
- * ({@code POST /v1/chat/completions}). Fonctionne avec OpenAI, Ollama, LM Studio,
- * vLLM ou tout provider compatible.
+ * <p>Utilise le {@link ChatClient} auto-configuré par Spring AI à partir de
+ * {@code spring.ai.openai.*} dans {@code application.yaml}. Compatible avec
+ * tout provider OpenAI-compatible (OpenAI, Ollama, vLLM, LM Studio…).
  *
- * <p>TODO: ajouter support streaming (SSE), gestion des tokens, retry avec backoff.
+ * <p>Méthodes métier à implémenter dans le cadre du module M14 :
+ * <ul>
+ *   <li>{@code calculerScoreAnomalie(Resultat)} — détection d'anomalies dans les résultats</li>
+ *   <li>{@code genererSynthese(List<Resultat>)} — synthèse automatique des résultats d'analyse</li>
+ *   <li>{@code repondreQuestion(String, String)} — assistant RAG sur la base documentaire</li>
+ * </ul>
  */
 @Slf4j
 @Service
 public class LlmClientService {
 
-    @Value("${llm.api-url:http://localhost:11434/v1}")
-    private String apiUrl;
+    private final ChatClient chatClient;
+    private final ChatModel chatModel;
 
-    @Value("${llm.api-key:}")
-    private String apiKey;
-
-    @Value("${llm.model:llama3.2}")
-    private String model;
-
-    @Value("${llm.max-tokens:2048}")
-    private int maxTokens;
-
-    @Value("${llm.temperature:0.7}")
-    private double temperature;
-
-    private final RestClient restClient;
-
-    public LlmClientService(RestClient.Builder restClientBuilder) {
-        this.restClient = restClientBuilder.build();
+    public LlmClientService(ChatClient.Builder chatClientBuilder, ChatModel chatModel) {
+        this.chatClient = chatClientBuilder.build();
+        this.chatModel = chatModel;
     }
+
+    // -------------------------------------------------------------------------
+    // API de compatibilité — utilisée par IaService (M14)
+    // TODO: remplacer ces méthodes génériques par les méthodes métier ci-dessous
+    // -------------------------------------------------------------------------
 
     /**
      * Envoie un prompt au LLM et retourne la réponse en texte brut.
-     *
-     * @param prompt le prompt utilisateur
-     * @return réponse du modèle
+     * Stub de compatibilité — sera remplacé par les méthodes métier M14.
      */
     public String appelerLlm(String prompt) {
         return appelerLlm(prompt, null);
@@ -55,47 +46,16 @@ public class LlmClientService {
 
     /**
      * Envoie un prompt avec un message système optionnel.
-     *
-     * @param prompt        message utilisateur
-     * @param systemPrompt  instruction système (peut être null)
-     * @return réponse du modèle
+     * Stub de compatibilité — sera remplacé par les méthodes métier M14.
      */
-    @SuppressWarnings("unchecked")
     public String appelerLlm(String prompt, String systemPrompt) {
-        log.debug("Appel LLM [model={}] – prompt ({} chars)", model, prompt.length());
-
+        log.debug("Appel LLM via Spring AI – prompt ({} chars)", prompt.length());
         try {
-            var messages = new java.util.ArrayList<Map<String, String>>();
+            var spec = chatClient.prompt();
             if (systemPrompt != null && !systemPrompt.isBlank()) {
-                messages.add(Map.of("role", "system", "content", systemPrompt));
+                spec = spec.system(systemPrompt);
             }
-            messages.add(Map.of("role", "user", "content", prompt));
-
-            Map<String, Object> requestBody = Map.of(
-                    "model", model,
-                    "messages", messages,
-                    "max_tokens", maxTokens,
-                    "temperature", temperature
-            );
-
-            var response = restClient.post()
-                    .uri(apiUrl + "/chat/completions")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header("Authorization", "Bearer " + apiKey)
-                    .body(requestBody)
-                    .retrieve()
-                    .body(Map.class);
-
-            if (response != null) {
-                var choices = (List<Map<String, Object>>) response.get("choices");
-                if (choices != null && !choices.isEmpty()) {
-                    var message = (Map<String, String>) choices.get(0).get("message");
-                    if (message != null) {
-                        return message.getOrDefault("content", "");
-                    }
-                }
-            }
-            return "";
+            return spec.user(prompt).call().content();
         } catch (Exception ex) {
             log.error("Erreur appel LLM : {}", ex.getMessage());
             return "Erreur lors de l'appel au modèle IA : " + ex.getMessage();
@@ -103,9 +63,26 @@ public class LlmClientService {
     }
 
     /**
-     * Retourne le nom du modèle actuellement configuré.
+     * Retourne le nom du modèle actuellement utilisé par Spring AI.
      */
     public String getModeleActif() {
-        return model;
+        // Le nom du modèle est géré par spring.ai.openai.chat.options.model
+        return chatModel.getClass().getSimpleName();
     }
+
+    // -------------------------------------------------------------------------
+    // TODO (M14) : méthodes métier à implémenter
+    // -------------------------------------------------------------------------
+
+    // TODO: calculerScoreAnomalie(Resultat resultat)
+    //   → construire un prompt structuré à partir des valeurs mesurées et des normes,
+    //     parser la réponse JSON du LLM, retourner un score [0.0 - 1.0]
+
+    // TODO: genererSynthese(List<Resultat> resultats)
+    //   → résumé automatique en langage naturel des résultats d'une demande,
+    //     destiné à être inclus dans le rapport client
+
+    // TODO: repondreQuestion(String question, String contexte)
+    //   → assistant RAG : récupérer les chunks pertinents (vecteurs),
+    //     injecter dans le prompt système, appeler chatClient
 }

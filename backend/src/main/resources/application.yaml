@@ -73,6 +73,18 @@ spring:
         max-size: 16
         queue-capacity: 100
 
+  # ============================================================
+  # Spring AI — client OpenAI-compatible (Ollama, vLLM, OpenAI…)
+  # ============================================================
+  ai:
+    openai:
+      base-url: ${LLM_API_URL:http://localhost:11434/v1}
+      api-key: ${LLM_API_KEY:no-key-required}
+      chat:
+        options:
+          model: ${LLM_MODEL:llama3.2}
+          temperature: 0.7
+
 # ============================================================
 # Serveur
 # ============================================================

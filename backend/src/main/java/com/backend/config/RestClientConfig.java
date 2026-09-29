@@ -6,7 +6,7 @@ import org.springframework.web.client.RestClient;
 
 /**
  * Configuration du {@link RestClient} Spring (remplace RestTemplate depuis Spring 6).
- * Utilisé par les services d'intégration (n8n, LLM).
+ * Utilisé par les services d'intégration (n8n webhook publisher).
  */
 @Configuration
 public class RestClientConfig {
