@@ -1,0 +1,265 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * LabFlow LIMS — design system
+ * Palette strictement limitée aux tokens ci-dessous (vert sarcelle, lime,
+ * mint, surfaces claires, anthracite). Aucune couleur en dur dans les
+ * composants : toujours passer par ces tokens.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-900: var(--brand-900);
+  --color-brand-800: var(--brand-800);
+  --color-brand-600: var(--brand-600);
+  --color-accent-lime: var(--accent-lime);
+  --color-mint-200: var(--mint-200);
+  --color-surface-card: var(--surface-card);
+  --color-surface-alt: var(--surface-alt);
+  --color-ink-900: var(--ink-900);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --shadow-soft: 0 10px 30px -12px oklch(0.38 0.057 205.3 / 0.25);
+  --shadow-glossy: 0 24px 60px -24px oklch(0.38 0.057 205.3 / 0.35);
+  --shadow-lift: 0 30px 70px -28px oklch(0.38 0.057 205.3 / 0.45);
+
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  --radius: 1.25rem;
+
+  --brand-900: oklch(0.38 0.057 205.3);
+  --brand-800: oklch(0.325 0.048 205.7);
+  --brand-600: oklch(0.482 0.074 205);
+  --accent-lime: oklch(0.872 0.163 117.9);
+  --mint-200: oklch(0.889 0.034 189.6);
+  --surface-card: oklch(0.962 0.007 164.9);
+  --surface-alt: oklch(0.972 0.003 128.5);
+  --ink-900: oklch(0.244 0.006 214.4);
+
+  --background: oklch(1 0 0);
+  --foreground: var(--ink-900);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--ink-900);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--ink-900);
+  --primary: var(--brand-900);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: var(--surface-card);
+  --secondary-foreground: var(--brand-900);
+  --muted: var(--surface-alt);
+  --muted-foreground: oklch(0.48 0.012 214.4);
+  --accent: var(--accent-lime);
+  --accent-foreground: var(--ink-900);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.38 0.057 205.3 / 0.14);
+  --input: oklch(0.38 0.057 205.3 / 0.18);
+  --ring: var(--brand-600);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-600);
+    outline-offset: 2px;
+  }
+}
+
+/* ---------- Effets glossy ---------- */
+
+@utility glossy-top {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      oklch(1 0 0 / 0.35),
+      oklch(1 0 0 / 0) 55%
+    );
+  }
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 12%;
+    right: 12%;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      to right,
+      transparent,
+      oklch(1 0 0 / 0.7),
+      transparent
+    );
+  }
+}
+
+@utility glass-card {
+  background: oklch(1 0 0 / 0.65);
+  backdrop-filter: blur(16px);
+  border: 1px solid oklch(1 0 0 / 0.6);
+  box-shadow: var(--shadow-glossy);
+}
+
+@utility btn-gloss {
+  background: linear-gradient(
+    180deg,
+    var(--color-brand-600),
+    var(--color-brand-900)
+  );
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.25),
+    0 12px 28px -14px oklch(0.38 0.057 205.3 / 0.65);
+}
+
+@utility halo {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+@utility hover-lift {
+  transition:
+    transform 220ms var(--ease-smooth),
+    box-shadow 220ms var(--ease-smooth);
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lift);
+  }
+}
+
+@utility photo-tint {
+  position: relative;
+  overflow: hidden;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      160deg,
+      oklch(0.889 0.034 189.6 / 0.35),
+      oklch(0.38 0.057 205.3 / 0.28)
+    );
+  }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ---------- Accordéon (Radix) ---------- */
+@keyframes acc-open {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+    opacity: 1;
+  }
+}
+
+@keyframes acc-close {
+  from {
+    height: var(--radix-accordion-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+
+.acc-content[data-state="open"] {
+  animation: acc-open 300ms var(--ease-smooth);
+}
+
+.acc-content[data-state="closed"] {
+  animation: acc-close 220ms var(--ease-smooth);
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(4%, -3%, 0) scale(1.08);
+  }
+}
+
+.halo-drift {
+  animation: drift 26s ease-in-out infinite;
+}

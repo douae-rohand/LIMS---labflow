@@ -1,0 +1,29 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { AlertTriangle, Check, CornerUpLeft, FileSignature, MessageSquare, Sparkles, X, } from "lucide-react";
+import { Badge } from "@/components/lab";
+import { cn } from "@/lib/utils";
+function Frame({ title, children, className, }) {
+    return (_jsxs("div", { className: cn("glass-card glossy-top overflow-hidden rounded-3xl", className), children: [_jsxs("div", { className: "flex items-center gap-2 border-b border-brand-900/10 px-4 py-3", children: [_jsx("span", { className: "size-2.5 rounded-full bg-brand-900/20" }), _jsx("span", { className: "size-2.5 rounded-full bg-brand-900/20" }), _jsx("span", { className: "size-2.5 rounded-full bg-accent-lime" }), _jsx("span", { className: "ml-2 text-xs font-semibold text-brand-900", children: title })] }), _jsx("div", { className: "p-4", children: children })] }));
+}
+const bars = [42, 68, 55, 80, 62, 90, 74];
+export function DashboardMockup({ className }) {
+    return (_jsxs(Frame, { title: "Tableau de bord \u2014 Responsable", className: className, children: [_jsx("div", { className: "grid grid-cols-3 gap-3", children: [
+                    ["128", "Demandes"],
+                    ["36", "En validation"],
+                    ["2,4 j", "Délai moyen"],
+                ].map(([v, l]) => (_jsxs("div", { className: "rounded-2xl bg-surface-card p-3", children: [_jsx("p", { className: "text-lg font-extrabold text-brand-900", children: v }), _jsx("p", { className: "text-[11px] text-muted-foreground", children: l })] }, l))) }), _jsxs("div", { className: "mt-3 rounded-2xl bg-surface-alt p-3", children: [_jsx("p", { className: "text-[11px] font-semibold text-brand-900", children: "Essais r\u00E9alis\u00E9s par jour" }), _jsx("div", { className: "mt-2 flex h-20 items-end gap-2", children: bars.map((h, i) => (_jsx("span", { style: { height: `${h}%` }, className: cn("flex-1 rounded-t-lg", i === 5 ? "bg-accent-lime" : "bg-brand-600/70") }, i))) })] }), _jsx("ul", { className: "mt-3 flex flex-col gap-2", children: [
+                    ["DEM-2026-0412", "EN_VALIDATION", "lime"],
+                    ["DEM-2026-0409", "EN_COURS", "mint"],
+                    ["DEM-2026-0401", "TERMINÉE", "soft"],
+                ].map(([id, s, v]) => (_jsxs("li", { className: "flex items-center justify-between rounded-xl bg-card px-3 py-2 text-xs", children: [_jsx("span", { className: "font-semibold text-ink-900", children: id }), _jsx(Badge, { size: "sm", variant: v, children: s })] }, id))) })] }));
+}
+export function ValidationMockup({ className }) {
+    return (_jsxs(Frame, { title: "Validation \u2014 DEM-2026-0412", className: className, children: [_jsx("div", { className: "rounded-2xl bg-surface-card p-3 text-xs", children: [
+                    ["Glycémie à jeun", "0,92 g/L", false],
+                    ["Cholestérol total", "2,41 g/L", true],
+                    ["Créatinine", "9,8 mg/L", false],
+                ].map(([n, v, out]) => (_jsxs("div", { className: "flex items-center justify-between border-b border-brand-900/10 py-2 last:border-0", children: [_jsx("span", { className: "text-ink-900", children: n }), _jsxs("span", { className: cn("font-semibold", out ? "text-brand-600" : "text-ink-900"), children: [v, out && (_jsx(AlertTriangle, { className: "ml-1 inline size-3", "aria-hidden": "true" }))] })] }, n))) }), _jsxs("div", { className: "mt-3 grid grid-cols-3 gap-2 text-[11px] font-semibold", children: [_jsxs("span", { className: "flex items-center justify-center gap-1 rounded-full bg-brand-900 py-2 text-primary-foreground", children: [_jsx(Check, { className: "size-3", "aria-hidden": "true" }), " Valider"] }), _jsxs("span", { className: "flex items-center justify-center gap-1 rounded-full bg-mint-200 py-2 text-brand-900", children: [_jsx(CornerUpLeft, { className: "size-3", "aria-hidden": "true" }), " Retourner"] }), _jsxs("span", { className: "flex items-center justify-center gap-1 rounded-full border border-brand-900/20 py-2 text-brand-900", children: [_jsx(X, { className: "size-3", "aria-hidden": "true" }), " Rejeter"] })] }), _jsxs("div", { className: "mt-3 flex items-center gap-2 rounded-2xl bg-accent-lime/60 p-3 text-xs text-ink-900", children: [_jsx(FileSignature, { className: "size-4", "aria-hidden": "true" }), "Sign\u00E9 par Dr S. Amrani \u2014 28/09/2026 09:41"] })] }));
+}
+export function AiMockup({ className }) {
+    return (_jsxs(Frame, { title: "Assistant LabFlow", className: className, children: [_jsxs("div", { className: "flex flex-col gap-2 text-xs", children: [_jsx("div", { className: "ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-brand-900 px-3 py-2 text-primary-foreground", children: "Quelle est la proc\u00E9dure de dosage de la cr\u00E9atinine ?" }), _jsxs("div", { className: "max-w-[85%] rounded-2xl rounded-bl-md bg-surface-card px-3 py-2 text-ink-900", children: [_jsx(MessageSquare, { className: "mr-1 inline size-3 text-brand-600", "aria-hidden": "true" }), "M\u00E9thode enzymatique, mode op\u00E9ratoire MO-BIO-014 \u00A73. Calibration quotidienne requise.", _jsx("span", { className: "mt-1 block text-[10px] text-muted-foreground", children: "Source : MO-BIO-014 v5" })] })] }), _jsxs("div", { className: "mt-3 rounded-2xl bg-surface-alt p-3", children: [_jsxs("div", { className: "flex items-center justify-between text-[11px]", children: [_jsx("span", { className: "font-semibold text-brand-900", children: "Score d'anomalie" }), _jsx("span", { className: "font-bold text-ink-900", children: "0,82" })] }), _jsx("div", { className: "mt-2 h-2 overflow-hidden rounded-full bg-mint-200", children: _jsx("span", { className: "block h-full w-[82%] rounded-full bg-accent-lime" }) }), _jsxs("p", { className: "mt-2 flex items-center gap-1 text-[10px] text-muted-foreground", children: [_jsx(Sparkles, { className: "size-3", "aria-hidden": "true" }), " Suggestion soumise \u00E0 validation humaine"] })] })] }));
+}
