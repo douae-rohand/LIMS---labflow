@@ -1,7 +1,0 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { motion } from "framer-motion";
-import { staggerContainer, fadeUp } from "@/lib/motion";
-import { cn } from "@/lib/utils";
-export function Stepper({ steps, className }) {
-    return (_jsxs("div", { className: cn("relative", className), children: [_jsx(motion.div, { className: "absolute top-6 left-0 hidden h-px origin-left bg-brand-900/20 lg:block lg:w-full", initial: { scaleX: 0 }, whileInView: { scaleX: 1 }, viewport: { once: true, amount: 0.3 }, transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1] }, "aria-hidden": "true" }), _jsx(motion.ol, { className: "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3", variants: staggerContainer(0.08), initial: "hidden", whileInView: "show", viewport: { once: true, amount: 0.2 }, children: steps.map((step, index) => (_jsx(motion.li, { variants: fadeUp, className: "relative", children: _jsxs("div", { className: "flex items-start gap-4", children: [_jsx("span", { className: "glossy-top flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-900 text-sm font-bold text-primary-foreground", children: String(index + 1).padStart(2, "0") }), _jsxs("div", { children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx(step.icon, { className: "size-4 text-brand-600", "aria-hidden": "true" }), _jsx("h3", { className: "text-sm font-bold text-ink-900", children: step.title })] }), _jsx("p", { className: "mt-1 text-sm text-muted-foreground", children: step.description })] })] }) }, step.title))) })] }));
-}

@@ -1,16 +1,79 @@
-# React + Vite
+# LabFlow LIMS — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interface web du système de gestion de laboratoire (LIMS) multi-tenant LabFlow.
 
-Currently, two official plugins are available:
+Construit avec React 19, TanStack Router, TanStack Query, Tailwind CSS v4 et Vite.  
+Le backend est une API REST Spring Boot séparée.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Prérequis
 
-## React Compiler
+- Node.js ≥ 20
+- npm ≥ 10
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Installation
 
-## Expanding the ESLint configuration
+```sh
+npm install
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Développement
+
+```sh
+npm run dev
+```
+
+Le serveur démarre sur `http://localhost:5173`.  
+Les requêtes vers `/api` et `/actuator` sont proxifiées vers le backend (par défaut `http://localhost:8081`).  
+Pour changer la cible du proxy, créez un fichier `.env.local` :
+
+```env
+VITE_BACKEND_URL=http://localhost:8081
+```
+
+## Build de production
+
+```sh
+npm run build
+```
+
+Les fichiers compilés sont générés dans `dist/`.
+
+## Prévisualiser le build
+
+```sh
+npm run preview
+```
+
+## Lint / Formatage
+
+```sh
+npm run lint
+npm run format
+```
+
+## Composants UI
+
+Les pages et composants métier importent depuis **`@/components/lab`** (design system LabFlow).
+
+`@/components/ui` (généré par shadcn/ui) est réservé aux composants qui n'ont **pas** d'équivalent dans `lab/`. Ne pas créer dans `ui/` un composant déjà présent dans `lab/` (Button, Badge, Card, Accordion, Carousel, Tabs, Tooltip, Modal, Input, Textarea, Select, Checkbox, Avatar, Skeleton, Table, …).
+
+Règle : avant d'ajouter un composant shadcn, vérifier qu'il n'existe pas déjà dans `lab/`.
+
+## Structure du projet
+
+```
+src/
+  components/
+    lab/        Design system LabFlow (Button, Card, Badge, …)
+    landing/    Sections de la page d'accueil
+    layout/     Navbar, Footer, Container, Section
+    ui/         Composants shadcn/ui (Radix UI)
+  data/         Données statiques (landing, navigation, images)
+  hooks/        Hooks React utilitaires
+  layouts/      Layouts de pages (PublicLayout, …)
+  lib/          Utilitaires (cn, motion, …)
+  routes/       Routes TanStack Router (file-based)
+  main.tsx      Point d'entrée React
+  router.tsx    Création du routeur
+  styles.css    Design tokens et utilitaires Tailwind
+```

@@ -8,6 +8,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -69,7 +70,10 @@ public class SecurityConfig {
                     "/ws/**",
                     "/actuator/**"
                 ).permitAll()
-                // Super-admin uniquement
+                // Formulaire de demande d'intégration laboratoire (landing publique)
+                // Doit être déclaré AVANT la règle /api/plateforme/** ci-dessous
+                .requestMatchers(HttpMethod.POST, "/api/plateforme/demandes").permitAll()
+                // Super-admin uniquement pour tous les autres endpoints plateforme
                 .requestMatchers("/api/plateforme/**").hasRole("SUPER_ADMINISTRATEUR")
                 // Tout le reste nécessite une authentification
                 .anyRequest().authenticated()

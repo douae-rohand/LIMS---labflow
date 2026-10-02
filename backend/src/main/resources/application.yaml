@@ -95,7 +95,7 @@ cors:
 # Serveur
 # ============================================================
 server:
-  port: ${SERVER_PORT}
+  port: ${SERVER_PORT:8081}
 
   servlet:
     context-path: /
@@ -127,16 +127,6 @@ minio:
 # ============================================================
 n8n:
   webhook-base-url: ${N8N_WEBHOOK_BASE_URL:http://localhost:5678/webhook}
-
-# ============================================================
-# LLM (OpenAI-compatible)
-# ============================================================
-llm:
-  api-url: ${LLM_API_URL:http://localhost:11434/v1}
-  api-key: ${LLM_API_KEY:}
-  model: ${LLM_MODEL:llama3.2}
-  max-tokens: 2048
-  temperature: 0.7
 
 # ============================================================
 # Springdoc / Swagger UI
