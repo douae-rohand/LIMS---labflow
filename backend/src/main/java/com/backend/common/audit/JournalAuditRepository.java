@@ -8,15 +8,12 @@ import org.springframework.stereotype.Repository;
 import java.time.Instant;
 import java.util.List;
 
-/**
- * Accès données pour la journalisation d'audit (schéma tenant).
- */
 @Repository
 public interface JournalAuditRepository extends JpaRepository<JournalAudit, Long> {
 
-    Page<JournalAudit> findByUtilisateur(String utilisateur, Pageable pageable);
+    Page<JournalAudit> findByUtilisateur_Email(String email, Pageable pageable);
 
-    Page<JournalAudit> findByNomEntiteAndIdEntite(String nomEntite, Long idEntite, Pageable pageable);
+    Page<JournalAudit> findByObjet(String objet, Pageable pageable);
 
     List<JournalAudit> findByDateActionBetween(Instant debut, Instant fin);
 
