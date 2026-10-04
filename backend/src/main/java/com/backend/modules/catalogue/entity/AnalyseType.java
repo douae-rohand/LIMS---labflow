@@ -10,7 +10,6 @@ import java.time.Instant;
  * Type d'analyse proposé au catalogue du laboratoire (M04).
  */
 @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
-@Entity @Table(name = "analyse_type")
 public class AnalyseType {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

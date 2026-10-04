@@ -1,57 +1,65 @@
 package com.backend.modules.essai.entity;
 
+import com.backend.modules.domaine.entity.Domaine;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.Instant;
 
-/**
- * Essai réalisé sur un échantillon pour un type d'analyse (M05).
- */
-@Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
-@Entity @Table(name = "essai")
+import java.math.BigDecimal;
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "essai", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_essai_code", columnNames = "code")
+})
 public class Essai {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_essai")
     private Long id;
 
-    @Column(name = "echantillon_id", nullable = false)
-    private Long echantillonId;
+    @Column(nullable = false, length = 50)
+    private String code;
 
-    @Column(name = "analyse_type_code", nullable = false, length = 50)
-    private String analyseTypeCode;
+    @Column(nullable = false, length = 255)
+    private String designation;
 
-    @Column(name = "technicien_id")
-    private Long technicienId;
+    @Column(columnDefinition = "TEXT")
+    private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(length = 255)
+    private String methode;
+
     @Builder.Default
-    private StatutEssai statut = StatutEssai.EN_ATTENTE;
+    @Column(precision = 12, scale = 2)
+    private BigDecimal tarif = BigDecimal.ZERO;
 
-    @Column(name = "resultat_valeur", length = 200)
-    private String resultatValeur;
+    @Column(name = "duree_estimee", nullable = false)
+    private Integer dureeEstimee;
 
-    @Column(name = "resultat_unite", length = 50)
-    private String resultatUnite;
+    @Column(length = 50)
+    private String unite;
 
-    @Column(name = "valeur_min")
-    private Double valeurMin;
+    @Column(name = "limite_min", precision = 12, scale = 4)
+    private BigDecimal limiteMin;
 
-    @Column(name = "valeur_max")
-    private Double valeurMax;
+    @Column(name = "limite_max", precision = 12, scale = 4)
+    private BigDecimal limiteMax;
 
-    @Column(name = "conforme")
-    private Boolean conforme;
+    @Column(name = "seuil_critique_min", precision = 12, scale = 4)
+    private BigDecimal seuilCritiqueMin;
 
-    @Column(name = "observations", columnDefinition = "TEXT")
-    private String observations;
+    @Column(name = "seuil_critique_max", precision = 12, scale = 4)
+    private BigDecimal seuilCritiqueMax;
 
-    @Column(name = "date_debut")
-    private Instant dateDebut;
-
-    @Column(name = "date_fin")
-    private Instant dateFin;
-
-    @Column(name = "date_creation", nullable = false, updatable = false)
     @Builder.Default
-    private Instant dateCreation = Instant.now();
+    private Boolean actif = true;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "domaine_id")
+    private Domaine domaine;
 }
