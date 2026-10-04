@@ -9,6 +9,7 @@ import com.backend.modules.utilisateur.dto.ModifierUtilisateurRequest;
 import com.backend.modules.utilisateur.dto.UtilisateurDto;
 import com.backend.modules.utilisateur.entity.*;
 import com.backend.modules.utilisateur.mapper.UtilisateurMapper;
+import com.backend.modules.utilisateur.repository.RoleRepository;
 import com.backend.modules.utilisateur.repository.UtilisateurRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,8 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.time.Instant;
-
 /**
  * Service de gestion des utilisateurs (M12).
  */
@@ -30,6 +29,7 @@ import java.time.Instant;
 public class UtilisateurService {
 
     private final UtilisateurRepository utilisateurRepository;
+    private final RoleRepository roleRepository;
     private final UtilisateurMapper utilisateurMapper;
     private final PasswordEncoder passwordEncoder;
 
@@ -99,12 +99,12 @@ public class UtilisateurService {
         }
 
         if (StringUtils.hasText(request.getNouveauMotDePasse())) {
-            utilisateur.setMotDePasse(passwordEncoder.encode(request.getNouveauMotDePasse()));
+            utilisateur.setMotDePasseHash(passwordEncoder.encode(request.getNouveauMotDePasse()));
         }
 
         if (request.getActif() != null) utilisateur.setActif(request.getActif());
         if (request.getDeuxFacteursActif() != null)
-            utilisateur.setDeuxFacteursActif(request.getDeuxFacteursActif());
+            utilisateur.setDoubleAuthentification(request.getDeuxFacteursActif());
 
         return utilisateurMapper.toDto(utilisateurRepository.save(utilisateur));
     }
@@ -145,43 +145,46 @@ public class UtilisateurService {
      */
     private Utilisateur construireUtilisateur(CreerUtilisateurRequest request) {
         String mdpHash = passwordEncoder.encode(request.getMotDePasse());
+        Role role = roleRepository.findByCode(request.getRole().name())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Role", "code", request.getRole().name()));
 
         return switch (request.getRole()) {
             case CLIENT -> Client.builder()
                     .nom(request.getNom()).prenom(request.getPrenom())
-                    .email(request.getEmail()).motDePasse(mdpHash)
-                    .telephone(request.getTelephone()).role(RoleUtilisateur.CLIENT)
-                    .actif(true).dateCreation(Instant.now())
+                    .email(request.getEmail()).motDePasseHash(mdpHash)
+                    .telephone(request.getTelephone()).role(role)
+                    .actif(true)
                     .build();
             case ACCUEIL -> Accueil.builder()
                     .nom(request.getNom()).prenom(request.getPrenom())
-                    .email(request.getEmail()).motDePasse(mdpHash)
-                    .telephone(request.getTelephone()).role(RoleUtilisateur.ACCUEIL)
-                    .actif(true).dateCreation(Instant.now())
+                    .email(request.getEmail()).motDePasseHash(mdpHash)
+                    .telephone(request.getTelephone()).role(role)
+                    .actif(true)
                     .build();
             case TECHNICIEN -> Technicien.builder()
                     .nom(request.getNom()).prenom(request.getPrenom())
-                    .email(request.getEmail()).motDePasse(mdpHash)
-                    .telephone(request.getTelephone()).role(RoleUtilisateur.TECHNICIEN)
-                    .actif(true).dateCreation(Instant.now())
+                    .email(request.getEmail()).motDePasseHash(mdpHash)
+                    .telephone(request.getTelephone()).role(role)
+                    .actif(true)
                     .build();
             case RESPONSABLE -> Responsable.builder()
                     .nom(request.getNom()).prenom(request.getPrenom())
-                    .email(request.getEmail()).motDePasse(mdpHash)
-                    .telephone(request.getTelephone()).role(RoleUtilisateur.RESPONSABLE)
-                    .actif(true).dateCreation(Instant.now())
+                    .email(request.getEmail()).motDePasseHash(mdpHash)
+                    .telephone(request.getTelephone()).role(role)
+                    .actif(true)
                     .build();
             case ADMINISTRATEUR -> Administrateur.builder()
                     .nom(request.getNom()).prenom(request.getPrenom())
-                    .email(request.getEmail()).motDePasse(mdpHash)
-                    .telephone(request.getTelephone()).role(RoleUtilisateur.ADMINISTRATEUR)
-                    .actif(true).dateCreation(Instant.now())
+                    .email(request.getEmail()).motDePasseHash(mdpHash)
+                    .telephone(request.getTelephone()).role(role)
+                    .actif(true)
                     .build();
             case SUPER_ADMINISTRATEUR -> SuperAdministrateur.builder()
                     .nom(request.getNom()).prenom(request.getPrenom())
-                    .email(request.getEmail()).motDePasse(mdpHash)
-                    .telephone(request.getTelephone()).role(RoleUtilisateur.SUPER_ADMINISTRATEUR)
-                    .actif(true).dateCreation(Instant.now())
+                    .email(request.getEmail()).motDePasseHash(mdpHash)
+                    .telephone(request.getTelephone()).role(role)
+                    .actif(true)
                     .build();
         };
     }

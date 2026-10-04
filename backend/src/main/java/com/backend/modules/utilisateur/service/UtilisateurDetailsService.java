@@ -36,9 +36,9 @@ public class UtilisateurDetailsService implements UserDetailsService {
 
         return User.builder()
                 .username(utilisateur.getEmail())
-                .password(utilisateur.getMotDePasse())
+                .password(utilisateur.getMotDePasseHash())
                 .authorities(List.of(
-                        new SimpleGrantedAuthority("ROLE_" + utilisateur.getRole().name())))
+                        new SimpleGrantedAuthority("ROLE_" + utilisateur.getRole().getCode())))
                 .accountExpired(false)
                 .credentialsExpired(false)
                 .disabled(!utilisateur.isActif())

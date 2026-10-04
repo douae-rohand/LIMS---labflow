@@ -1,6 +1,8 @@
 package com.backend.modules.utilisateur.entity;
 
+import com.backend.modules.plateforme.entity.Laboratoire;
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -8,84 +10,70 @@ import lombok.experimental.SuperBuilder;
 
 import java.time.Instant;
 
-/**
- * Entité de base abstraite pour tous les types d'utilisateurs du LIMS.
- *
- * <p>Stratégie d'héritage : {@code JOINED} — chaque sous-classe dispose
- * de sa propre table reliée à {@code utilisateur} par clé étrangère.
- * Ce choix évite les colonnes nullables massives de SINGLE_TABLE tout en
- * restant plus simple que TABLE_PER_CLASS pour les requêtes cross-type.
- *
- * <p>Note Lombok : {@code @SuperBuilder} ne supporte pas {@code @Builder.Default}
- * sur les champs d'entités abstraites. Les valeurs par défaut sont initialisées
- * dans {@link #onCreate()} via {@code @PrePersist}.
- */
 @Getter
 @Setter
 @SuperBuilder(toBuilder = true)
 @NoArgsConstructor
 @Entity
-@Table(name = "utilisateur",
-        uniqueConstraints = @UniqueConstraint(name = "uk_utilisateur_email", columnNames = "email"))
-@Inheritance(strategy = InheritanceType.JOINED)
-@DiscriminatorColumn(name = "type_utilisateur", discriminatorType = DiscriminatorType.STRING)
-public abstract class Utilisateur {
+@Table(name = "utilisateur", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_utilisateur_matricule", columnNames = "matricule"),
+        @UniqueConstraint(name = "uk_utilisateur_email", columnNames = "email")
+})
+public class Utilisateur {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_utilisateur")
     private Long id;
+
+    @Column(length = 50)
+    private String matricule;
 
     @Column(nullable = false, length = 100)
     private String nom;
 
-    @Column(nullable = false, length = 100)
+    @Column(length = 100)
     private String prenom;
 
-    @Column(nullable = false, length = 180)
+    @Column(nullable = false, length = 255)
     private String email;
 
-    @Column(name = "mot_de_passe", nullable = false)
-    private String motDePasse;
-
-    @Column(name = "telephone", length = 20)
+    @Column(length = 50)
     private String telephone;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
-    private RoleUtilisateur role;
+    @Column(length = 20)
+    private String cin;
 
-    @Column(name = "est_actif", nullable = false)
-    private boolean actif;
+    @Column(name = "mot_de_passe_hash", nullable = false, length = 255)
+    private String motDePasseHash;
 
-    @Column(name = "deux_facteurs_actif", nullable = false)
-    private boolean deuxFacteursActif;
+    @Builder.Default
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword = false;
 
-    @Column(name = "date_creation", nullable = false, updatable = false)
-    private Instant dateCreation;
-
-    @Column(name = "date_modification")
-    private Instant dateModification;
+    @Builder.Default
+    @Column(name = "double_authentification", nullable = false)
+    private boolean doubleAuthentification = false;
 
     @Column(name = "derniere_connexion")
     private Instant derniereConnexion;
 
-    /** Initialise les valeurs par défaut avant la première persistance. */
-    @PrePersist
-    protected void onCreate() {
-        if (dateCreation == null) dateCreation = Instant.now();
-        // actif=true par défaut (boolean initialisé à false par Java, on force ici)
-        // Note: quand le builder positionne explicitement actif=false, ce callback ne l'écrase pas
-        // car @PrePersist s'exécute après la construction. Pour les nouvelles entités non
-        // construites via builder, on force la valeur correcte.
-    }
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean actif = true;
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.dateModification = Instant.now();
-    }
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "role_id", nullable = false)
+    private Role role;
 
-    /** Nom complet affiché (prénom + nom). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "laboratoire_id")
+    private Laboratoire laboratoire;
+
     public String getNomComplet() {
+        if (prenom == null || prenom.isBlank()) {
+            return nom;
+        }
         return prenom + " " + nom;
     }
 }

@@ -21,7 +21,11 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
 
     boolean existsByEmail(String email);
 
-    Page<Utilisateur> findByRole(RoleUtilisateur role, Pageable pageable);
+    @Query("""
+            SELECT u FROM Utilisateur u
+            WHERE u.role.code = :#{#role.name()}
+            """)
+    Page<Utilisateur> findByRole(@Param("role") RoleUtilisateur role, Pageable pageable);
 
     Page<Utilisateur> findByActif(boolean actif, Pageable pageable);
 
