@@ -19,6 +19,14 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
 
     Optional<Utilisateur> findByEmail(String email);
 
+    @Query("""
+            SELECT u FROM Utilisateur u
+            JOIN FETCH u.role
+            LEFT JOIN FETCH u.laboratoire
+            WHERE u.email = :email
+            """)
+    Optional<Utilisateur> findByEmailWithRoleAndLaboratoire(@Param("email") String email);
+
     boolean existsByEmail(String email);
 
     @Query("""

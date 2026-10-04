@@ -10,7 +10,8 @@ import lombok.*;
 @AllArgsConstructor
 @Entity
 @Table(name = "client", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_client_code", columnNames = "code")
+        @UniqueConstraint(name = "uk_client_code", columnNames = "code"),
+        @UniqueConstraint(name = "uk_client_utilisateur", columnNames = "utilisateur_id")
 })
 public class Client {
 

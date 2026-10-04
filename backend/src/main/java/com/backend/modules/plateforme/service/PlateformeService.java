@@ -2,6 +2,8 @@ package com.backend.modules.plateforme.service;
 
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
+import com.backend.common.exception.UnauthorizedTenantException;
+import com.backend.common.tenant.TenantProvisioner;
 import com.backend.modules.plateforme.dto.*;
 import com.backend.modules.plateforme.entity.*;
 import com.backend.modules.plateforme.repository.*;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -25,6 +28,7 @@ public class PlateformeService {
 
     private final LaboratoireRepository laboratoireRepository;
     private final DemandeIntegrationRepository demandeIntegrationRepository;
+    private final TenantProvisioner tenantProvisioner;
 
     @Transactional
     public LaboratoireDto creerLaboratoire(CreerLaboratoireRequest request) {
@@ -46,9 +50,27 @@ public class PlateformeService {
                 .build();
 
         labo = laboratoireRepository.save(labo);
+        tenantProvisioner.provisionner(labo);
         log.info("Laboratoire créé : code={}, schema={}", labo.getCode(), labo.getNomSchema());
 
         return toDto(labo);
+    }
+
+    @Transactional(readOnly = true)
+    public List<LaboratoirePublicDto> listerLaboratoiresPublics() {
+        return laboratoireRepository.findByStatutOrderByRaisonSocialeAsc(STATUT_ACTIF).stream()
+                .map(this::toPublicDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public LaboratoirePublicDto trouverPublicParCode(String code) {
+        Laboratoire laboratoire = laboratoireRepository.findByCode(code)
+                .orElseThrow(() -> new ResourceNotFoundException("Laboratoire", "code", code));
+        if (!STATUT_ACTIF.equals(laboratoire.getStatut())) {
+            throw new UnauthorizedTenantException("Le laboratoire '" + code + "' n'est pas sélectionnable");
+        }
+        return toPublicDto(laboratoire);
     }
 
     @Transactional(readOnly = true)
@@ -99,7 +121,23 @@ public class PlateformeService {
         }
 
         if (decision == StatutIntegration.APPROUVEE) {
-            log.info("Demande {} approuvée — provisionnement du laboratoire à implémenter", id);
+            Laboratoire laboratoire = demande.getLaboratoire();
+            if (laboratoire == null) {
+                String code = slugifier(demande.getRaisonSociale());
+                if (laboratoireRepository.existsByCode(code)) {
+                    code = code + "_" + demande.getId();
+                }
+                laboratoire = laboratoireRepository.save(Laboratoire.builder()
+                        .code(code)
+                        .raisonSociale(demande.getRaisonSociale())
+                        .nomSchema("lims_" + code)
+                        .email(demande.getContactEmail())
+                        .telephone(demande.getContactTelephone())
+                        .statut(STATUT_ACTIF)
+                        .build());
+                demande.setLaboratoire(laboratoire);
+            }
+            tenantProvisioner.provisionner(laboratoire);
         }
 
         return toDto(demandeIntegrationRepository.save(demande));
@@ -111,6 +149,27 @@ public class PlateformeService {
                 ? demandeIntegrationRepository.findByStatut(statut.name(), pageable)
                 : demandeIntegrationRepository.findAll(pageable);
         return page.map(this::toDto);
+    }
+
+    private LaboratoirePublicDto toPublicDto(Laboratoire l) {
+        return LaboratoirePublicDto.builder()
+                .id(l.getId())
+                .code(l.getCode())
+                .raisonSociale(l.getRaisonSociale())
+                .ville(l.getVille())
+                .adresse(l.getAdresse())
+                .statut(l.getStatut())
+                .build();
+    }
+
+    private static String slugifier(String valeur) {
+        String slug = valeur == null ? "lab" : valeur.toLowerCase()
+                .replaceAll("[^a-z0-9]+", "_")
+                .replaceAll("^_|_$", "");
+        if (slug.isBlank()) {
+            slug = "lab";
+        }
+        return slug.length() > 40 ? slug.substring(0, 40) : slug;
     }
 
     private LaboratoireDto toDto(Laboratoire l) {

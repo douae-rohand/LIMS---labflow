@@ -26,6 +26,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/v3/api-docs/**",
                         "/actuator/**",
                         "/api/plateforme/**",
+                        "/api/laboratoires/**",
+                        "/api/client/**",
                         "/ws/**"
                 );
     }

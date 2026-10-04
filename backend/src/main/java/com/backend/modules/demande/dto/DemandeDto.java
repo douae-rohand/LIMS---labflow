@@ -13,6 +13,7 @@ public class DemandeDto {
     private String objet;
     private StatutDemande statut;
     private Long clientId;
+    private String laboratoireCode;
     private Instant dateSoumission;
     private LocalDate dateSouhaitee;
     private String commentaire;

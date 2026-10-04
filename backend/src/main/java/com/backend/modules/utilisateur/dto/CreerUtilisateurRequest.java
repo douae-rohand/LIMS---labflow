@@ -32,4 +32,12 @@ public class CreerUtilisateurRequest {
 
     @NotNull(message = "Le rôle est obligatoire")
     private RoleUtilisateur role;
+
+    /** Obligatoire pour le personnel de laboratoire. Interdit pour CLIENT. */
+    private Long laboratoireId;
+
+    private String raisonSociale;
+    private String ice;
+    private String adresse;
+    private Boolean consentementCndp;
 }

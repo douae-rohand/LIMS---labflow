@@ -4,10 +4,15 @@ import com.backend.common.audit.Auditable;
 import com.backend.common.dto.PageResponse;
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
+import com.backend.modules.client.service.ClientService;
+import com.backend.modules.plateforme.entity.Laboratoire;
+import com.backend.modules.plateforme.repository.LaboratoireRepository;
 import com.backend.modules.utilisateur.dto.CreerUtilisateurRequest;
 import com.backend.modules.utilisateur.dto.ModifierUtilisateurRequest;
 import com.backend.modules.utilisateur.dto.UtilisateurDto;
-import com.backend.modules.utilisateur.entity.*;
+import com.backend.modules.utilisateur.entity.Role;
+import com.backend.modules.utilisateur.entity.RoleUtilisateur;
+import com.backend.modules.utilisateur.entity.Utilisateur;
 import com.backend.modules.utilisateur.mapper.UtilisateurMapper;
 import com.backend.modules.utilisateur.repository.RoleRepository;
 import com.backend.modules.utilisateur.repository.UtilisateurRepository;
@@ -20,9 +25,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-/**
- * Service de gestion des utilisateurs (M12).
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -30,12 +32,10 @@ public class UtilisateurService {
 
     private final UtilisateurRepository utilisateurRepository;
     private final RoleRepository roleRepository;
+    private final LaboratoireRepository laboratoireRepository;
+    private final ClientService clientService;
     private final UtilisateurMapper utilisateurMapper;
     private final PasswordEncoder passwordEncoder;
-
-    // -------------------------------------------------------------------------
-    // Lecture
-    // -------------------------------------------------------------------------
 
     @Transactional(readOnly = true)
     public UtilisateurDto trouverParId(Long id) {
@@ -57,10 +57,6 @@ public class UtilisateurService {
                         .map(utilisateurMapper::toDto));
     }
 
-    // -------------------------------------------------------------------------
-    // Création
-    // -------------------------------------------------------------------------
-
     @Transactional
     @Auditable(action = "CREATION_UTILISATEUR", entite = "Utilisateur")
     public UtilisateurDto creer(CreerUtilisateurRequest request) {
@@ -69,16 +65,45 @@ public class UtilisateurService {
                     "L'email '" + request.getEmail() + "' est déjà utilisé");
         }
 
-        Utilisateur utilisateur = construireUtilisateur(request);
+        Role role = roleRepository.findByCode(request.getRole().name())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Role", "code", request.getRole().name()));
+
+        Laboratoire laboratoire = null;
+        if (estPersonnelLaboratoire(request.getRole())) {
+            if (request.getLaboratoireId() == null) {
+                throw new BusinessRuleException("LABORATOIRE_OBLIGATOIRE",
+                        "Un employé de laboratoire doit être rattaché à un laboratoire");
+            }
+            laboratoire = laboratoireRepository.findById(request.getLaboratoireId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Laboratoire", "id", request.getLaboratoireId()));
+        } else if (request.getLaboratoireId() != null) {
+            throw new BusinessRuleException("LABORATOIRE_INTERDIT",
+                    "Un compte " + request.getRole() + " ne doit pas avoir de laboratoire fixe");
+        }
+
+        Utilisateur utilisateur = Utilisateur.builder()
+                .nom(request.getNom())
+                .prenom(request.getPrenom())
+                .email(request.getEmail())
+                .motDePasseHash(passwordEncoder.encode(request.getMotDePasse()))
+                .telephone(request.getTelephone())
+                .role(role)
+                .laboratoire(laboratoire)
+                .actif(true)
+                .build();
         utilisateur = utilisateurRepository.save(utilisateur);
+
+        if (request.getRole() == RoleUtilisateur.CLIENT) {
+            clientService.creerProfil(utilisateur, request.getRaisonSociale(),
+                    request.getIce(), request.getAdresse(), request.getConsentementCndp());
+        }
+
         log.info("Utilisateur créé : id={}, email={}, role={}",
                 utilisateur.getId(), utilisateur.getEmail(), utilisateur.getRole());
         return utilisateurMapper.toDto(utilisateur);
     }
-
-    // -------------------------------------------------------------------------
-    // Modification
-    // -------------------------------------------------------------------------
 
     @Transactional
     @Auditable(action = "MODIFICATION_UTILISATEUR", entite = "Utilisateur")
@@ -109,10 +134,6 @@ public class UtilisateurService {
         return utilisateurMapper.toDto(utilisateurRepository.save(utilisateur));
     }
 
-    // -------------------------------------------------------------------------
-    // Activation / Désactivation
-    // -------------------------------------------------------------------------
-
     @Transactional
     @Auditable(action = "DESACTIVATION_UTILISATEUR", entite = "Utilisateur")
     public void desactiver(Long id) {
@@ -131,61 +152,15 @@ public class UtilisateurService {
         log.info("Utilisateur activé : id={}", id);
     }
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
     private Utilisateur chargerParId(Long id) {
         return utilisateurRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur", "id", id));
     }
 
-    /**
-     * Instancie le bon sous-type d'utilisateur selon le rôle.
-     */
-    private Utilisateur construireUtilisateur(CreerUtilisateurRequest request) {
-        String mdpHash = passwordEncoder.encode(request.getMotDePasse());
-        Role role = roleRepository.findByCode(request.getRole().name())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Role", "code", request.getRole().name()));
-
-        return switch (request.getRole()) {
-            case CLIENT -> Client.builder()
-                    .nom(request.getNom()).prenom(request.getPrenom())
-                    .email(request.getEmail()).motDePasseHash(mdpHash)
-                    .telephone(request.getTelephone()).role(role)
-                    .actif(true)
-                    .build();
-            case ACCUEIL -> Accueil.builder()
-                    .nom(request.getNom()).prenom(request.getPrenom())
-                    .email(request.getEmail()).motDePasseHash(mdpHash)
-                    .telephone(request.getTelephone()).role(role)
-                    .actif(true)
-                    .build();
-            case TECHNICIEN -> Technicien.builder()
-                    .nom(request.getNom()).prenom(request.getPrenom())
-                    .email(request.getEmail()).motDePasseHash(mdpHash)
-                    .telephone(request.getTelephone()).role(role)
-                    .actif(true)
-                    .build();
-            case RESPONSABLE -> Responsable.builder()
-                    .nom(request.getNom()).prenom(request.getPrenom())
-                    .email(request.getEmail()).motDePasseHash(mdpHash)
-                    .telephone(request.getTelephone()).role(role)
-                    .actif(true)
-                    .build();
-            case ADMINISTRATEUR -> Administrateur.builder()
-                    .nom(request.getNom()).prenom(request.getPrenom())
-                    .email(request.getEmail()).motDePasseHash(mdpHash)
-                    .telephone(request.getTelephone()).role(role)
-                    .actif(true)
-                    .build();
-            case SUPER_ADMINISTRATEUR -> SuperAdministrateur.builder()
-                    .nom(request.getNom()).prenom(request.getPrenom())
-                    .email(request.getEmail()).motDePasseHash(mdpHash)
-                    .telephone(request.getTelephone()).role(role)
-                    .actif(true)
-                    .build();
-        };
+    private static boolean estPersonnelLaboratoire(RoleUtilisateur role) {
+        return role == RoleUtilisateur.ACCUEIL
+                || role == RoleUtilisateur.TECHNICIEN
+                || role == RoleUtilisateur.RESPONSABLE
+                || role == RoleUtilisateur.ADMINISTRATEUR;
     }
 }

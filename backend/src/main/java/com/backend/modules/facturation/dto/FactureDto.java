@@ -12,6 +12,7 @@ public class FactureDto {
     private String numero;
     private Long demandeId;
     private Long clientId;
+    private String laboratoireCode;
     private StatutFacture statut;
     private BigDecimal montantHt;
     private BigDecimal tauxTva;

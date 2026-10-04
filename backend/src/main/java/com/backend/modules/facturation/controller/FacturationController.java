@@ -10,9 +10,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
 import java.math.BigDecimal;
 
-@RestController @RequestMapping("/api/factures") @RequiredArgsConstructor
+@RestController
+@RequestMapping("/api/factures")
+@RequiredArgsConstructor
 @Tag(name = "Facturation", description = "Gestion de la facturation (M11)")
 public class FacturationController {
 
@@ -23,10 +26,21 @@ public class FacturationController {
         return ResponseEntity.ok(ApiResponse.success(facturationService.trouverParId(id)));
     }
 
+    @GetMapping("/mes")
+    @PreAuthorize("hasRole('CLIENT')")
+    public ResponseEntity<ApiResponse<Page<FactureDto>>> listerMesFactures(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(
+                facturationService.listerMesFactures(PageRequest.of(page, size))));
+    }
+
     @GetMapping("/client/{clientId}")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','RESPONSABLE','ACCUEIL')")
     public ResponseEntity<ApiResponse<Page<FactureDto>>> listerParClient(
             @PathVariable Long clientId,
-            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.success(
                 facturationService.listerParClient(clientId, PageRequest.of(page, size))));
     }
@@ -34,7 +48,9 @@ public class FacturationController {
     @PostMapping("/emettre")
     @PreAuthorize("hasAnyRole('ADMINISTRATEUR','RESPONSABLE')")
     public ResponseEntity<ApiResponse<FactureDto>> emettre(
-            @RequestParam Long demandeId, @RequestParam Long clientId, @RequestParam BigDecimal montantHt) {
+            @RequestParam Long demandeId,
+            @RequestParam(required = false) Long clientId,
+            @RequestParam BigDecimal montantHt) {
         return ResponseEntity.ok(ApiResponse.success("Facture émise",
                 facturationService.emettre(demandeId, clientId, montantHt)));
     }

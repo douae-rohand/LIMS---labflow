@@ -73,6 +73,8 @@ public class SecurityConfig {
                 // Formulaire de demande d'intégration laboratoire (landing publique)
                 // Doit être déclaré AVANT la règle /api/plateforme/** ci-dessous
                 .requestMatchers(HttpMethod.POST, "/api/plateforme/demandes").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/laboratoires", "/api/laboratoires/**").authenticated()
+                .requestMatchers("/api/client/**").hasRole("CLIENT")
                 // Super-admin uniquement pour tous les autres endpoints plateforme
                 .requestMatchers("/api/plateforme/**").hasRole("SUPER_ADMINISTRATEUR")
                 // Tout le reste nécessite une authentification

@@ -18,4 +18,6 @@ public interface LaboratoireRepository extends JpaRepository<Laboratoire, Long> 
     boolean existsByCode(String code);
 
     Page<Laboratoire> findByStatut(String statut, Pageable pageable);
+
+    java.util.List<Laboratoire> findByStatutOrderByRaisonSocialeAsc(String statut);
 }

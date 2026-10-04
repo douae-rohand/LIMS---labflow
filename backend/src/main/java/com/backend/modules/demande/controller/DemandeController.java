@@ -26,6 +26,15 @@ public class DemandeController {
         return ResponseEntity.ok(ApiResponse.success(demandeService.trouverParId(id)));
     }
 
+    @GetMapping
+    @PreAuthorize("hasRole('CLIENT')")
+    public ResponseEntity<ApiResponse<Page<DemandeDto>>> listerMesDemandes(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(
+                demandeService.listerMesDemandes(PageRequest.of(page, size))));
+    }
+
     @GetMapping("/statut/{statut}")
     @PreAuthorize("hasAnyRole('ACCUEIL','TECHNICIEN','RESPONSABLE','ADMINISTRATEUR')")
     public ResponseEntity<ApiResponse<Page<DemandeDto>>> listerParStatut(
@@ -56,6 +65,4 @@ public class DemandeController {
         return ResponseEntity.ok(ApiResponse.success("Statut mis à jour",
                 demandeService.changerStatut(id, statut)));
     }
-
-    // TODO: GET /api/demandes/stats
 }

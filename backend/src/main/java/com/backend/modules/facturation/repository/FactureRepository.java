@@ -15,5 +15,9 @@ public interface FactureRepository extends JpaRepository<Facture, Long> {
 
     Page<Facture> findByDemande_Client_Id(Long clientId, Pageable pageable);
 
+    Page<Facture> findByDemande_Client_UtilisateurId(Long utilisateurId, Pageable pageable);
+
+    java.util.List<Facture> findByDemande_Client_UtilisateurId(Long utilisateurId);
+
     Page<Facture> findByStatut(String statut, Pageable pageable);
 }

@@ -15,5 +15,9 @@ public interface DemandeRepository extends JpaRepository<Demande, Long> {
 
     Page<Demande> findByClient_Id(Long clientId, Pageable pageable);
 
+    Page<Demande> findByClient_UtilisateurId(Long utilisateurId, Pageable pageable);
+
+    java.util.List<Demande> findByClient_UtilisateurId(Long utilisateurId);
+
     Page<Demande> findByStatut(String statut, Pageable pageable);
 }
