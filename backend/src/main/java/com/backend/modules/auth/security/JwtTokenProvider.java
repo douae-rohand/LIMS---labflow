@@ -26,6 +26,7 @@ public class JwtTokenProvider {
     public String generateAccessToken(Authentication authentication) {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("type", "access");
         if (userDetails instanceof UtilisateurPrincipal principal) {
             extraClaims.put("uid", principal.getId());
             extraClaims.put("role", principal.getRole().name());
@@ -37,7 +38,11 @@ public class JwtTokenProvider {
     }
 
     public String generateRefreshToken(String username) {
-        return buildToken(username, Map.of(), jwtConfig.getRefreshExpiration());
+        return buildToken(username, Map.of("type", "refresh"), jwtConfig.getRefreshExpiration());
+    }
+
+    public String generateTwoFactorToken(String username) {
+        return buildToken(username, Map.of("type", "2fa"), jwtConfig.getTwoFactorExpiration());
     }
 
     private String buildToken(String subject, Map<String, Object> extraClaims, long expirationMs) {
@@ -66,6 +71,22 @@ public class JwtTokenProvider {
             log.warn("Claims JWT vides : {}", ex.getMessage());
         }
         return false;
+    }
+
+    public boolean validateToken(String token, String expectedType) {
+        if (!validateToken(token)) {
+            return false;
+        }
+        String type = getTypeFromToken(token);
+        if (!expectedType.equals(type)) {
+            log.warn("Type de jeton JWT incorrect : attendu '{}', recu '{}'", expectedType, type);
+            return false;
+        }
+        return true;
+    }
+
+    public String getTypeFromToken(String token) {
+        return extractClaim(token, claims -> claims.get("type", String.class));
     }
 
     public String getUsernameFromToken(String token) {

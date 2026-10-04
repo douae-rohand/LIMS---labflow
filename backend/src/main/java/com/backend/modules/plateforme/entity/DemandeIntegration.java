@@ -1,5 +1,6 @@
 package com.backend.modules.plateforme.entity;
 
+import com.backend.common.config.SchemaConstants;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -11,7 +12,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "demande_integration", uniqueConstraints = {
+@Table(name = "demande_integration", schema = SchemaConstants.CENTRAL_SCHEMA, uniqueConstraints = {
         @UniqueConstraint(name = "uk_demande_integration_numero", columnNames = "numero")
 })
 public class DemandeIntegration {

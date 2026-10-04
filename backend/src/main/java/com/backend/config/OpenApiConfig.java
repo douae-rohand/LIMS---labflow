@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Configuration;
 public class OpenApiConfig {
 
     private static final String SECURITY_SCHEME_NAME = "bearerAuth";
+    private static final String TENANT_HEADER_SCHEME = "tenantHeader";
 
     @Bean
     public OpenAPI limsOpenAPI() {
@@ -31,13 +32,21 @@ public class OpenApiConfig {
                                 .email("support@lims.local"))
                         .license(new License()
                                 .name("Proprietary")))
-                .addSecurityItem(new SecurityRequirement().addList(SECURITY_SCHEME_NAME))
+                .addSecurityItem(new SecurityRequirement()
+                        .addList(SECURITY_SCHEME_NAME)
+                        .addList(TENANT_HEADER_SCHEME))
                 .components(new Components()
                         .addSecuritySchemes(SECURITY_SCHEME_NAME,
                                 new SecurityScheme()
                                         .name(SECURITY_SCHEME_NAME)
                                         .type(SecurityScheme.Type.HTTP)
                                         .scheme("bearer")
-                                        .bearerFormat("JWT")));
+                                        .bearerFormat("JWT"))
+                        .addSecuritySchemes(TENANT_HEADER_SCHEME,
+                                new SecurityScheme()
+                                        .name("X-Tenant-ID")
+                                        .type(SecurityScheme.Type.APIKEY)
+                                        .in(SecurityScheme.In.HEADER)
+                                        .description("En-tête optionnel/requis du tenant (code ou nomSchema du laboratoire)")));
     }
 }

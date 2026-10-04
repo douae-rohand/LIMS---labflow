@@ -1,5 +1,6 @@
 package com.backend.modules.notification.entity;
 
+import com.backend.common.config.SchemaConstants;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -11,7 +12,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "notification", uniqueConstraints = {
+@Table(name = "notification", schema = SchemaConstants.CENTRAL_SCHEMA, uniqueConstraints = {
         @UniqueConstraint(name = "uk_notification_code", columnNames = "code")
 })
 public class Notification {

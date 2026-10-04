@@ -1,5 +1,6 @@
 package com.backend.modules.utilisateur.entity;
 
+import com.backend.common.config.SchemaConstants;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,7 +10,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "permission", uniqueConstraints = {
+@Table(name = "permission", schema = SchemaConstants.CENTRAL_SCHEMA, uniqueConstraints = {
         @UniqueConstraint(name = "uk_permission_code", columnNames = "code")
 })
 public class Permission {

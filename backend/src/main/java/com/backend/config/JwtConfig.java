@@ -21,4 +21,8 @@ public class JwtConfig {
     /** Durée de validité du refresh token en millisecondes. */
     @Value("${jwt.refresh-expiration}")
     private long refreshExpiration;
+
+    /** Durée de validité du jeton 2FA temporaire en millisecondes (5 min par défaut). */
+    @Value("${jwt.two-factor-expiration:300000}")
+    private long twoFactorExpiration;
 }

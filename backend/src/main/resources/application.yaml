@@ -179,7 +179,7 @@ spring:
   jpa:
     show-sql: true
   flyway:
-    enabled: false   # Désactiver Flyway en dev si la DB n'est pas encore provisionnée
+    enabled: true
 
 logging:
   level:

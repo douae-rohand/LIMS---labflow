@@ -22,6 +22,7 @@ public class UtilisateurPrincipal implements UserDetails {
     private final Long laboratoireId;
     private final String nomSchema;
     private final boolean actif;
+    private final boolean mustChangePassword;
 
     public boolean isClient() {
         return role == RoleUtilisateur.CLIENT;

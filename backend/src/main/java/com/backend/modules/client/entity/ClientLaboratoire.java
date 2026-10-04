@@ -1,5 +1,6 @@
 package com.backend.modules.client.entity;
 
+import com.backend.common.config.SchemaConstants;
 import com.backend.modules.plateforme.entity.Laboratoire;
 import com.backend.modules.utilisateur.entity.Utilisateur;
 import jakarta.persistence.*;
@@ -13,7 +14,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "client_laboratoire")
+@Table(name = "client_laboratoire", schema = SchemaConstants.CENTRAL_SCHEMA)
 @IdClass(ClientLaboratoireId.class)
 public class ClientLaboratoire {
 

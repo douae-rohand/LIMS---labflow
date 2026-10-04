@@ -42,4 +42,5 @@ public class LoginResponse {
     private String nomComplet;
     private String role;
     private String tenantId;
+    private boolean mustChangePassword;
 }

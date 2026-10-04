@@ -15,6 +15,13 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
 
+import com.backend.modules.utilisateur.entity.Utilisateur;
+import com.backend.modules.utilisateur.repository.UtilisateurRepository;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+
+import java.time.Instant;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -25,26 +32,34 @@ public class AuthService {
     private final UserDetailsService userDetailsService;
     private final TwoFactorService twoFactorService;
     private final JwtConfig jwtConfig;
+    private final UtilisateurRepository utilisateurRepository;
 
     public LoginResponse login(LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getMotDePasse()));
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(),
+                            request.getMotDePasse()));
+        } catch (Exception ex) {
+            log.warn("Tentative de connexion échouée pour {}: {}", request.getEmail(), ex.getMessage());
+            throw new BadCredentialsException("Identifiants invalides");
+        }
 
         UtilisateurPrincipal principal = (UtilisateurPrincipal) authentication.getPrincipal();
-        boolean twoFactorEnabled = false;
 
-        if (twoFactorEnabled) {
-            String tempToken = jwtTokenProvider.generateRefreshToken(request.getEmail());
-            twoFactorService.genererOtp(tempToken);
-            log.debug("2FA requis pour {}", request.getEmail());
-            return LoginResponse.builder()
-                    .requiresTwoFactor(true)
-                    .twoFactorToken(tempToken)
-                    .build();
+        if (!principal.isEnabled()) {
+            log.warn("Tentative de connexion sur compte inactif : {}", request.getEmail());
+            throw new DisabledException("Compte désactivé");
         }
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        // Mettre à jour la date de dernière connexion
+        utilisateurRepository.findById(principal.getId()).ifPresent(u -> {
+            u.setDerniereConnexion(Instant.now());
+            utilisateurRepository.save(u);
+        });
 
         return buildLoginResponse(principal);
     }
@@ -66,7 +81,7 @@ public class AuthService {
 
     public LoginResponse refreshToken(RefreshTokenRequest request) {
         String refreshToken = request.getRefreshToken();
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
+        if (!jwtTokenProvider.validateToken(refreshToken, "refresh")) {
             throw new BusinessRuleException("REFRESH_TOKEN_INVALID", "Refresh token invalide ou expiré");
         }
         String email = jwtTokenProvider.getUsernameFromToken(refreshToken);
@@ -94,6 +109,7 @@ public class AuthService {
                 .nomComplet(principal.getNomComplet())
                 .role(principal.getRole().name())
                 .tenantId(principal.getNomSchema())
+                .mustChangePassword(principal.isMustChangePassword())
                 .build();
     }
 }

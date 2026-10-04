@@ -41,6 +41,7 @@ public class UtilisateurDetailsService implements UserDetailsService {
                 .laboratoireId(laboratoireId)
                 .nomSchema(nomSchema)
                 .actif(utilisateur.isActif())
+                .mustChangePassword(utilisateur.isMustChangePassword())
                 .build();
     }
 }

@@ -1,5 +1,6 @@
 package com.backend.modules.plateforme.entity;
 
+import com.backend.common.config.SchemaConstants;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -18,7 +19,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity(name = "EvenementMetierCentral")
-@Table(name = "evenement_metier", uniqueConstraints = {
+@Table(name = "evenement_metier", schema = SchemaConstants.CENTRAL_SCHEMA, uniqueConstraints = {
         @UniqueConstraint(name = "uk_evenement_metier_code", columnNames = "code")
 })
 public class EvenementMetierCentral {

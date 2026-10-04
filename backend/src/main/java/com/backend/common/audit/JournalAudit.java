@@ -1,5 +1,6 @@
 package com.backend.common.audit;
 
+import com.backend.common.config.SchemaConstants;
 import com.backend.modules.utilisateur.entity.Utilisateur;
 import jakarta.persistence.*;
 import lombok.*;
@@ -14,7 +15,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "journal_audit", uniqueConstraints = {
+@Table(name = "journal_audit", schema = SchemaConstants.CENTRAL_SCHEMA, uniqueConstraints = {
         @UniqueConstraint(name = "uk_journal_audit_code", columnNames = "code")
 })
 public class JournalAudit {

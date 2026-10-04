@@ -1,5 +1,7 @@
 package com.backend.config;
 
+import com.backend.common.security.CustomAccessDeniedHandler;
+import com.backend.common.security.CustomAuthenticationEntryPoint;
 import com.backend.modules.auth.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -44,6 +46,8 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsService userDetailsService;
     private final CorsConfigurationSource corsConfigurationSource;
+    private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+    private final CustomAccessDeniedHandler accessDeniedHandler;
 
     // -------------------------------------------------------------------------
     // Chaîne de filtres principale
@@ -59,6 +63,11 @@ public class SecurityConfig {
             // Pas de session HTTP côté serveur
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // Gestion des erreurs d'authentification et d'accès en JSON
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(authenticationEntryPoint)
+                .accessDeniedHandler(accessDeniedHandler)
+            )
             // Règles d'autorisation
             .authorizeHttpRequests(auth -> auth
                 // Endpoints publics
