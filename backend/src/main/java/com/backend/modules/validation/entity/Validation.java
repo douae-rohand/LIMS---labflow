@@ -1,36 +1,49 @@
 package com.backend.modules.validation.entity;
 
+import com.backend.modules.essai.entity.LigneEssai;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.Instant;
 
-/**
- * Validation des résultats d'essais par un responsable (M06).
- */
-@Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
-@Entity @Table(name = "validation")
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "validation", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_validation_code", columnNames = "code")
+})
 public class Validation {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_validation")
     private Long id;
 
-    @Column(name = "essai_id", nullable = false)
-    private Long essaiId;
+    @Column(nullable = false, length = 50)
+    private String code;
+
+    @Column(nullable = false)
+    private Integer niveau;
+
+    @Column(length = 50)
+    private String decision;
+
+    @Column(columnDefinition = "TEXT")
+    private String motif;
+
+    @Column(name = "date_validation", nullable = false)
+    private Instant dateValidation;
+
+    @Column(length = 255)
+    private String signature;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "ligne_essai_id", nullable = false)
+    private LigneEssai ligneEssai;
 
     @Column(name = "validateur_id", nullable = false)
     private Long validateurId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
-    @Builder.Default
-    private StatutValidation statut = StatutValidation.EN_ATTENTE;
-
-    @Column(name = "commentaire", columnDefinition = "TEXT")
-    private String commentaire;
-
-    @Column(name = "date_validation")
-    private Instant dateValidation;
-
-    @Column(name = "date_creation", nullable = false, updatable = false)
-    @Builder.Default
-    private Instant dateCreation = Instant.now();
 }
