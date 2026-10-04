@@ -11,7 +11,6 @@ import java.time.LocalDate;
  * Associe une demande à des créneaux, techniciens et équipements.
  */
 @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
-@Entity @Table(name = "planification")
 public class Planification {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
