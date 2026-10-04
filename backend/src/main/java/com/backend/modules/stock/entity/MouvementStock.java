@@ -8,7 +8,6 @@ import java.time.Instant;
  * Mouvement de stock (entrée, sortie, ajustement).
  */
 @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
-@Entity @Table(name = "mouvement_stock")
 public class MouvementStock {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

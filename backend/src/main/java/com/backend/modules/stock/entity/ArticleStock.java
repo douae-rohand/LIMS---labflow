@@ -9,7 +9,6 @@ import java.time.Instant;
  * Article géré en stock (réactif, consommable, équipement) (M09).
  */
 @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
-@Entity @Table(name = "article_stock")
 public class ArticleStock {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

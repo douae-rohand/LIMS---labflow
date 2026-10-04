@@ -2,71 +2,93 @@ package com.backend.modules.stock.service;
 
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
+import com.backend.modules.produit.entity.Lot;
+import com.backend.modules.produit.entity.Produit;
+import com.backend.modules.produit.repository.LotRepository;
+import com.backend.modules.produit.repository.ProduitRepository;
 import com.backend.modules.stock.dto.ArticleStockDto;
-import com.backend.modules.stock.entity.ArticleStock;
-import com.backend.modules.stock.entity.MouvementStock;
 import com.backend.modules.stock.entity.TypeMouvement;
-import com.backend.modules.stock.repository.ArticleStockRepository;
-import com.backend.modules.stock.repository.MouvementStockRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 import java.util.List;
 
-/**
- * Service de gestion des stocks (M09).
- * TODO: alertes de réapprovisionnement, commandes fournisseurs, QR code étiquettes.
- */
-@Service @RequiredArgsConstructor
+@Service
+@RequiredArgsConstructor
 public class StockService {
 
-    private final ArticleStockRepository articleStockRepository;
-    private final MouvementStockRepository mouvementStockRepository;
+    private final ProduitRepository produitRepository;
+    private final LotRepository lotRepository;
 
     @Transactional(readOnly = true)
     public Page<ArticleStockDto> lister(Pageable pageable) {
-        return articleStockRepository.findAll(pageable).map(this::toDto);
+        return produitRepository.findAll(pageable).map(this::toDto);
     }
 
     @Transactional(readOnly = true)
     public List<ArticleStockDto> alertesRupture() {
-        return articleStockRepository.findEnRuptureImminente().stream().map(this::toDto).toList();
+        return produitRepository.findAll().stream()
+                .filter(this::enRupture)
+                .map(this::toDto)
+                .toList();
     }
 
     @Transactional
     public ArticleStockDto enregistrerMouvement(Long articleId, TypeMouvement type,
                                                  Double quantite, String motif, Long operateurId) {
-        ArticleStock article = articleStockRepository.findById(articleId)
-                .orElseThrow(() -> new ResourceNotFoundException("ArticleStock", "id", articleId));
+        Produit produit = produitRepository.findById(articleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Produit", "id", articleId));
+        Lot lot = lotRepository.findFirstByProduit_IdOrderByPeremptionAsc(produit.getId())
+                .orElseThrow(() -> new BusinessRuleException("LOT_INTROUVABLE",
+                        "Aucun lot pour le produit " + produit.getReference()));
 
-        double nouvelleQte = switch (type) {
-            case ENTREE, RETOUR, AJUSTEMENT -> article.getQuantiteDisponible() + quantite;
+        BigDecimal delta = BigDecimal.valueOf(quantite);
+        BigDecimal actuelle = lot.getQuantite() == null ? BigDecimal.ZERO : lot.getQuantite();
+        BigDecimal nouvelle = switch (type) {
+            case ENTREE, RETOUR, AJUSTEMENT -> actuelle.add(delta);
             case SORTIE, PERTE -> {
-                if (article.getQuantiteDisponible() < quantite)
+                if (actuelle.compareTo(delta) < 0) {
                     throw new BusinessRuleException("STOCK_INSUFFISANT",
-                            "Quantité disponible insuffisante pour l'article " + article.getReference());
-                yield article.getQuantiteDisponible() - quantite;
+                            "Quantité disponible insuffisante pour l'article " + produit.getReference());
+                }
+                yield actuelle.subtract(delta);
             }
         };
-
-        article.setQuantiteDisponible(nouvelleQte);
-        articleStockRepository.save(article);
-
-        mouvementStockRepository.save(MouvementStock.builder()
-                .articleId(articleId).typeMouvement(type).quantite(quantite)
-                .motif(motif).operateurId(operateurId).build());
-
-        return toDto(article);
+        lot.setQuantite(nouvelle);
+        if (motif != null && !motif.isBlank()) {
+            lot.setStatut(motif);
+        }
+        lotRepository.save(lot);
+        return toDto(produit);
     }
 
-    private ArticleStockDto toDto(ArticleStock a) {
-        boolean rupture = a.getQuantiteMinimum() != null && a.getQuantiteDisponible() < a.getQuantiteMinimum();
-        return ArticleStockDto.builder().id(a.getId()).reference(a.getReference())
-                .designation(a.getDesignation()).categorie(a.getCategorie())
-                .quantiteDisponible(a.getQuantiteDisponible()).quantiteMinimum(a.getQuantiteMinimum())
-                .unite(a.getUnite()).prixUnitaire(a.getPrixUnitaire()).fournisseur(a.getFournisseur())
-                .actif(a.isActif()).enRuptureImminente(rupture).build();
+    private boolean enRupture(Produit produit) {
+        BigDecimal seuil = produit.getSeuilMinimal() == null ? BigDecimal.ZERO : produit.getSeuilMinimal();
+        return quantiteTotale(produit).compareTo(seuil) < 0;
+    }
+
+    private BigDecimal quantiteTotale(Produit produit) {
+        return lotRepository.findByProduit_Id(produit.getId()).stream()
+                .map(lot -> lot.getQuantite() == null ? BigDecimal.ZERO : lot.getQuantite())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private ArticleStockDto toDto(Produit produit) {
+        BigDecimal totale = quantiteTotale(produit);
+        BigDecimal seuil = produit.getSeuilMinimal() == null ? BigDecimal.ZERO : produit.getSeuilMinimal();
+        return ArticleStockDto.builder()
+                .id(produit.getId())
+                .reference(produit.getReference())
+                .designation(produit.getNom())
+                .quantiteDisponible(totale.doubleValue())
+                .quantiteMinimum(seuil.doubleValue())
+                .unite(produit.getUnite())
+                .actif(true)
+                .enRuptureImminente(totale.compareTo(seuil) < 0)
+                .build();
     }
 }
