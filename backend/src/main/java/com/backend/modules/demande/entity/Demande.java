@@ -1,52 +1,57 @@
 package com.backend.modules.demande.entity;
 
+import com.backend.modules.client.entity.Client;
+import com.backend.modules.patient.entity.Patient;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
-import java.time.LocalDate;
 
-/**
- * Demande d'analyse déposée par un client (M01).
- */
-@Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
-@Entity @Table(name = "demande")
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "demande", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_demande_numero", columnNames = "numero")
+})
 public class Demande {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_demande")
     private Long id;
 
-    @Column(name = "reference", nullable = false, unique = true, length = 50)
-    private String reference;
+    @Column(nullable = false, length = 50)
+    private String numero;
 
-    @Column(name = "objet", nullable = false, length = 500)
-    private String objet;
+    @Column(nullable = false, length = 255)
+    private String titre;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
-    @Builder.Default
-    private StatutDemande statut = StatutDemande.BROUILLON;
+    @Column(columnDefinition = "TEXT")
+    private String objectif;
 
-    /** Identifiant de l'utilisateur client (clé logique — pas de FK cross-schema). */
-    @Column(name = "client_id", nullable = false)
-    private Long clientId;
-
-    @Column(name = "date_soumission")
+    @Column(name = "date_soumission", nullable = false)
     private Instant dateSoumission;
 
-    @Column(name = "date_souhaitee")
-    private LocalDate dateSouhaitee;
+    @Column(nullable = false, length = 50)
+    private String statut;
 
-    @Column(name = "commentaire", columnDefinition = "TEXT")
-    private String commentaire;
+    @Column(name = "date_decision")
+    private Instant dateDecision;
 
-    @Column(name = "date_creation", nullable = false, updatable = false)
-    @Builder.Default
-    private Instant dateCreation = Instant.now();
+    @Column(columnDefinition = "TEXT")
+    private String motif;
 
-    @Column(name = "date_modification")
-    private Instant dateModification;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id")
+    private Client client;
 
-    @PreUpdate
-    protected void onUpdate() { this.dateModification = Instant.now(); }
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "patient_id")
+    private Patient patient;
+
+    @Column(name = "decideur_id")
+    private Long decideurId;
 }
