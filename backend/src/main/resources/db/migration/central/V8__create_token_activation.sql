@@ -2,7 +2,7 @@ CREATE TABLE token_activation (
     id_token_activation BIGINT NOT NULL AUTO_INCREMENT,
     token_hash VARCHAR(255) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    date_expiration TIMESTAMP NOT NULL,
+    date_expiration DATETIME NOT NULL,
     utilise TINYINT(1) NOT NULL DEFAULT 0,
     utilisateur_id BIGINT NOT NULL,
     PRIMARY KEY (id_token_activation),

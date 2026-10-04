@@ -2,7 +2,7 @@ CREATE TABLE refresh_token (
     id_refresh_token BIGINT NOT NULL AUTO_INCREMENT,
     token_hash VARCHAR(255) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    date_expiration TIMESTAMP NOT NULL,
+    date_expiration DATETIME NOT NULL,
     revoque TINYINT(1) NOT NULL DEFAULT 0,
     user_agent VARCHAR(255) NULL,
     utilisateur_id BIGINT NOT NULL,
