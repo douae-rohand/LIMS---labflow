@@ -68,7 +68,7 @@ Le pattern **événement → webhook → workflow** découple la logique métier
 | Couche | Technologie |
 |---|---|
 | Backend | Spring Boot 4, Java 21, API REST |
-| Frontend | React (JavaScript), SPA |
+| Frontend | React (TypeScript), SPA |
 | Base de données | MySQL 8, schéma par tenant |
 | Migrations | Flyway |
 | Automatisation | n8n |
@@ -135,7 +135,7 @@ cp .env.example .env
 ./mvnw spring-boot:run
 ```
 
-L'API est accessible par défaut sur `http://localhost:8080`.
+L'API est accessible par défaut sur `http://localhost:8081`.
 
 ### Frontend
 
@@ -192,6 +192,6 @@ L'authentification à deux facteurs (2FA) est obligatoire pour les rôles Respon
 La documentation interactive de l'API (Swagger / OpenAPI) est disponible une fois le backend démarré :
 
 ```
-http://localhost:8080/swagger-ui.html
+http://localhost:8081/swagger-ui.html
 ```
 ---
