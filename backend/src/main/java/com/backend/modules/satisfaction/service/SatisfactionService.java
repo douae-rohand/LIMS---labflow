@@ -1,43 +1,63 @@
 package com.backend.modules.satisfaction.service;
 
 import com.backend.common.exception.BusinessRuleException;
+import com.backend.common.exception.ResourceNotFoundException;
+import com.backend.modules.demande.entity.Demande;
+import com.backend.modules.demande.repository.DemandeRepository;
 import com.backend.modules.satisfaction.dto.SatisfactionDto;
-import com.backend.modules.satisfaction.entity.Satisfaction;
-import com.backend.modules.satisfaction.repository.SatisfactionRepository;
+import com.backend.modules.satisfaction.entity.EnqueteSatisfaction;
+import com.backend.modules.satisfaction.repository.EnqueteSatisfactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Service de gestion des enquêtes de satisfaction (M10).
- * TODO: envoi automatique du questionnaire après livraison du rapport.
- */
-@Service @RequiredArgsConstructor
+import java.time.Instant;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
 public class SatisfactionService {
 
-    private final SatisfactionRepository satisfactionRepository;
+    private final EnqueteSatisfactionRepository enqueteRepository;
+    private final DemandeRepository demandeRepository;
 
     @Transactional
     public SatisfactionDto soumettre(SatisfactionDto dto) {
-        if (satisfactionRepository.existsByDemandeIdAndClientId(dto.getDemandeId(), dto.getClientId()))
+        if (enqueteRepository.existsByDemande_Id(dto.getDemandeId())) {
             throw new BusinessRuleException("SATISFACTION_DEJA_SOUMISE",
                     "Vous avez déjà évalué cette demande");
-        Satisfaction s = Satisfaction.builder().demandeId(dto.getDemandeId()).clientId(dto.getClientId())
-                .note(dto.getNote()).commentaire(dto.getCommentaire())
-                .noteDelai(dto.getNoteDelai()).noteQualite(dto.getNoteQualite())
-                .noteCommunication(dto.getNoteCommunication()).build();
-        return toDto(satisfactionRepository.save(s));
+        }
+        Demande demande = demandeRepository.findById(dto.getDemandeId())
+                .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", dto.getDemandeId()));
+        EnqueteSatisfaction enquete = EnqueteSatisfaction.builder()
+                .code("SAT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                .dateReponse(Instant.now())
+                .noteGlobale(dto.getNote())
+                .noteDelai(dto.getNoteDelai())
+                .noteClarte(dto.getNoteQualite())
+                .noteRelation(dto.getNoteCommunication())
+                .commentaire(dto.getCommentaire())
+                .demande(demande)
+                .build();
+        return toDto(enqueteRepository.save(enquete), dto.getClientId());
     }
 
     @Transactional(readOnly = true)
     public Double moyenneGlobale() {
-        return satisfactionRepository.calculerMoyenneGlobale();
+        return enqueteRepository.calculerMoyenneGlobale();
     }
 
-    private SatisfactionDto toDto(Satisfaction s) {
-        return SatisfactionDto.builder().id(s.getId()).demandeId(s.getDemandeId()).clientId(s.getClientId())
-                .note(s.getNote()).commentaire(s.getCommentaire()).noteDelai(s.getNoteDelai())
-                .noteQualite(s.getNoteQualite()).noteCommunication(s.getNoteCommunication())
-                .dateReponse(s.getDateReponse()).build();
+    private SatisfactionDto toDto(EnqueteSatisfaction enquete, Long clientId) {
+        return SatisfactionDto.builder()
+                .id(enquete.getId())
+                .demandeId(enquete.getDemande() == null ? null : enquete.getDemande().getId())
+                .clientId(clientId)
+                .note(enquete.getNoteGlobale())
+                .commentaire(enquete.getCommentaire())
+                .noteDelai(enquete.getNoteDelai())
+                .noteQualite(enquete.getNoteClarte())
+                .noteCommunication(enquete.getNoteRelation())
+                .dateReponse(enquete.getDateReponse())
+                .build();
     }
 }

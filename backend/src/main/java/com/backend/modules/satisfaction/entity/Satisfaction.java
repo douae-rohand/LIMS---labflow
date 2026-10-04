@@ -8,7 +8,6 @@ import java.time.Instant;
  * Évaluation de satisfaction client après livraison d'un rapport (M10).
  */
 @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
-@Entity @Table(name = "satisfaction")
 public class Satisfaction {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
