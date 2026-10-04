@@ -8,7 +8,6 @@ import java.time.Instant;
  * Non-conformité détectée dans le processus qualité (M13).
  */
 @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
-@Entity @Table(name = "non_conformite")
 public class NonConformite {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
