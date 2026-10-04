@@ -14,8 +14,6 @@ import java.time.Instant;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "notification_destinataire")
 public class NotificationDestinataire {
 
     @Id

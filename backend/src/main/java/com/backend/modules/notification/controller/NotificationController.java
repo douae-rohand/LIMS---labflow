@@ -2,7 +2,7 @@ package com.backend.modules.notification.controller;
 
 import com.backend.common.dto.ApiResponse;
 import com.backend.modules.notification.dto.NotificationDto;
-import com.backend.modules.notification.entity.NotificationDestinataire;
+import com.backend.modules.notification.entity.NotificationReception;
 import com.backend.modules.notification.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,7 +23,7 @@ public class NotificationController {
 
     @GetMapping("/mes")
     @Operation(summary = "Mes notifications (paginées)")
-    public ResponseEntity<ApiResponse<Page<NotificationDestinataire>>> mesNotifications(
+    public ResponseEntity<ApiResponse<Page<NotificationReception>>> mesNotifications(
             @RequestParam Long utilisateurId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -39,8 +39,10 @@ public class NotificationController {
 
     @PatchMapping("/{id}/lire")
     @Operation(summary = "Marquer une notification comme lue")
-    public ResponseEntity<ApiResponse<Void>> marquerCommeLue(@PathVariable Long id) {
-        notificationService.marquerCommeLue(id);
+    public ResponseEntity<ApiResponse<Void>> marquerCommeLue(
+            @PathVariable Long id,
+            @RequestParam Long utilisateurId) {
+        notificationService.marquerCommeLue(id, utilisateurId);
         return ResponseEntity.ok(ApiResponse.success("Notification lue", null));
     }
 
