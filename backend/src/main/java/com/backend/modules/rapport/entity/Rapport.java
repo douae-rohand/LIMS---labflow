@@ -1,46 +1,55 @@
 package com.backend.modules.rapport.entity;
 
+import com.backend.modules.demande.entity.Demande;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.Instant;
 
-/**
- * Rapport d'analyse généré et transmis au client (M07).
- */
-@Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
-@Entity @Table(name = "rapport")
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "rapport", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_rapport_numero", columnNames = "numero")
+})
 public class Rapport {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_rapport")
     private Long id;
 
-    @Column(name = "reference", unique = true, nullable = false, length = 50)
-    private String reference;
+    @Column(nullable = false, length = 50)
+    private String numero;
 
-    @Column(name = "demande_id", nullable = false)
-    private Long demandeId;
+    @Column(name = "type", length = 50)
+    private String type;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
     @Builder.Default
-    private StatutRapport statut = StatutRapport.BROUILLON;
+    private Short version = 1;
 
-    /** Chemin MinIO ou URL du fichier PDF généré. */
-    @Column(name = "fichier_url", length = 500)
-    private String fichierUrl;
+    @Column(name = "date_emission")
+    private Instant dateEmission;
 
-    @Column(name = "generateur_id")
-    private Long generateurId;
+    @Column(length = 50)
+    private String statut;
+
+    @Column(name = "date_signature")
+    private Instant dateSignature;
+
+    @Column(name = "cle_pdf", length = 500)
+    private String clePdf;
+
+    @Builder.Default
+    private Boolean diffuse = false;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "demande_id", nullable = false)
+    private Demande demande;
 
     @Column(name = "signataire_id")
     private Long signataireId;
-
-    @Column(name = "date_generation")
-    private Instant dateGeneration;
-
-    @Column(name = "date_envoi")
-    private Instant dateEnvoi;
-
-    @Column(name = "date_creation", nullable = false, updatable = false)
-    @Builder.Default
-    private Instant dateCreation = Instant.now();
 }
