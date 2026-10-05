@@ -4,9 +4,12 @@ import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.common.exception.UnauthorizedTenantException;
 import com.backend.common.tenant.TenantProvisioner;
+import com.backend.modules.demande.entity.StatutDemande;
 import com.backend.modules.plateforme.dto.*;
 import com.backend.modules.plateforme.entity.*;
 import com.backend.modules.plateforme.repository.*;
+import com.backend.modules.utilisateur.entity.Role;
+import com.backend.modules.utilisateur.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -15,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +32,7 @@ public class PlateformeService {
 
     private final LaboratoireRepository laboratoireRepository;
     private final DemandeIntegrationRepository demandeIntegrationRepository;
+    private final RoleRepository roleRepository;
     private final TenantProvisioner tenantProvisioner;
 
     @Transactional
@@ -61,6 +66,32 @@ public class PlateformeService {
         return laboratoireRepository.findByStatutOrderByRaisonSocialeAsc(STATUT_ACTIF).stream()
                 .map(this::toPublicDto)
                 .toList();
+    }
+
+    /**
+     * Agrégat public de la landing : rôles et laboratoires lus en base centrale,
+     * statuts de demande issus de l'enum métier (même source que le module demande).
+     */
+    @Transactional(readOnly = true)
+    public LandingPublicDto obtenirLandingPublic() {
+        List<RolePublicDto> roles = roleRepository.findAllByOrderByIdAsc().stream()
+                .map(this::toRolePublicDto)
+                .toList();
+        List<LaboratoirePublicDto> laboratoires = listerLaboratoiresPublics();
+        List<String> statutsDemande = Arrays.stream(StatutDemande.values())
+                .map(Enum::name)
+                .toList();
+
+        return LandingPublicDto.builder()
+                .statistiques(LandingStatistiquesDto.builder()
+                        .nombreRoles(roles.size())
+                        .nombreLaboratoiresActifs(laboratoires.size())
+                        .nombreStatutsDemande(statutsDemande.size())
+                        .build())
+                .roles(roles)
+                .laboratoires(laboratoires)
+                .statutsDemande(statutsDemande)
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -149,6 +180,14 @@ public class PlateformeService {
                 ? demandeIntegrationRepository.findByStatut(statut.name(), pageable)
                 : demandeIntegrationRepository.findAll(pageable);
         return page.map(this::toDto);
+    }
+
+    private RolePublicDto toRolePublicDto(Role role) {
+        return RolePublicDto.builder()
+                .id(role.getId())
+                .code(role.getCode())
+                .libelle(role.getLibelle())
+                .build();
     }
 
     private LaboratoirePublicDto toPublicDto(Laboratoire l) {
