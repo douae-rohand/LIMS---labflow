@@ -1,6 +1,21 @@
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowRight, Check, KeyRound, ShieldCheck } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  Check,
+  ClipboardList,
+  Crown,
+  FileSignature,
+  MapPin,
+  Microscope,
+  ShieldCheck,
+  UserCog,
+  UserRound,
+  Users,
+  Workflow,
+} from "lucide-react";
 import {
   Accordion,
   Badge,
@@ -14,6 +29,7 @@ import {
   Stepper,
 } from "@/components/lab";
 import { Section } from "@/components/layout/Section";
+import type { RolePublic } from "@/api/landing";
 import {
   ai,
   automation,
@@ -21,14 +37,12 @@ import {
   domains,
   faq,
   features,
-  requestStatuses,
-  roles,
   security,
-  stats,
   validation,
   workflowSteps,
 } from "@/data/landing";
 import { photos } from "@/data/images";
+import { useLandingPublic } from "@/hooks/useLandingPublic";
 import {
   fadeUp,
   levitate,
@@ -36,8 +50,45 @@ import {
   slideInRight,
   staggerContainer,
 } from "@/lib/motion";
+import { CardsSkeleton, LandingState, StatsSkeleton } from "./LandingState";
 import { AiMockup, ValidationMockup } from "./Mockups";
 import { Photo } from "./Photo";
+
+const ROLE_ICONS: Record<string, LucideIcon> = {
+  CLIENT: UserRound,
+  ACCUEIL: ClipboardList,
+  TECHNICIEN: Microscope,
+  RESPONSABLE: FileSignature,
+  ADMINISTRATEUR: UserCog,
+  SUPER_ADMINISTRATEUR: Crown,
+};
+
+function roleIcon(code: string): LucideIcon {
+  return ROLE_ICONS[code] ?? Users;
+}
+
+function faqAvecRoles(roles: RolePublic[] | undefined) {
+  return faq.map((item) => {
+    if (item.question !== "Quels rôles sont disponibles ?") {
+      return item;
+    }
+    if (roles === undefined) {
+      return item;
+    }
+    if (roles.length === 0) {
+      return {
+        ...item,
+        answer: "Aucun rôle n'est actuellement disponible dans la base.",
+      };
+    }
+    const liste = roles.map((role) => role.libelle).join(", ");
+    const suffix = roles.length > 1 ? "s" : "";
+    return {
+      ...item,
+      answer: `${roles.length} rôle${suffix} enregistré${suffix} : ${liste}.`,
+    };
+  });
+}
 
 const grid = (cls: string) => ({
   className: cls,
@@ -48,12 +99,95 @@ const grid = (cls: string) => ({
 });
 
 export function Stats() {
+  const { data, isPending, error, refetch } = useLandingPublic();
+  const statistiques = data?.statistiques;
+
   return (
     <Section tone="card" className="py-16 sm:py-16">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map((s) => (
-          <StatCard key={s.label} {...s} />
-        ))}
+      <LandingState
+        loading={isPending}
+        error={error}
+        onRetry={() => {
+          void refetch();
+        }}
+        empty={statistiques == null}
+        emptyMessage="Les statistiques de la plateforme ne sont pas disponibles."
+        skeleton={<StatsSkeleton />}
+      >
+        {statistiques && (
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+            <StatCard
+              value={statistiques.nombreLaboratoiresActifs}
+              label="laboratoires actifs"
+              icon={Building2}
+            />
+            <StatCard
+              value={statistiques.nombreRoles}
+              label="rôles utilisateurs"
+              icon={Users}
+            />
+            <StatCard
+              value={statistiques.nombreStatutsDemande}
+              label="statuts de demande"
+              icon={Workflow}
+            />
+          </div>
+        )}
+      </LandingState>
+    </Section>
+  );
+}
+
+export function Laboratoires() {
+  const { data, isPending, error, refetch } = useLandingPublic();
+  const laboratoires = data?.laboratoires ?? [];
+
+  return (
+    <Section id="laboratoires">
+      <SectionHeader
+        eyebrow="Laboratoires"
+        title="Laboratoires actifs sur la plateforme"
+        description="Liste réelle des laboratoires au statut ACTIF, lue depuis la base centrale."
+      />
+      <div className="mt-12">
+        <LandingState
+          loading={isPending}
+          error={error}
+          onRetry={() => {
+            void refetch();
+          }}
+          empty={laboratoires.length === 0}
+          emptyMessage="Aucun laboratoire actif n'est encore enregistré."
+          skeleton={<CardsSkeleton count={3} />}
+        >
+          <motion.div {...grid("grid gap-4 sm:grid-cols-2 lg:grid-cols-3")}>
+            {laboratoires.map((lab) => (
+              <motion.div key={lab.id} variants={fadeUp}>
+                <Card variant="glossy" className="h-full">
+                  <div className="flex items-start justify-between gap-3">
+                    <IconBox icon={Building2} variant="brand" />
+                    <Badge size="sm" variant="mint">
+                      {lab.statut}
+                    </Badge>
+                  </div>
+                  <h3 className="mt-4 text-lg font-bold text-ink-900">
+                    {lab.raisonSociale}
+                  </h3>
+                  <p className="mt-1 text-xs font-semibold tracking-wide text-brand-600 uppercase">
+                    {lab.code}
+                  </p>
+                  <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground">
+                    <MapPin className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />
+                    {lab.ville?.trim() ? lab.ville : "Ville non renseignée"}
+                  </p>
+                  {lab.adresse?.trim() ? (
+                    <p className="mt-1 text-sm text-muted-foreground">{lab.adresse}</p>
+                  ) : null}
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+        </LandingState>
       </div>
     </Section>
   );
@@ -92,65 +226,99 @@ export function Features() {
 }
 
 export function WorkflowSection() {
+  const { data, isPending, error, refetch } = useLandingPublic();
+  const statuts = data?.statutsDemande ?? [];
+
   return (
     <Section id="workflow" tone="alt">
       <SectionHeader
         eyebrow="Workflow"
-        title="Neuf étapes, de la demande à la clôture"
-        description="Un parcours linéaire et contrôlé : chaque étape est horodatée et attribuée."
+        title="De la demande à la clôture"
+        description="Parcours métier du laboratoire. Les statuts ci-dessous sont ceux réellement utilisés par le backend."
       />
       <Stepper steps={workflowSteps} className="mt-14" />
       <Reveal className="mt-14">
         <Card variant="glass" className="flex flex-col gap-4">
           <p className="text-sm font-bold text-ink-900">Statuts d'une demande</p>
-          <div className="flex flex-wrap gap-2">
-            {requestStatuses.map((s, i) => (
-              <Badge
-                key={s}
-                size="sm"
-                variant={i < 5 ? (i === 4 ? "lime" : "mint") : "outline"}
-              >
-                {s}
-              </Badge>
-            ))}
-          </div>
+          <LandingState
+            loading={isPending}
+            error={error}
+            onRetry={() => {
+              void refetch();
+            }}
+            empty={statuts.length === 0}
+            emptyMessage="Aucun statut de demande n'est défini."
+            skeleton={<SkeletonPills />}
+          >
+            <div className="flex flex-wrap gap-2">
+              {statuts.map((statut, i) => (
+                <Badge
+                  key={statut}
+                  size="sm"
+                  variant={i < statuts.length - 2 ? (i === statuts.length - 3 ? "lime" : "mint") : "outline"}
+                >
+                  {statut}
+                </Badge>
+              ))}
+            </div>
+          </LandingState>
         </Card>
       </Reveal>
     </Section>
   );
 }
 
+function SkeletonPills() {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {Array.from({ length: 7 }, (_, i) => (
+        <span key={i} className="block h-7 w-24 animate-pulse rounded-full bg-surface-card" />
+      ))}
+    </div>
+  );
+}
+
 export function Roles() {
+  const { data, isPending, error, refetch } = useLandingPublic();
+  const roles = data?.roles ?? [];
+  const titre =
+    roles.length > 0
+      ? `${roles.length} rôle${roles.length > 1 ? "s" : ""} enregistré${roles.length > 1 ? "s" : ""}`
+      : "Rôles de la plateforme";
+
   return (
     <Section id="roles">
       <SectionHeader
         eyebrow="Espaces par rôle"
-        title="Six rôles, six espaces dédiés"
-        description="Chacun ne voit que ce dont il a besoin, avec les droits strictement nécessaires."
+        title={titre}
+        description="Libellés et codes issus de la table rôle. Les capacités détaillées ne sont pas encore exposées par l'API."
       />
-      <Carousel ariaLabel="Rôles utilisateurs" className="mt-12">
-        {roles.map((r) => (
-          <Card key={r.role} variant="glossy" padding="lg" className="h-full">
-            <div className="flex items-center justify-between">
-              <IconBox icon={r.icon} variant="brand" size="lg" />
-              {r.twoFactor && (
-                <Badge size="sm" variant="lime" icon={<KeyRound className="size-3" aria-hidden="true" />}>
-                  2FA
-                </Badge>
-              )}
-            </div>
-            <h3 className="mt-5 text-xl font-bold text-ink-900">{r.role}</h3>
-            <ul className="mt-4 flex flex-col gap-2.5">
-              {r.capabilities.map((c) => (
-                <li key={c} className="flex gap-2 text-sm text-muted-foreground">
-                  <Check className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />
-                  {c}
-                </li>
-              ))}
-            </ul>
-          </Card>
-        ))}
-      </Carousel>
+      <div className="mt-12">
+        <LandingState
+          loading={isPending}
+          error={error}
+          onRetry={() => {
+            void refetch();
+          }}
+          empty={roles.length === 0}
+          emptyMessage="Aucun rôle n'est enregistré dans la base."
+          skeleton={<CardsSkeleton count={3} />}
+        >
+          <Carousel ariaLabel="Rôles utilisateurs">
+            {roles.map((role) => (
+              <Card key={role.id ?? role.code} variant="glossy" padding="lg" className="h-full">
+                <div className="flex items-center justify-between">
+                  <IconBox icon={roleIcon(role.code)} variant="brand" size="lg" />
+                  <Badge size="sm" variant="soft">
+                    {role.code}
+                  </Badge>
+                </div>
+                <h3 className="mt-5 text-xl font-bold text-ink-900">{role.libelle}</h3>
+              </Card>
+            ))}
+          </Carousel>
+        </LandingState>
+      </div>
     </Section>
   );
 }
@@ -329,6 +497,16 @@ export function Domains() {
   );
 }
 
+function FaqItems() {
+  const { data } = useLandingPublic();
+
+  return (
+    <Reveal>
+      <Accordion items={faqAvecRoles(data?.roles)} />
+    </Reveal>
+  );
+}
+
 export function Faq() {
   return (
     <Section id="faq">
@@ -339,9 +517,7 @@ export function Faq() {
             <Photo src={photos.microscopes.src} alt={photos.microscopes.alt} className="aspect-[4/3]" />
           </Reveal>
         </div>
-        <Reveal>
-          <Accordion items={faq} />
-        </Reveal>
+        <FaqItems />
       </div>
     </Section>
   );
