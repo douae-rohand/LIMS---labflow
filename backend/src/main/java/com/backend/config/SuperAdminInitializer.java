@@ -62,7 +62,7 @@ public class SuperAdminInitializer implements CommandLineRunner {
                 .laboratoire(null)
                 .actif(true)
                 .doubleAuthentification(false)
-                .mustChangePassword(false)
+                .mustChangePassword(true) // Forced password change on first login
                 .build();
 
         utilisateurRepository.save(superAdmin);

@@ -36,6 +36,8 @@ export interface SessionUser {
   role: RoleUtilisateur;
   tenantId: string;
   mustChangePassword: boolean;
+  email: string;
+  nomComplet: string;
 }
 
 /** État complet de la session. `null` = non authentifié. */

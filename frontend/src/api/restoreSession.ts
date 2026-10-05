@@ -33,6 +33,8 @@ interface RefreshApiResponse {
     role: RoleUtilisateur;
     tenantId: string;
     mustChangePassword: boolean;
+    email: string;
+    nomComplet: string;
   };
 }
 
@@ -62,9 +64,10 @@ export async function restoreSession(): Promise<boolean> {
       timeoutPromise,
     ]);
 
-    const { accessToken, role, tenantId, mustChangePassword } = response.data.data;
+    const { accessToken, role, tenantId, mustChangePassword, email, nomComplet } =
+      response.data.data;
 
-    setSession(accessToken, { role, tenantId, mustChangePassword });
+    setSession(accessToken, { role, tenantId, mustChangePassword, email, nomComplet });
 
     // Propager le tenant si l'en-tête X-Tenant-ID est requis
     apiClient.setTenant(tenantId);

@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as ChangerMotDePasseRouteImport } from './routes/changer-mot-de-passe'
 import { Route as IntegrationRouteImport } from './routes/integration'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as UiKitRouteImport } from './routes/ui-kit'
@@ -17,6 +19,16 @@ import { Route as UiKitRouteImport } from './routes/ui-kit'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangerMotDePasseRoute = ChangerMotDePasseRouteImport.update({
+  id: '/changer-mot-de-passe',
+  path: '/changer-mot-de-passe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IntegrationRoute = IntegrationRouteImport.update({
@@ -37,12 +49,16 @@ const UiKitRoute = UiKitRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRoute
+  '/changer-mot-de-passe': typeof ChangerMotDePasseRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app': typeof AppRoute
+  '/changer-mot-de-passe': typeof ChangerMotDePasseRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
@@ -50,20 +66,43 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/app': typeof AppRoute
+  '/changer-mot-de-passe': typeof ChangerMotDePasseRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/integration' | '/login' | '/ui-kit'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/changer-mot-de-passe'
+    | '/integration'
+    | '/login'
+    | '/ui-kit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/integration' | '/login' | '/ui-kit'
-  id: '__root__' | '/' | '/integration' | '/login' | '/ui-kit'
+  to:
+    | '/'
+    | '/app'
+    | '/changer-mot-de-passe'
+    | '/integration'
+    | '/login'
+    | '/ui-kit'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/changer-mot-de-passe'
+    | '/integration'
+    | '/login'
+    | '/ui-kit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRoute
+  ChangerMotDePasseRoute: typeof ChangerMotDePasseRoute
   IntegrationRoute: typeof IntegrationRoute
   LoginRoute: typeof LoginRoute
   UiKitRoute: typeof UiKitRoute
@@ -76,6 +115,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/changer-mot-de-passe': {
+      id: '/changer-mot-de-passe'
+      path: '/changer-mot-de-passe'
+      fullPath: '/changer-mot-de-passe'
+      preLoaderRoute: typeof ChangerMotDePasseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/integration': {
@@ -104,6 +157,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRoute,
+  ChangerMotDePasseRoute: ChangerMotDePasseRoute,
   IntegrationRoute: IntegrationRoute,
   LoginRoute: LoginRoute,
   UiKitRoute: UiKitRoute,

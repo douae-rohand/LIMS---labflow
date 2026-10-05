@@ -105,6 +105,9 @@ export class ApiClient {
   /** Callback invoqué quand le refresh échoue (ex. rediriger vers /login). */
   private onAuthFailureCallback: (() => void) | null = null;
 
+  /** Callback invoqué sur 403 PASSWORD_CHANGE_REQUIRED (rediriger vers /changer-mot-de-passe). */
+  private onPasswordChangeRequiredCallback: (() => void) | null = null;
+
   // -------------------------------------------------------------------------
   // Construction
   // -------------------------------------------------------------------------
@@ -160,6 +163,15 @@ export class ApiClient {
    */
   setOnAuthFailure(callback: () => void): void {
     this.onAuthFailureCallback = callback;
+  }
+
+  /**
+   * Enregistre un callback appelé sur 403 PASSWORD_CHANGE_REQUIRED.
+   * Typiquement : redirection vers /changer-mot-de-passe.
+   * La redirection est déclenchée une seule fois par réponse 403 (pas de boucle).
+   */
+  setOnPasswordChangeRequired(callback: () => void): void {
+    this.onPasswordChangeRequiredCallback = callback;
   }
 
   // -------------------------------------------------------------------------
@@ -315,6 +327,19 @@ export class ApiClient {
           originalConfig?.url?.includes('/auth/refresh') === true ||
           originalConfig?.url?.includes('/auth/logout') === true ||
           originalConfig?.url?.includes('/2fa/valider') === true;
+
+        // 403 PASSWORD_CHANGE_REQUIRED → rediriger vers /changer-mot-de-passe (une seule fois)
+        if (status === 403) {
+          const rawData = error.response?.data;
+          if (
+            isErrorResponseBody(rawData) &&
+            extractErrorCode(rawData) === 'PASSWORD_CHANGE_REQUIRED' &&
+            originalConfig?.url?.includes('/auth/mot-de-passe/changer') !== true
+          ) {
+            this.onPasswordChangeRequiredCallback?.();
+          }
+          return Promise.reject(this.toApiError(error));
+        }
 
         // Tentative de refresh sur 401 (une seule fois par requête)
         if (

@@ -3,6 +3,7 @@ package com.backend.config;
 import com.backend.common.security.CustomAccessDeniedHandler;
 import com.backend.common.security.CustomAuthenticationEntryPoint;
 import com.backend.modules.auth.security.JwtAuthenticationFilter;
+import com.backend.modules.auth.security.MustChangePasswordFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,6 +45,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final MustChangePasswordFilter mustChangePasswordFilter;
     private final OriginValidationFilter originValidationFilter;
     private final UserDetailsService userDetailsService;
     private final CorsConfigurationSource corsConfigurationSource;
@@ -101,7 +103,9 @@ public class SecurityConfig {
             // Defense-in-depth Origin check
             .addFilterBefore(originValidationFilter, UsernamePasswordAuthenticationFilter.class)
             // Filtre JWT avant le filtre Spring par défaut
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            // Filtre must_change_password — après JWT (principal déjà chargé), avant @PreAuthorize
+            .addFilterAfter(mustChangePasswordFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

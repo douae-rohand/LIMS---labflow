@@ -20,6 +20,11 @@ apiClient.setOnAuthFailure(() => {
   void router.navigate({ to: "/login" });
 });
 
+// 403 PASSWORD_CHANGE_REQUIRED : rediriger vers le formulaire de changement.
+apiClient.setOnPasswordChangeRequired(() => {
+  void router.navigate({ to: "/changer-mot-de-passe" });
+});
+
 // Tentative de restauration silencieuse de session avant le premier rendu.
 // Si le cookie refresh_token est présent et valide, la session est restaurée.
 // Sinon, l'utilisateur reste non connecté (état initial normal).

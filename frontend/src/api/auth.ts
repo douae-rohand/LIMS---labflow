@@ -67,6 +67,8 @@ export interface LoginResponse {
   role?: RoleUtilisateur;
   tenantId?: string;
   mustChangePassword?: boolean;
+  email?: string;
+  nomComplet?: string;
 
   // --- Cas (a) et (b) ---
   requiresTwoFactor?: boolean;
@@ -80,6 +82,8 @@ export interface TwoFactorCompleteResponse {
   role: RoleUtilisateur;
   tenantId: string;
   mustChangePassword: boolean;
+  email: string;
+  nomComplet: string;
 }
 
 /** Réponse de POST /api/auth/2fa/setup. */
@@ -91,6 +95,11 @@ export interface TwoFactorSetupResponse {
 /** Réponse de POST /api/auth/refresh. */
 export interface RefreshResponse {
   accessToken: string;
+  role: RoleUtilisateur;
+  tenantId: string;
+  mustChangePassword: boolean;
+  email: string;
+  nomComplet: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,6 +132,11 @@ export interface TwoFactorSetupBody {
 export interface TwoFactorActiverBody {
   twoFactorToken?: string;
   code: string;
+}
+
+export interface ChangerMotDePasseBody {
+  ancienMotDePasse: string;
+  nouveauMotDePasse: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -192,6 +206,20 @@ export async function logout(): Promise<void> {
 }
 
 /**
+ * Changement de mot de passe pour l'utilisateur connecté.
+ * Requiert un Bearer token valide.
+ * Succès : retourne la même structure qu'un login (nouveau jeton + mustChangePassword=false).
+ * Erreur 400 : le backend retourne un message précis (mauvais ancien MDP, politique non respectée).
+ */
+export async function changerMotDePasse(body: ChangerMotDePasseBody): Promise<LoginResponse> {
+  const res = await apiClient.post<ApiResponse<LoginResponse>>(
+    '/auth/mot-de-passe/changer',
+    body,
+  );
+  return res.data;
+}
+
+/**
  * Rafraîchissement de l'accessToken.
  * Le refresh token est envoyé automatiquement via le cookie HttpOnly.
  * Ne pas appeler directement : utiliser l'intercepteur 401 de ApiClient.
@@ -210,8 +238,10 @@ export async function refreshTokens(): Promise<RefreshResponse> {
 export function toSessionUser(r: LoginResponse): SessionUser {
   return {
     role: r.role!,
-    tenantId: r.tenantId!,
+    tenantId: r.tenantId ?? '',
     mustChangePassword: r.mustChangePassword ?? false,
+    email: r.email ?? '',
+    nomComplet: r.nomComplet ?? '',
   };
 }
 
@@ -221,5 +251,7 @@ export function toSessionUserFrom2FA(r: TwoFactorCompleteResponse): SessionUser 
     role: r.role,
     tenantId: r.tenantId,
     mustChangePassword: r.mustChangePassword,
+    email: r.email,
+    nomComplet: r.nomComplet,
   };
 }

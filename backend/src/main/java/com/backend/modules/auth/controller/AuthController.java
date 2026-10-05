@@ -5,6 +5,7 @@ import com.backend.common.exception.BusinessRuleException;
 import com.backend.modules.auth.dto.*;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
 import com.backend.modules.auth.service.AuthService;
+import com.backend.modules.auth.service.MotDePasseService;
 import com.backend.modules.auth.service.RefreshCookieService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,6 +31,7 @@ import java.util.Optional;
 public class AuthController {
 
     private final AuthService authService;
+    private final MotDePasseService motDePasseService;
     private final RefreshCookieService refreshCookieService;
 
     // -------------------------------------------------------------------------
@@ -117,6 +119,24 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
                 .body(ApiResponse.success("Déconnexion réussie", null));
+    }
+
+    // -------------------------------------------------------------------------
+    // Changement de mot de passe (utilisateur connecté)
+    // -------------------------------------------------------------------------
+
+    @PostMapping("/mot-de-passe/changer")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Changer son mot de passe (nécessite un access token valide)")
+    public ResponseEntity<ApiResponse<LoginResponse>> changerMotDePasse(
+            @Valid @RequestBody ChangerMotDePasseRequest request,
+            @AuthenticationPrincipal UtilisateurPrincipal principal,
+            HttpServletRequest httpRequest) {
+        AuthService.LoginResult loginResult = motDePasseService.changerMotDePasse(request, principal, httpRequest);
+        ResponseCookie cookie = refreshCookieService.creerCookieRefreshToken(loginResult.rawRefreshToken());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(ApiResponse.success("Mot de passe changé avec succès", loginResult.response()));
     }
 
     // -------------------------------------------------------------------------
