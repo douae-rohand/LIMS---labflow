@@ -15,5 +15,10 @@ public class LaboratoirePublicDto {
     private String raisonSociale;
     private String ville;
     private String adresse;
+    private String telephone;
+    private String email;
+    private String ice;
     private String statut;
+    private Double latitude;
+    private Double longitude;
 }

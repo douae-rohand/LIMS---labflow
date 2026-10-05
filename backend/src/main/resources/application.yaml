@@ -44,7 +44,9 @@ spring:
     locations: classpath:db/migration/central
     baseline-on-migrate: true
     validate-on-migrate: true
-    out-of-order: false
+    # Permet d'appliquer une version intercalée après un merge (ex. V20 2FA
+    # alors que V21/V22 sont déjà en base).
+    out-of-order: true
 
   # ============================================================
   # Email via SendGrid SMTP relay
@@ -157,6 +159,11 @@ management:
   health:
     mail:
       enabled: false
+
+# Seed de démonstration : provisionne les schémas tenant des laboratoires
+# insérés par V21__seed_demo_central.sql (lims_atlas, lims_nord).
+app:
+  demo-seed: ${APP_DEMO_SEED:true}
 
 # ============================================================
 # Logging

@@ -11,10 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as CarteRouteImport } from './routes/carte'
 import { Route as ChangerMotDePasseRouteImport } from './routes/changer-mot-de-passe'
 import { Route as IntegrationRouteImport } from './routes/integration'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as UiKitRouteImport } from './routes/ui-kit'
+import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/index'
+import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -24,6 +27,11 @@ const IndexRoute = IndexRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CarteRoute = CarteRouteImport.update({
+  id: '/carte',
+  path: '/carte',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChangerMotDePasseRoute = ChangerMotDePasseRouteImport.update({
@@ -46,66 +54,97 @@ const UiKitRoute = UiKitRouteImport.update({
   path: '/ui-kit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LaboratoiresIndexRoute = LaboratoiresIndexRouteImport.update({
+  id: '/laboratoires/',
+  path: '/laboratoires/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LaboratoiresIdRoute = LaboratoiresIdRouteImport.update({
+  id: '/laboratoires/$id',
+  path: '/laboratoires/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRoute
+  '/carte': typeof CarteRoute
   '/changer-mot-de-passe': typeof ChangerMotDePasseRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
+  '/laboratoires/$id': typeof LaboratoiresIdRoute
+  '/laboratoires/': typeof LaboratoiresIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppRoute
+  '/carte': typeof CarteRoute
   '/changer-mot-de-passe': typeof ChangerMotDePasseRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
+  '/laboratoires/$id': typeof LaboratoiresIdRoute
+  '/laboratoires': typeof LaboratoiresIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRoute
+  '/carte': typeof CarteRoute
   '/changer-mot-de-passe': typeof ChangerMotDePasseRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
+  '/laboratoires/$id': typeof LaboratoiresIdRoute
+  '/laboratoires/': typeof LaboratoiresIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/app'
+    | '/carte'
     | '/changer-mot-de-passe'
     | '/integration'
     | '/login'
     | '/ui-kit'
+    | '/laboratoires/$id'
+    | '/laboratoires/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/app'
+    | '/carte'
     | '/changer-mot-de-passe'
     | '/integration'
     | '/login'
     | '/ui-kit'
+    | '/laboratoires/$id'
+    | '/laboratoires'
   id:
     | '__root__'
     | '/'
     | '/app'
+    | '/carte'
     | '/changer-mot-de-passe'
     | '/integration'
     | '/login'
     | '/ui-kit'
+    | '/laboratoires/$id'
+    | '/laboratoires/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRoute
+  CarteRoute: typeof CarteRoute
   ChangerMotDePasseRoute: typeof ChangerMotDePasseRoute
   IntegrationRoute: typeof IntegrationRoute
   LoginRoute: typeof LoginRoute
   UiKitRoute: typeof UiKitRoute
+  LaboratoiresIdRoute: typeof LaboratoiresIdRoute
+  LaboratoiresIndexRoute: typeof LaboratoiresIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -122,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/carte': {
+      id: '/carte'
+      path: '/carte'
+      fullPath: '/carte'
+      preLoaderRoute: typeof CarteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/changer-mot-de-passe': {
@@ -152,16 +198,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UiKitRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/laboratoires/': {
+      id: '/laboratoires/'
+      path: '/laboratoires'
+      fullPath: '/laboratoires/'
+      preLoaderRoute: typeof LaboratoiresIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/laboratoires/$id': {
+      id: '/laboratoires/$id'
+      path: '/laboratoires/$id'
+      fullPath: '/laboratoires/$id'
+      preLoaderRoute: typeof LaboratoiresIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRoute,
+  CarteRoute: CarteRoute,
   ChangerMotDePasseRoute: ChangerMotDePasseRoute,
   IntegrationRoute: IntegrationRoute,
   LoginRoute: LoginRoute,
   UiKitRoute: UiKitRoute,
+  LaboratoiresIdRoute: LaboratoiresIdRoute,
+  LaboratoiresIndexRoute: LaboratoiresIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Container } from "./Container";
@@ -11,6 +11,9 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const scrolled = useScrolled();
   const activeId = useScrollSpy(anchors.map((a) => a.id));
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const onCarte = pathname === "/carte";
+  const onLaboratoires = pathname.startsWith("/laboratoires");
 
   return (
     <header
@@ -31,10 +34,10 @@ export function Navbar() {
             {anchors.map((anchor) => (
               <li key={anchor.id}>
                 <a
-                  href={`#${anchor.id}`}
+                  href={`/#${anchor.id}`}
                   className={cn(
                     "rounded-full px-3.5 py-2 text-sm font-semibold transition-colors duration-200",
-                    activeId === anchor.id
+                    !onCarte && !onLaboratoires && activeId === anchor.id
                       ? "bg-accent-lime text-ink-900"
                       : "text-ink-900/70 hover:bg-surface-card hover:text-ink-900",
                   )}
@@ -43,6 +46,32 @@ export function Navbar() {
                 </a>
               </li>
             ))}
+            <li>
+              <Link
+                to="/laboratoires"
+                className={cn(
+                  "rounded-full px-3.5 py-2 text-sm font-semibold transition-colors duration-200",
+                  onLaboratoires
+                    ? "bg-accent-lime text-ink-900"
+                    : "text-ink-900/70 hover:bg-surface-card hover:text-ink-900",
+                )}
+              >
+                Laboratoires
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/carte"
+                className={cn(
+                  "rounded-full px-3.5 py-2 text-sm font-semibold transition-colors duration-200",
+                  onCarte
+                    ? "bg-accent-lime text-ink-900"
+                    : "text-ink-900/70 hover:bg-surface-card hover:text-ink-900",
+                )}
+              >
+                Carte
+              </Link>
+            </li>
           </ul>
         </nav>
 
@@ -78,7 +107,7 @@ export function Navbar() {
               {anchors.map((anchor) => (
                 <li key={anchor.id}>
                   <a
-                    href={`#${anchor.id}`}
+                    href={`/#${anchor.id}`}
                     onClick={() => setOpen(false)}
                     className="block rounded-2xl px-3 py-2.5 text-sm font-semibold text-ink-900 hover:bg-surface-card"
                   >
@@ -86,6 +115,30 @@ export function Navbar() {
                   </a>
                 </li>
               ))}
+              <li>
+                <Link
+                  to="/laboratoires"
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "block rounded-2xl px-3 py-2.5 text-sm font-semibold text-ink-900 hover:bg-surface-card",
+                    onLaboratoires && "bg-accent-lime",
+                  )}
+                >
+                  Laboratoires
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/carte"
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "block rounded-2xl px-3 py-2.5 text-sm font-semibold text-ink-900 hover:bg-surface-card",
+                    onCarte && "bg-accent-lime",
+                  )}
+                >
+                  Carte
+                </Link>
+              </li>
             </ul>
             <div className="mt-3 flex flex-col gap-2">
               <Link to="/login" onClick={() => setOpen(false)}>

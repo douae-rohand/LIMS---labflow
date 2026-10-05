@@ -7,6 +7,7 @@ import {
   Faq,
   Features,
   FinalCta,
+  Laboratoires,
   Roles,
   Security,
   Stats,
@@ -41,6 +42,7 @@ function Home() {
     <PublicLayout>
       <Hero />
       <Stats />
+      <Laboratoires />
       <Features />
       <WorkflowSection />
       <Roles />
