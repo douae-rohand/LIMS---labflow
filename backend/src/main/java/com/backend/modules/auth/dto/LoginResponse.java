@@ -20,9 +20,6 @@ public class LoginResponse {
     /** Token JWT d'accès (null si 2FA requise). */
     private String accessToken;
 
-    /** Refresh token (null si 2FA requise). */
-    private String refreshToken;
-
     @Builder.Default
     private String tokenType = "Bearer";
 
@@ -33,6 +30,10 @@ public class LoginResponse {
     @Builder.Default
     private boolean requiresTwoFactor = false;
 
+    /** Indique si le 2FA est obligatoire mais non encore configuré (setup requis). */
+    @Builder.Default
+    private boolean setupRequired = false;
+
     /** Token temporaire renvoyé quand requiresTwoFactor=true (valable quelques minutes). */
     private String twoFactorToken;
 
@@ -42,4 +43,5 @@ public class LoginResponse {
     private String nomComplet;
     private String role;
     private String tenantId;
+    private boolean mustChangePassword;
 }

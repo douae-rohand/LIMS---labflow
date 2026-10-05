@@ -1,6 +1,9 @@
 package com.backend.config;
 
+import com.backend.common.security.CustomAccessDeniedHandler;
+import com.backend.common.security.CustomAuthenticationEntryPoint;
 import com.backend.modules.auth.security.JwtAuthenticationFilter;
+import com.backend.modules.auth.security.MustChangePasswordFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,6 +36,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
  *   <li>{@code /v3/api-docs/**}       – spec OpenAPI</li>
  *   <li>{@code /ws/**}                – handshake WebSocket</li>
  *   <li>{@code /actuator/health}      – health check</li>
+ *   <li>{@code GET /api/public/**}    – données landing (rôles, labs, stats)</li>
  * </ul>
  */
 @Configuration
@@ -42,8 +46,12 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final MustChangePasswordFilter mustChangePasswordFilter;
+    private final OriginValidationFilter originValidationFilter;
     private final UserDetailsService userDetailsService;
     private final CorsConfigurationSource corsConfigurationSource;
+    private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+    private final CustomAccessDeniedHandler accessDeniedHandler;
 
     // -------------------------------------------------------------------------
     // Chaîne de filtres principale
@@ -59,17 +67,30 @@ public class SecurityConfig {
             // Pas de session HTTP côté serveur
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // Gestion des erreurs d'authentification et d'accès en JSON
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(authenticationEntryPoint)
+                .accessDeniedHandler(accessDeniedHandler)
+            )
             // Règles d'autorisation
             .authorizeHttpRequests(auth -> auth
-                // Endpoints publics
+                // Endpoints publics (login, refresh, 2FA valider/setup/activer sans auth Bearer)
                 .requestMatchers(
-                    "/api/auth/**",
+                    "/api/auth/login",
+                    "/api/auth/refresh",
+                    "/api/auth/2fa/valider",
+                    "/api/auth/2fa/setup",
+                    "/api/auth/2fa/activer",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/v3/api-docs/**",
                     "/ws/**",
                     "/actuator/**"
                 ).permitAll()
+                // Landing page : lecture seule des données publiques (rôles, labs actifs, stats)
+                .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
+                // Logout exige explicitement une authentification (access token)
+                .requestMatchers("/api/auth/logout").authenticated()
                 // Formulaire de demande d'intégration laboratoire (landing publique)
                 // Doit être déclaré AVANT la règle /api/plateforme/** ci-dessous
                 .requestMatchers(HttpMethod.POST, "/api/plateforme/demandes").permitAll()
@@ -82,8 +103,12 @@ public class SecurityConfig {
             )
             // Fournisseur d'authentification DAO
             .authenticationProvider(authenticationProvider())
+            // Defense-in-depth Origin check
+            .addFilterBefore(originValidationFilter, UsernamePasswordAuthenticationFilter.class)
             // Filtre JWT avant le filtre Spring par défaut
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            // Filtre must_change_password — après JWT (principal déjà chargé), avant @PreAuthorize
+            .addFilterAfter(mustChangePasswordFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

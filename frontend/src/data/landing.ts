@@ -7,7 +7,6 @@ import {
   Building2,
   CalendarClock,
   ClipboardList,
-  Crown,
   FileCheck2,
   FileSignature,
   FlaskConical,
@@ -28,8 +27,6 @@ import {
   TestTubes,
   Truck,
   UserCog,
-  UserRound,
-  Users,
   Webhook,
   Workflow,
 } from "lucide-react";
@@ -60,18 +57,6 @@ export const hero = {
     },
   ],
 };
-
-export const stats = [
-  { value: 6, label: "rôles utilisateurs", icon: Users },
-  { value: 9, label: "étapes de workflow", icon: Workflow },
-  { value: 14, label: "modules métier", icon: Boxes },
-  {
-    value: 100,
-    suffix: " %",
-    label: "de traçabilité des actions sensibles",
-    icon: ShieldCheck,
-  },
-];
 
 export const features = [
   {
@@ -172,75 +157,6 @@ export const workflowSteps = [
     title: "Enquête et clôture",
     description: "Satisfaction recueillie puis dossier clôturé.",
     icon: Star,
-  },
-];
-
-export const requestStatuses = [
-  "NOUVEAU",
-  "ACCEPTÉE",
-  "EN_COURS",
-  "EN_VALIDATION",
-  "TERMINÉE",
-  "ANNULÉE",
-  "REFUSÉE",
-];
-
-export const roles = [
-  {
-    role: "Client",
-    icon: UserRound,
-    capabilities: [
-      "Déposer une demande d'analyse",
-      "Suivre l'avancement en temps réel",
-      "Télécharger les rapports validés",
-    ],
-  },
-  {
-    role: "Personnel d'accueil",
-    icon: ClipboardList,
-    capabilities: [
-      "Enregistrer les demandes",
-      "Réceptionner et identifier les échantillons",
-      "Éditer les devis et factures",
-    ],
-  },
-  {
-    role: "Technicien",
-    icon: Microscope,
-    capabilities: [
-      "Consulter les essais attribués",
-      "Saisir les résultats et incertitudes",
-      "Signaler les non-conformités",
-    ],
-  },
-  {
-    role: "Responsable de laboratoire",
-    icon: FileSignature,
-    capabilities: [
-      "Valider techniquement les résultats",
-      "Signer électroniquement les rapports",
-      "Piloter la charge et les délais",
-    ],
-    twoFactor: true,
-  },
-  {
-    role: "Administrateur",
-    icon: UserCog,
-    capabilities: [
-      "Gérer utilisateurs et permissions",
-      "Paramétrer le catalogue d'essais",
-      "Consulter le journal d'audit",
-    ],
-    twoFactor: true,
-  },
-  {
-    role: "Super Administrateur",
-    icon: Crown,
-    capabilities: [
-      "Créer et isoler les laboratoires",
-      "Superviser la plateforme",
-      "Définir les politiques de sécurité",
-    ],
   },
 ];
 
@@ -392,7 +308,7 @@ export const faq = [
   {
     question: "Quels rôles sont disponibles ?",
     answer:
-      "Six rôles : client, personnel d'accueil, technicien, responsable de laboratoire, administrateur et super administrateur, chacun avec son espace dédié.",
+      "Les rôles disponibles sont ceux enregistrés sur la plateforme (chargés depuis la base de données).",
   },
   {
     question: "Les rapports PDF sont-ils signés ?",

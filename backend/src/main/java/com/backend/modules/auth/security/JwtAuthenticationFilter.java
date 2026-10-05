@@ -34,9 +34,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain) throws ServletException, IOException {
         try {
             String token = extractToken(request);
-            if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
+            if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token, "access")) {
                 String username = jwtTokenProvider.getUsernameFromToken(token);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                if (!userDetails.isEnabled()) {
+                    log.warn("Tentative d'accès avec jeton d'un compte inactif : {}", username);
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"success\":false,\"message\":\"Compte désactivé\",\"data\":null}");
+                    return;
+                }
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails, null, userDetails.getAuthorities());

@@ -1,5 +1,6 @@
 package com.backend.modules.plateforme.entity;
 
+import com.backend.common.config.SchemaConstants;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -11,7 +12,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "laboratoire", uniqueConstraints = {
+@Table(name = "laboratoire", schema = SchemaConstants.CENTRAL_SCHEMA, uniqueConstraints = {
         @UniqueConstraint(name = "uk_laboratoire_code", columnNames = "code"),
         @UniqueConstraint(name = "uk_laboratoire_nom_schema", columnNames = "nom_schema")
 })
@@ -36,6 +37,12 @@ public class Laboratoire {
 
     @Column(length = 100)
     private String ville;
+
+    @Column
+    private Double latitude;
+
+    @Column
+    private Double longitude;
 
     @Column(length = 50)
     private String telephone;

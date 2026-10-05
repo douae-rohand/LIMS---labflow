@@ -46,8 +46,28 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleBusinessRule(
             BusinessRuleException ex, WebRequest request) {
         log.warn("Règle métier violée [{}] : {}", ex.getCode(), ex.getMessage());
+        if ("REFRESH_TOKEN_REUSE".equals(ex.getCode())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Jeton révoqué ou invalide. Veuillez vous reconnecter."));
+        }
+        if ("2FA_ALREADY_ACTIVE".equals(ex.getCode())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.error("[" + ex.getCode() + "] " + ex.getMessage()));
+        }
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(ApiResponse.error("[" + ex.getCode() + "] " + ex.getMessage()));
+    }
+
+    // -------------------------------------------------------------------------
+    // 400 – En-tête X-Tenant-ID absent sur une route qui l'exige
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(TenantHeaderRequiredException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTenantHeaderRequired(
+            TenantHeaderRequiredException ex) {
+        log.warn("En-tête tenant manquant : {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
     // -------------------------------------------------------------------------
@@ -96,6 +116,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error("Contrainte violée : " + message));
     }
+
+
 
     // -------------------------------------------------------------------------
     // 401 – Authentification échouée

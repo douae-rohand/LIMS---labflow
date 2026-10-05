@@ -1,50 +1,38 @@
 /**
- * Squelette d'initialisation, à aligner sur le backend.
+ * axios.ts — Client HTTP centralisé (ApiClient).
  *
- * TODO(backend) — points à vérifier / finaliser une fois le backend stabilisé :
+ * Contrat de sécurité :
+ *  - withCredentials: true sur TOUTES les requêtes → le cookie HttpOnly
+ *    refresh_token est envoyé automatiquement par le navigateur sur /api/auth/*.
+ *  - L'accessToken est stocké dans session.ts (mémoire vive), jamais dans
+ *    localStorage, sessionStorage ou un cookie accessible en JS.
+ *  - Le refreshToken n'existe PAS en mémoire JS : le backend le lit depuis le cookie.
+ *  - Un jeton n'est JAMAIS loggué (pas de console.log/error/warn sur un token).
  *
- *  1. TENANT : si le tenantId est porté dans le JWT (claim "tenantId"), l'en-tête
- *     X-Tenant-ID devient redondant et la méthode setTenant() pourra être supprimée.
- *     Vérifier dans JwtTokenProvider.java (claim "tenantId") et TenantInterceptor.java.
- *
- *  2. FORMAT DES RÉPONSES : le backend enveloppe les données dans ApiResponse<T>
- *     { success, message, data, timestamp }. Les méthodes get/post/put/patch/delete
- *     retournent aujourd'hui T = corps brut. Si le déballage ApiResponse<T> → T est
- *     souhaité ici (plutôt que dans chaque hook), remplacer dans les méthodes :
- *       return response.data;
- *     par :
- *       return (response.data as ApiResponse<T>).data;
- *     et définir l'interface ApiResponse<T> dans ce fichier.
- *
- *  3. TOKENS & FLUX AUTH : vérifier dans AuthController.java / LoginResponse.java :
- *     - Nom exact des champs (accessToken, refreshToken, tokenType, expiresIn…).
- *     - Endpoint de refresh : POST /auth/refresh avec corps { refreshToken: string }.
- *     - Endpoint de logout  : POST /auth/logout  avec corps { refreshToken: string }.
- *       → à créer côté backend (AuthController).
- *     - Flux 2FA : POST /auth/2fa/valider.
- *       TODO(backend) : la forme exacte de LoginResponse et le déroulé complet du
- *       flux 2FA (champs de la réponse, code HTTP intermédiaire, corps de la
- *       requête de validation) sont à vérifier dans le backend avant d'implémenter
- *       le consommateur côté frontend.
- *
- *  4. ENDPOINTS MANQUANTS CÔTÉ BACKEND (à créer dans les controllers) :
- *     - POST /auth/logout
- *     - POST /demandes/{id}/pieces-jointes  (upload de pièces jointes)
- *     - GET  /rapports/{id}/pdf             (téléchargement du rapport PDF)
+ * Notes backend intégrées :
+ *  1. TENANT : tenantId est porté dans le JWT (claim "tenantId").
+ *     setTenant() reste disponible pour l'en-tête X-Tenant-ID si le backend
+ *     l'exige encore via TenantInterceptor.java.
+ *  2. FORMAT DES RÉPONSES : le backend enveloppe dans ApiResponse<T>
+ *     { success, message, data, timestamp }. Le déballage data est fait dans
+ *     auth.ts (et les futurs modules métier), pas ici.
+ *  3. FLUX AUTH : voir auth.ts pour le détail des endpoints.
  */
 
 import axios, {
   type AxiosInstance,
   type AxiosRequestConfig,
   type AxiosError,
+  type AxiosResponse,
   type InternalAxiosRequestConfig,
 } from 'axios';
+import { getAccessToken, updateAccessToken, clearSession } from './session';
 
 // ---------------------------------------------------------------------------
 // Types internes
 // ---------------------------------------------------------------------------
 
-/** Extension de la config de requête Axios pour marquer les relances post-401. */
+/** Extension de la config de requête pour marquer les relances post-401. */
 interface RetryableRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
@@ -69,12 +57,7 @@ export class ApiError extends Error {
   public readonly code: string | undefined;
   public readonly data: unknown;
 
-  constructor(
-    status: number,
-    message: string,
-    code?: string,
-    data?: unknown,
-  ) {
+  constructor(status: number, message: string, code?: string, data?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
@@ -84,7 +67,7 @@ export class ApiError extends Error {
 }
 
 // ---------------------------------------------------------------------------
-// Garde de type : vérifie qu'un corps de réponse inconnu a la forme ErrorResponseBody
+// Gardes de type
 // ---------------------------------------------------------------------------
 
 function isErrorResponseBody(value: unknown): value is ErrorResponseBody {
@@ -106,24 +89,24 @@ function extractErrorCode(body: ErrorResponseBody): string | undefined {
 export class ApiClient {
   private readonly http: AxiosInstance;
 
-  // TODO(sécurité) : ces tokens sont en mémoire vive (perdus au rechargement de page).
-  // Options pour la persistance : sessionStorage (XSS-sensible), cookie httpOnly (CSRF-sensible
-  // mais atténuable avec SameSite=Strict), ou refresh via un endpoint dédié sans stocker
-  // l'accessToken du tout. À décider selon la politique de sécurité du projet.
-  private accessToken: string | null = null;
-  private refreshToken: string | null = null;
-
-  /** Tenant courant ajouté à chaque requête via X-Tenant-ID. */
+  /**
+   * Tenant courant ajouté à chaque requête via X-Tenant-ID.
+   * TODO(backend) : si le tenantId est porté dans le JWT, cet en-tête devient
+   * redondant. Vérifier TenantInterceptor.java.
+   */
   private currentTenant: string | null = null;
 
   /**
    * Promesse de refresh en cours. Partagée entre les requêtes concurrentes
-   * pour éviter de déclencher plusieurs appels /auth/refresh simultanément.
+   * pour éviter plusieurs appels /auth/refresh simultanés.
    */
   private refreshPromise: Promise<string> | null = null;
 
   /** Callback invoqué quand le refresh échoue (ex. rediriger vers /login). */
   private onAuthFailureCallback: (() => void) | null = null;
+
+  /** Callback invoqué sur 403 PASSWORD_CHANGE_REQUIRED (rediriger vers /changer-mot-de-passe). */
+  private onPasswordChangeRequiredCallback: (() => void) | null = null;
 
   // -------------------------------------------------------------------------
   // Construction
@@ -133,6 +116,9 @@ export class ApiClient {
     this.http = axios.create({
       baseURL: '/api',
       timeout: 10_000,
+      // withCredentials: true est indispensable pour que le navigateur envoie
+      // automatiquement le cookie HttpOnly refresh_token sur /api/auth/*.
+      withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
@@ -144,21 +130,12 @@ export class ApiClient {
   }
 
   // -------------------------------------------------------------------------
-  // Gestion des tokens
+  // Gestion de session (accessToken uniquement — refresh via cookie)
   // -------------------------------------------------------------------------
 
-  setTokens(access: string, refresh: string): void {
-    this.accessToken = access;
-    this.refreshToken = refresh;
-  }
-
-  clearTokens(): void {
-    this.accessToken = null;
-    this.refreshToken = null;
-  }
-
+  /** Indique si un accessToken est disponible en mémoire. */
   hasToken(): boolean {
-    return this.accessToken !== null;
+    return getAccessToken() !== null;
   }
 
   // -------------------------------------------------------------------------
@@ -166,10 +143,8 @@ export class ApiClient {
   // -------------------------------------------------------------------------
 
   /**
-   * Définit le tenant courant.
-   * Passer `null` pour supprimer l'en-tête X-Tenant-ID.
-   *
-   * TODO(backend) : voir note 1 en tête de fichier (tenant dans le JWT).
+   * Définit le tenant courant ajouté à chaque requête via X-Tenant-ID.
+   * Passer `null` pour supprimer l'en-tête.
    */
   setTenant(code: string | null): void {
     this.currentTenant = code;
@@ -188,6 +163,15 @@ export class ApiClient {
    */
   setOnAuthFailure(callback: () => void): void {
     this.onAuthFailureCallback = callback;
+  }
+
+  /**
+   * Enregistre un callback appelé sur 403 PASSWORD_CHANGE_REQUIRED.
+   * Typiquement : redirection vers /changer-mot-de-passe.
+   * La redirection est déclenchée une seule fois par réponse 403 (pas de boucle).
+   */
+  setOnPasswordChangeRequired(callback: () => void): void {
+    this.onPasswordChangeRequiredCallback = callback;
   }
 
   // -------------------------------------------------------------------------
@@ -219,6 +203,16 @@ export class ApiClient {
     return response.data;
   }
 
+  /**
+   * POST utilisé UNIQUEMENT pour le refresh.
+   * Retourne la réponse Axios brute (pas de déballage) pour que doRefresh()
+   * puisse accéder à response.data.data.accessToken selon l'enveloppe ApiResponse.
+   * Le cookie HttpOnly est envoyé automatiquement grâce à withCredentials.
+   */
+  async postForRefresh<T>(url: string): Promise<AxiosResponse<T>> {
+    return this.http.post<T>(url);
+  }
+
   // -------------------------------------------------------------------------
   // Upload multipart
   // -------------------------------------------------------------------------
@@ -229,6 +223,7 @@ export class ApiClient {
    * @param url        Endpoint relatif (ex. "/demandes/42/pieces-jointes")
    * @param formData   Données du formulaire incluant le(s) fichier(s)
    * @param onProgress Callback optionnel avec le pourcentage d'avancement (0–100)
+   * @param timeout    Timeout en ms (0 = sans limite, recommandé pour les gros fichiers)
    *
    * TODO(backend) : endpoint à créer — POST /demandes/{id}/pieces-jointes
    */
@@ -236,11 +231,6 @@ export class ApiClient {
     url: string,
     formData: FormData,
     onProgress?: (percentage: number) => void,
-    /**
-     * Timeout en ms pour cet envoi. 0 = sans limite (recommandé pour les
-     * pièces jointes volumineuses, ex. 50 Mo). Si omis, aucune limite n'est
-     * appliquée afin d'éviter une coupure prématurée du transfert.
-     */
     timeout = 0,
   ): Promise<T> {
     const progressConfig = onProgress
@@ -267,21 +257,11 @@ export class ApiClient {
 
   /**
    * Télécharge un fichier depuis `url` et déclenche la sauvegarde dans le navigateur.
-   * Le nom du fichier est extrait de l'en-tête Content-Disposition si présent,
-   * sinon `nomFichierParDefaut` est utilisé (défaut : "fichier").
+   * Le nom du fichier est extrait de l'en-tête Content-Disposition si présent.
    *
    * TODO(backend) : endpoint à créer — GET /rapports/{id}/pdf
    */
-  async download(
-    url: string,
-    nomFichierParDefaut = 'fichier',
-    /**
-     * Timeout en ms pour ce téléchargement. 0 = sans limite (recommandé pour
-     * les rapports PDF volumineux). Si omis, aucune limite n'est appliquée
-     * afin d'éviter une coupure prématurée du transfert.
-     */
-    timeout = 0,
-  ): Promise<void> {
+  async download(url: string, nomFichierParDefaut = 'fichier', timeout = 0): Promise<void> {
     const response = await this.http.get<Blob>(url, {
       responseType: 'blob',
       timeout,
@@ -307,14 +287,17 @@ export class ApiClient {
   }
 
   // -------------------------------------------------------------------------
-  // Intercepteur de requête (JWT + tenant)
+  // Intercepteur de requête : Authorization header
   // -------------------------------------------------------------------------
 
   private registerRequestInterceptor(): void {
     this.http.interceptors.request.use(
       (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
-        if (this.accessToken !== null) {
-          config.headers.set('Authorization', `Bearer ${this.accessToken}`);
+        // Authorization ne porte QUE l'accessToken (jamais un twoFactorToken).
+        // Les twoFactorToken sont transmis dans le corps JSON des requêtes 2FA.
+        const token = getAccessToken();
+        if (token !== null) {
+          config.headers.set('Authorization', `Bearer ${token}`);
         }
         if (this.currentTenant !== null) {
           config.headers.set('X-Tenant-ID', this.currentTenant);
@@ -325,12 +308,12 @@ export class ApiClient {
   }
 
   // -------------------------------------------------------------------------
-  // Intercepteur de réponse (normalisation erreur + refresh 401)
+  // Intercepteur de réponse : normalisation erreur + refresh 401
   // -------------------------------------------------------------------------
 
   private registerResponseInterceptor(): void {
     this.http.interceptors.response.use(
-      // Succès : passe-plat (le déballage est fait dans les méthodes get/post/…)
+      // Succès : passe-plat
       (response) => response,
 
       // Erreur
@@ -338,11 +321,27 @@ export class ApiClient {
         const originalConfig = error.config as RetryableRequestConfig | undefined;
         const status = error.response?.status;
 
-        // --- Tentative de refresh sur 401 ---
+        // Endpoints d'auth exclus du refresh automatique
         const isAuthEndpoint =
           originalConfig?.url?.includes('/auth/login') === true ||
-          originalConfig?.url?.includes('/auth/refresh') === true;
+          originalConfig?.url?.includes('/auth/refresh') === true ||
+          originalConfig?.url?.includes('/auth/logout') === true ||
+          originalConfig?.url?.includes('/2fa/valider') === true;
 
+        // 403 PASSWORD_CHANGE_REQUIRED → rediriger vers /changer-mot-de-passe (une seule fois)
+        if (status === 403) {
+          const rawData = error.response?.data;
+          if (
+            isErrorResponseBody(rawData) &&
+            extractErrorCode(rawData) === 'PASSWORD_CHANGE_REQUIRED' &&
+            originalConfig?.url?.includes('/auth/mot-de-passe/changer') !== true
+          ) {
+            this.onPasswordChangeRequiredCallback?.();
+          }
+          return Promise.reject(this.toApiError(error));
+        }
+
+        // Tentative de refresh sur 401 (une seule fois par requête)
         if (
           status === 401 &&
           !isAuthEndpoint &&
@@ -356,13 +355,13 @@ export class ApiClient {
             originalConfig.headers.set('Authorization', `Bearer ${newAccessToken}`);
             return this.http.request(originalConfig) as Promise<never>;
           } catch {
-            this.clearTokens();
+            // Refresh échoué : effacer la session et notifier l'application
+            clearSession();
             this.onAuthFailureCallback?.();
             return Promise.reject(this.toApiError(error));
           }
         }
 
-        // --- Normalisation en ApiError ---
         return Promise.reject(this.toApiError(error));
       },
     );
@@ -372,20 +371,24 @@ export class ApiClient {
   // Refresh partagé (une seule promesse pour les requêtes concurrentes)
   // -------------------------------------------------------------------------
 
+  /**
+   * Déclenche un POST /auth/refresh.
+   * Le refresh token voyage exclusivement dans le cookie HttpOnly :
+   * aucun corps n'est envoyé, aucun refreshToken n'est lu en JS.
+   *
+   * @returns Le nouvel accessToken (string).
+   */
   private doRefresh(): Promise<string> {
     if (this.refreshPromise !== null) {
       return this.refreshPromise;
     }
 
     this.refreshPromise = this.http
-      .post<{ accessToken: string; refreshToken: string }>(
-        '/auth/refresh',
-        { refreshToken: this.refreshToken },
-      )
+      .post<{ success: boolean; data: { accessToken: string } }>('/auth/refresh')
       .then((response) => {
-        const { accessToken, refreshToken } = response.data;
-        this.setTokens(accessToken, refreshToken);
-        return accessToken;
+        const newAccessToken = response.data.data.accessToken;
+        updateAccessToken(newAccessToken);
+        return newAccessToken;
       })
       .finally(() => {
         this.refreshPromise = null;
@@ -395,7 +398,7 @@ export class ApiClient {
   }
 
   // -------------------------------------------------------------------------
-  // Normalisation d'une AxiosError en ApiError (sans any)
+  // Normalisation d'une AxiosError en ApiError
   // -------------------------------------------------------------------------
 
   private toApiError(error: AxiosError): ApiError {
@@ -422,17 +425,21 @@ export class ApiClient {
 /**
  * Instance unique de ApiClient utilisée dans toute l'application.
  *
- * Initialisation à faire au démarrage (ex. dans AuthProvider) :
- *   apiClient.setTokens(accessToken, refreshToken);
- *   apiClient.setTenant(tenantCode);
+ * Initialisation typique au démarrage (dans le composant racine ou après login) :
+ *
+ *   // Après login réussi (cas sans 2FA) :
+ *   setSession(response.accessToken, toSessionUser(response));
+ *
+ *   // Callback de déconnexion forcée (refresh token expiré) :
  *   apiClient.setOnAuthFailure(() => navigate({ to: '/login' }));
  *
- * TODO(2FA / backend) : le flux 2FA s'insère après une première réponse de
- *   POST /auth/login. L'endpoint de validation est POST /auth/2fa/valider.
- *   La forme exacte de LoginResponse (champs de la réponse intermédiaire,
- *   corps de la requête de validation, code HTTP attendu) est à vérifier dans
- *   le backend (AuthController / LoginResponse) avant d'implémenter ce flux
- *   côté frontend — TODO(backend).
+ *   // Tenant si nécessaire :
+ *   apiClient.setTenant(user.tenantId);
+ *
+ * Restauration de session au rechargement :
+ *   Appeler POST /api/auth/refresh au démarrage de l'application.
+ *   Si réussi → setSession(newAccessToken, userFromJwt).
+ *   Si échoué → l'utilisateur doit se reconnecter (cookie expiré / révoqué).
  */
 export const apiClient = new ApiClient();
 export default apiClient;

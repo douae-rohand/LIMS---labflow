@@ -27,7 +27,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/actuator/**",
                         "/api/plateforme/**",
                         "/api/laboratoires/**",
-                        "/api/client/**",
+                        "/api/public/**",
                         "/ws/**"
                 );
     }

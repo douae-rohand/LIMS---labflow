@@ -11,6 +11,8 @@ export const footerLinks = [
   {
     title: "Produit",
     links: [
+      { label: "Laboratoires", href: "/laboratoires" },
+      { label: "Carte", href: "/carte" },
       { label: "Fonctionnalités", href: "/#fonctionnalites" },
       { label: "Workflow", href: "/#workflow" },
       { label: "Espaces par rôle", href: "/#roles" },

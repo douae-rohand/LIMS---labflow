@@ -5,11 +5,19 @@ import { Badge, Button, Card, IconBox } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import { hero } from "@/data/landing";
 import { photos } from "@/data/images";
+import { useLandingPublic } from "@/hooks/useLandingPublic";
 import { fadeUp, levitate, scaleIn, staggerContainer } from "@/lib/motion";
 import { DashboardMockup } from "./Mockups";
 import { Photo } from "./Photo";
 
 export function Hero() {
+  const { data, isPending } = useLandingPublic();
+  const nombreLabs = data?.statistiques?.nombreLaboratoiresActifs;
+  const badge =
+    nombreLabs == null
+      ? hero.badge
+      : `${nombreLabs} laboratoire${nombreLabs > 1 ? "s" : ""} actif${nombreLabs > 1 ? "s" : ""}`;
+
   return (
     <section className="relative overflow-hidden pt-10 pb-20 sm:pt-16">
       <div className="halo halo-drift -top-32 -left-24 size-[28rem] bg-mint-200/70" />
@@ -23,7 +31,7 @@ export function Hero() {
         >
           <motion.div variants={fadeUp}>
             <Badge variant="lime" dot>
-              {hero.badge}
+              {badge}
             </Badge>
           </motion.div>
           <motion.h1
@@ -69,7 +77,13 @@ export function Hero() {
             {...levitate(8, 6)}
             className="absolute -bottom-10 -left-4 w-[78%] sm:-left-10 sm:w-[62%]"
           >
-            <DashboardMockup />
+            <DashboardMockup
+              loading={isPending}
+              nombreLaboratoires={data?.statistiques?.nombreLaboratoiresActifs}
+              nombreRoles={data?.statistiques?.nombreRoles}
+              laboratoires={data?.laboratoires}
+              statutsDemande={data?.statutsDemande}
+            />
           </motion.div>
         </motion.div>
       </Container>

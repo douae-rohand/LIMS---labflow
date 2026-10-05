@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   AlertTriangle,
   Check,
@@ -7,7 +8,8 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { Badge } from "@/components/lab";
+import { Badge, Skeleton } from "@/components/lab";
+import type { LaboratoirePublic } from "@/api/landing";
 import { cn } from "@/lib/utils";
 
 function Frame({
@@ -16,7 +18,7 @@ function Frame({
   className,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string | undefined;
 }) {
   return (
@@ -37,86 +39,103 @@ function Frame({
   );
 }
 
-const bars = [42, 68, 55, 80, 62, 90, 74];
+type DashboardMockupProps = {
+  className?: string;
+  loading?: boolean;
+  nombreLaboratoires?: number;
+  nombreRoles?: number;
+  laboratoires?: LaboratoirePublic[];
+  statutsDemande?: string[];
+};
 
-export function DashboardMockup({ className }: { className?: string }) {
+export function DashboardMockup({
+  className,
+  loading = false,
+  nombreLaboratoires,
+  nombreRoles,
+  laboratoires = [],
+  statutsDemande = [],
+}: DashboardMockupProps) {
   return (
-    <Frame title="Tableau de bord — Responsable" className={className}>
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          ["128", "Demandes"],
-          ["36", "En validation"],
-          ["2,4 j", "Délai moyen"],
-        ].map(([v, l]) => (
-          <div key={l} className="rounded-2xl bg-surface-card p-3">
-            <p className="text-lg font-extrabold text-brand-900">{v}</p>
-            <p className="text-[11px] text-muted-foreground">{l}</p>
+    <Frame title="Données plateforme" className={className}>
+      {loading ? (
+        <div className="flex flex-col gap-3" aria-busy="true">
+          <div className="grid grid-cols-2 gap-3">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
           </div>
-        ))}
-      </div>
-      <div className="mt-3 rounded-2xl bg-surface-alt p-3">
-        <p className="text-[11px] font-semibold text-brand-900">
-          Essais réalisés par jour
-        </p>
-        <div className="mt-2 flex h-20 items-end gap-2">
-          {bars.map((h, i) => (
-            <span
-              key={i}
-              style={{ height: `${h}%` }}
-              className={cn(
-                "flex-1 rounded-t-lg",
-                i === 5 ? "bg-accent-lime" : "bg-brand-600/70",
-              )}
-            />
-          ))}
+          <Skeleton className="h-24 w-full" />
         </div>
-      </div>
-      <ul className="mt-3 flex flex-col gap-2">
-        {[
-          ["DEM-2026-0412", "EN_VALIDATION", "lime"],
-          ["DEM-2026-0409", "EN_COURS", "mint"],
-          ["DEM-2026-0401", "TERMINÉE", "soft"],
-        ].map(([id, s, v]) => (
-          <li
-            key={id}
-            className="flex items-center justify-between rounded-xl bg-card px-3 py-2 text-xs"
-          >
-            <span className="font-semibold text-ink-900">{id}</span>
-            <Badge size="sm" variant={v as "lime" | "mint" | "soft"}>
-              {s}
-            </Badge>
-          </li>
-        ))}
-      </ul>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-surface-card p-3">
+              <p className="text-lg font-extrabold text-brand-900">
+                {nombreLaboratoires ?? "—"}
+              </p>
+              <p className="text-[11px] text-muted-foreground">Laboratoires actifs</p>
+            </div>
+            <div className="rounded-2xl bg-surface-card p-3">
+              <p className="text-lg font-extrabold text-brand-900">
+                {nombreRoles ?? "—"}
+              </p>
+              <p className="text-[11px] text-muted-foreground">Rôles</p>
+            </div>
+          </div>
+          <div className="mt-3 rounded-2xl bg-surface-alt p-3">
+            <p className="text-[11px] font-semibold text-brand-900">
+              Laboratoires
+            </p>
+            {laboratoires.length === 0 ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Aucun laboratoire actif.
+              </p>
+            ) : (
+              <ul className="mt-2 flex flex-col gap-2">
+                {laboratoires.slice(0, 3).map((lab) => (
+                  <li
+                    key={lab.id}
+                    className="flex items-center justify-between rounded-xl bg-card px-3 py-2 text-xs"
+                  >
+                    <span className="font-semibold text-ink-900">{lab.raisonSociale}</span>
+                    <Badge size="sm" variant="mint">
+                      {lab.ville?.trim() ? lab.ville : lab.code}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {statutsDemande.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {statutsDemande.map((statut) => (
+                <Badge key={statut} size="sm" variant="soft">
+                  {statut}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+        </>
+      )}
     </Frame>
   );
 }
 
 export function ValidationMockup({ className }: { className?: string }) {
   return (
-    <Frame title="Validation — DEM-2026-0412" className={className}>
+    <Frame title="Aperçu — écran de validation" className={className}>
       <div className="rounded-2xl bg-surface-card p-3 text-xs">
         {[
-          ["Glycémie à jeun", "0,92 g/L", false],
-          ["Cholestérol total", "2,41 g/L", true],
-          ["Créatinine", "9,8 mg/L", false],
-        ].map(([n, v, out]) => (
+          ["Résultat dans les seuils", "Conforme"],
+          ["Valeur hors seuil", "À contrôler"],
+          ["Pièce jointe", "Jointe"],
+        ].map(([n, v]) => (
           <div
-            key={n as string}
+            key={n}
             className="flex items-center justify-between border-b border-brand-900/10 py-2 last:border-0"
           >
             <span className="text-ink-900">{n}</span>
-            <span
-              className={cn(
-                "font-semibold",
-                out ? "text-brand-600" : "text-ink-900",
-              )}
-            >
-              {v}
-              {out && (
-                <AlertTriangle className="ml-1 inline size-3" aria-hidden="true" />
-              )}
-            </span>
+            <span className="font-semibold text-ink-900">{v}</span>
           </div>
         ))}
       </div>
@@ -133,7 +152,7 @@ export function ValidationMockup({ className }: { className?: string }) {
       </div>
       <div className="mt-3 flex items-center gap-2 rounded-2xl bg-accent-lime/60 p-3 text-xs text-ink-900">
         <FileSignature className="size-4" aria-hidden="true" />
-        Signé par Dr S. Amrani — 28/09/2026 09:41
+        Signature électronique du responsable
       </div>
     </Frame>
   );
@@ -141,27 +160,21 @@ export function ValidationMockup({ className }: { className?: string }) {
 
 export function AiMockup({ className }: { className?: string }) {
   return (
-    <Frame title="Assistant LabFlow" className={className}>
+    <Frame title="Aperçu — assistant" className={className}>
       <div className="flex flex-col gap-2 text-xs">
         <div className="ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-brand-900 px-3 py-2 text-primary-foreground">
-          Quelle est la procédure de dosage de la créatinine ?
+          Quelle est la procédure de cette méthode ?
         </div>
         <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-surface-card px-3 py-2 text-ink-900">
           <MessageSquare className="mr-1 inline size-3 text-brand-600" aria-hidden="true" />
-          Méthode enzymatique, mode opératoire MO-BIO-014 §3. Calibration
-          quotidienne requise.
-          <span className="mt-1 block text-[10px] text-muted-foreground">
-            Source : MO-BIO-014 v5
-          </span>
+          Réponse sourcée dans les modes opératoires du laboratoire, soumise à
+          validation humaine.
         </div>
       </div>
       <div className="mt-3 rounded-2xl bg-surface-alt p-3">
         <div className="flex items-center justify-between text-[11px]">
-          <span className="font-semibold text-brand-900">Score d'anomalie</span>
-          <span className="font-bold text-ink-900">0,82</span>
-        </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-mint-200">
-          <span className="block h-full w-[82%] rounded-full bg-accent-lime" />
+          <span className="font-semibold text-brand-900">Détection d'anomalie</span>
+          <AlertTriangle className="size-3 text-brand-600" aria-hidden="true" />
         </div>
         <p className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
           <Sparkles className="size-3" aria-hidden="true" /> Suggestion soumise à

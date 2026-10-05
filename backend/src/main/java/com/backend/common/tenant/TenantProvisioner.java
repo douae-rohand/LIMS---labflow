@@ -31,6 +31,7 @@ public class TenantProvisioner {
                 .locations("classpath:db/migration/tenant")
                 .baselineOnMigrate(true)
                 .validateOnMigrate(true)
+                .outOfOrder(true)
                 .load()
                 .migrate();
         log.info("Tenant provisionné : schema={}", nomSchema);
