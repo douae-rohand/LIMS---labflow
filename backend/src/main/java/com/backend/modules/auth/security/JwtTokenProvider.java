@@ -38,7 +38,10 @@ public class JwtTokenProvider {
     }
 
     public String generateRefreshToken(String username) {
-        return buildToken(username, Map.of("type", "refresh"), jwtConfig.getRefreshExpiration());
+        return buildToken(username, Map.of(
+                "type", "refresh",
+                "jti", java.util.UUID.randomUUID().toString()
+        ), jwtConfig.getRefreshExpiration());
     }
 
     public String generateTwoFactorToken(String username) {

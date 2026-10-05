@@ -23,6 +23,7 @@ public class UtilisateurPrincipal implements UserDetails {
     private final String nomSchema;
     private final boolean actif;
     private final boolean mustChangePassword;
+    private final boolean doubleAuthentification;
 
     public boolean isClient() {
         return role == RoleUtilisateur.CLIENT;

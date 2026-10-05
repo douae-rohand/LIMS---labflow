@@ -42,6 +42,7 @@ public class UtilisateurDetailsService implements UserDetailsService {
                 .nomSchema(nomSchema)
                 .actif(utilisateur.isActif())
                 .mustChangePassword(utilisateur.isMustChangePassword())
+                .doubleAuthentification(utilisateur.isDoubleAuthentification())
                 .build();
     }
 }

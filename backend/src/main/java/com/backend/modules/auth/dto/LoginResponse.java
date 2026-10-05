@@ -33,6 +33,10 @@ public class LoginResponse {
     @Builder.Default
     private boolean requiresTwoFactor = false;
 
+    /** Indique si le 2FA est obligatoire mais non encore configuré (setup requis). */
+    @Builder.Default
+    private boolean setupRequired = false;
+
     /** Token temporaire renvoyé quand requiresTwoFactor=true (valable quelques minutes). */
     private String twoFactorToken;
 

@@ -1,5 +1,6 @@
 package com.backend.common.tenant;
 
+import com.backend.common.exception.TenantHeaderRequiredException;
 import com.backend.common.exception.UnauthorizedTenantException;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
 import com.backend.modules.client.entity.ClientLaboratoire;
@@ -54,12 +55,18 @@ public class TenantInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 3. Client : en-tête X-Tenant-ID obligatoire, labo actif, rattaché dans client_laboratoire (ACTIF)
+        // 3. Client : sans X-Tenant-ID -> contexte central (profil, liste labos) ou 400 (demandes, factures)
         if (principal.isClient()) {
             if (!StringUtils.hasText(header)) {
-                throw new UnauthorizedTenantException(
-                        "L'en-tête X-Tenant-ID est requis pour sélectionner un laboratoire");
+                String uri = request.getRequestURI();
+                if (uri.startsWith("/api/client/demandes") || uri.startsWith("/api/client/factures")) {
+                    throw new TenantHeaderRequiredException(
+                            "L'en-tête X-Tenant-ID est obligatoire pour accéder aux demandes et factures du laboratoire.");
+                }
+                TenantContext.clear();
+                return true;
             }
+
             Laboratoire laboratoire = tenantResolver.exigerActif(header);
             Optional<ClientLaboratoire> clientLab = clientLaboratoireRepository
                     .findByUtilisateur_IdAndLaboratoire_Id(principal.getId(), laboratoire.getId());

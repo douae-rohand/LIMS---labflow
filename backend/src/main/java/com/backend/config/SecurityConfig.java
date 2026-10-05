@@ -70,15 +70,21 @@ public class SecurityConfig {
             )
             // Règles d'autorisation
             .authorizeHttpRequests(auth -> auth
-                // Endpoints publics
+                // Endpoints publics (login, refresh, 2FA valider/setup/activer sans auth Bearer)
                 .requestMatchers(
-                    "/api/auth/**",
+                    "/api/auth/login",
+                    "/api/auth/refresh",
+                    "/api/auth/2fa/valider",
+                    "/api/auth/2fa/setup",
+                    "/api/auth/2fa/activer",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/v3/api-docs/**",
                     "/ws/**",
                     "/actuator/**"
                 ).permitAll()
+                // Logout exige explicitement une authentification (access token)
+                .requestMatchers("/api/auth/logout").authenticated()
                 // Formulaire de demande d'intégration laboratoire (landing publique)
                 // Doit être déclaré AVANT la règle /api/plateforme/** ci-dessous
                 .requestMatchers(HttpMethod.POST, "/api/plateforme/demandes").permitAll()

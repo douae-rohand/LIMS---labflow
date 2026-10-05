@@ -1,100 +1,125 @@
 package com.backend.modules.auth.service;
 
+import com.backend.common.exception.BusinessRuleException;
+import com.backend.modules.utilisateur.entity.Utilisateur;
+import com.backend.modules.utilisateur.repository.UtilisateurRepository;
+import com.warrenstrange.googleauth.GoogleAuthenticator;
+import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
+import com.warrenstrange.googleauth.GoogleAuthenticatorQRGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.security.SecureRandom;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service de gestion de l'authentification à deux facteurs (2FA).
+ * Service de gestion de l'authentification à deux facteurs TOTP (RFC 6238).
  *
- * <p>Implémentation actuelle : OTP numérique à 6 chiffres envoyé par email,
- * stocké en mémoire avec TTL de 5 minutes.
+ * <p>Flux d'enrôlement :
+ * <ol>
+ *   <li>{@code /2fa/setup}   — génère un secret, le stocke dans {@code secret_2fa} (en attente),
+ *       retourne l'URL TOTP pour le QR code. {@code double_authentification} reste à {@code false}.</li>
+ *   <li>{@code /2fa/activer} — l'utilisateur soumet un premier code TOTP valide ;
+ *       {@code double_authentification} passe à {@code true}.</li>
+ * </ol>
  *
- * <p>TODO : remplacer le stockage en mémoire par Redis pour la scalabilité.
- * TODO : ajouter le support TOTP (Google Authenticator) via la librairie
- *        {@code com.warrenstrange:googleauth}.
+ * <p>Flux de vérification (login) :
+ * <ol>
+ *   <li>Login → 2FA activée → token temporaire de type {@code 2fa} retourné.</li>
+ *   <li>{@code /2fa/verify} — code TOTP vérifié avec {@link #verifierTotp(String, String)}.</li>
+ * </ol>
+ *
+ * <p><strong>Limitation connue</strong> : le secret TOTP est stocké en clair dans la colonne
+ * {@code secret_2fa}. Le chiffrement au repos (AES) est reporté à une itération ultérieure.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class TwoFactorService {
 
-    private static final int CODE_LENGTH = 6;
-    private static final int TTL_MINUTES = 5;
+    /** Nom de l'application affiché dans Google Authenticator. */
+    private static final String ISSUER = "LIMS";
 
-    // TODO: remplacer par Redis
-    private final Map<String, OtpEntry> otpStore = new ConcurrentHashMap<>();
-
-    private final SecureRandom secureRandom = new SecureRandom();
+    private final GoogleAuthenticator googleAuthenticator;
+    private final UtilisateurRepository utilisateurRepository;
 
     // -------------------------------------------------------------------------
-    // Génération
+    // Enrôlement — Setup
     // -------------------------------------------------------------------------
 
     /**
-     * Génère un OTP à 6 chiffres, le stocke avec un TTL et retourne le code.
+     * Génère un nouveau secret TOTP, le persiste dans {@code secret_2fa} (sans activer la 2FA)
+     * et retourne l'URL TOTP pour générer un QR code côté client.
      *
-     * @param tokenKey clé unique identifiant la session 2FA (ex. twoFactorToken JWT)
-     * @return le code OTP généré (à envoyer par email)
+     * @param utilisateur utilisateur demandant l'enrôlement
+     * @return URL otpauth:// à encoder en QR code
      */
-    public String genererOtp(String tokenKey) {
-        String code = String.format("%06d", secureRandom.nextInt(1_000_000));
-        Instant expiry = Instant.now().plus(TTL_MINUTES, ChronoUnit.MINUTES);
-        otpStore.put(tokenKey, new OtpEntry(code, expiry));
-        log.debug("OTP généré pour la clé [{}], expire à {}", tokenKey, expiry);
-        return code;
+    @Transactional
+    public String setupTotp(Utilisateur utilisateur) {
+        if (utilisateur.isDoubleAuthentification() && utilisateur.getSecret2fa() != null && !utilisateur.getSecret2fa().isBlank()) {
+            throw new BusinessRuleException("2FA_ALREADY_ACTIVE", "La double authentification est déjà activée pour ce compte.");
+        }
+        GoogleAuthenticatorKey credentials = googleAuthenticator.createCredentials();
+        String secret = credentials.getKey();
+
+        utilisateur.setSecret2fa(secret);
+        // double_authentification reste false jusqu'à la première vérification réussie
+        utilisateurRepository.save(utilisateur);
+
+        String otpAuthUrl = GoogleAuthenticatorQRGenerator.getOtpAuthTotpURL(
+                ISSUER, utilisateur.getEmail(), credentials);
+        log.debug("Secret TOTP généré pour {} — 2FA non encore activée", utilisateur.getEmail());
+        return otpAuthUrl;
     }
 
     // -------------------------------------------------------------------------
-    // Vérification
+    // Enrôlement — Activation
     // -------------------------------------------------------------------------
 
     /**
-     * Vérifie le code OTP fourni par l'utilisateur.
+     * Active définitivement la 2FA pour l'utilisateur après vérification d'un premier code TOTP.
+     * {@code double_authentification} est mis à {@code true} seulement si le code est correct.
      *
-     * @param tokenKey clé de session 2FA
-     * @param code     code saisi par l'utilisateur
-     * @return {@code true} si le code est correct et non expiré
+     * @param utilisateur utilisateur qui active la 2FA
+     * @param code        code TOTP à 6 chiffres saisi par l'utilisateur
+     * @throws BusinessRuleException si le secret n'a pas encore été configuré ou si le code est invalide
      */
-    public boolean verifierOtp(String tokenKey, String code) {
-        OtpEntry entry = otpStore.get(tokenKey);
+    @Transactional
+    public void activerTotp(Utilisateur utilisateur, String code) {
+        if (utilisateur.getSecret2fa() == null || utilisateur.getSecret2fa().isBlank()) {
+            throw new BusinessRuleException("2FA_NOT_SETUP",
+                    "Aucun secret TOTP configuré. Appelez d'abord /2fa/setup.");
+        }
+        if (!verifierTotp(utilisateur.getSecret2fa(), code)) {
+            throw new BusinessRuleException("2FA_CODE_INVALID",
+                    "Code TOTP incorrect — vérifiez l'heure de votre application et réessayez.");
+        }
+        utilisateur.setDoubleAuthentification(true);
+        utilisateurRepository.save(utilisateur);
+        log.info("2FA activée pour userId={}", utilisateur.getId());
+    }
 
-        if (entry == null) {
-            log.warn("OTP introuvable pour la clé [{}]", tokenKey);
+    // -------------------------------------------------------------------------
+    // Vérification (login)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Vérifie un code TOTP à 6 chiffres par rapport à un secret connu.
+     *
+     * @param secret secret Base32 stocké dans {@code secret_2fa}
+     * @param code   code saisi par l'utilisateur (6 chiffres)
+     * @return {@code true} si le code est valide dans la fenêtre temporelle courante
+     */
+    public boolean verifierTotp(String secret, String code) {
+        if (secret == null || secret.isBlank()) {
+            log.warn("verifierTotp appelé avec un secret null ou vide");
             return false;
         }
-
-        if (Instant.now().isAfter(entry.expiry())) {
-            otpStore.remove(tokenKey);
-            log.warn("OTP expiré pour la clé [{}]", tokenKey);
+        try {
+            int codeInt = Integer.parseInt(code);
+            return googleAuthenticator.authorize(secret, codeInt);
+        } catch (NumberFormatException ex) {
+            log.warn("Code TOTP non numérique reçu");
             return false;
         }
-
-        boolean valide = entry.code().equals(code);
-        if (valide) {
-            otpStore.remove(tokenKey); // usage unique
-        } else {
-            log.warn("Code OTP incorrect pour la clé [{}]", tokenKey);
-        }
-        return valide;
     }
-
-    /**
-     * Invalide manuellement un OTP (ex. lors d'un logout ou re-demande).
-     */
-    public void invaliderOtp(String tokenKey) {
-        otpStore.remove(tokenKey);
-    }
-
-    // -------------------------------------------------------------------------
-    // Modèle interne
-    // -------------------------------------------------------------------------
-
-    private record OtpEntry(String code, Instant expiry) {}
 }
