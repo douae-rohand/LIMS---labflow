@@ -60,7 +60,11 @@ export async function restoreSession(): Promise<boolean> {
 
     return true;
   } catch {
-    // Pas de session valide (cookie absent, expiré, révoqué) : état normal.
+    // Pas de session valide (cookie absent, expiré, révoqué) : état normal au démarrage.
+    // On appelle clearSession() pour passer le statut à 'anonyme'.
+    // IMPORTANT : onAuthFailure N'EST PAS déclenché ici — ce n'est pas une déconnexion
+    // forcée mais simplement l'absence de cookie (première visite ou session expirée).
+    // L'intercepteur 401 dans ApiClient est le seul qui déclenche onAuthFailure.
     clearSession();
     return false;
   }

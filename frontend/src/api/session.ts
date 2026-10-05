@@ -10,9 +10,19 @@
  *    aux changements de session sans couplage circulaire.
  */
 
+import { useEffect, useState } from 'react';
+
 // ---------------------------------------------------------------------------
 // Types publics
 // ---------------------------------------------------------------------------
+
+/**
+ * Statut de la session.
+ *  - `inconnu`  : état initial avant que restoreSession() ait terminé.
+ *  - `connecté` : accessToken valide en mémoire.
+ *  - `anonyme`  : pas de session (cookie absent, expiré ou révoqué).
+ */
+export type SessionStatus = 'inconnu' | 'connecté' | 'anonyme';
 
 export type RoleUtilisateur =
   | 'SUPER_ADMINISTRATEUR'
@@ -41,6 +51,7 @@ type SessionListener = (session: Session | null) => void;
 // ---------------------------------------------------------------------------
 
 let _session: Session | null = null;
+let _status: SessionStatus = 'inconnu';
 const _listeners = new Set<SessionListener>();
 
 // ---------------------------------------------------------------------------
@@ -57,9 +68,15 @@ export function getAccessToken(): string | null {
   return _session?.accessToken ?? null;
 }
 
+/** Retourne le statut de session courant. */
+export function getStatus(): SessionStatus {
+  return _status;
+}
+
 /** Ouvre une session après authentification réussie. Notifie les listeners. */
 export function setSession(accessToken: string, user: SessionUser): void {
   _session = { accessToken, user };
+  _status = 'connecté';
   _notify();
 }
 
@@ -74,6 +91,7 @@ export function updateAccessToken(accessToken: string): void {
 /** Ferme la session (logout ou refresh échoué). Notifie les listeners. */
 export function clearSession(): void {
   _session = null;
+  _status = 'anonyme';
   _notify();
 }
 
@@ -96,6 +114,51 @@ export function subscribeSession(listener: SessionListener): () => void {
   return () => {
     _listeners.delete(listener);
   };
+}
+
+/**
+ * Hook React — retourne la session et le statut courants.
+ * Se re-rend automatiquement à chaque changement de session.
+ *
+ * @example
+ *   const { session, status } = useSession();
+ *   if (status === 'inconnu') return <Spinner />;
+ *   if (status === 'anonyme') return <Redirect to="/login" />;
+ *   return <Dashboard user={session!.user} />;
+ */
+export function useSession(): { session: Session | null; status: SessionStatus } {
+  const [state, setState] = useState<{ session: Session | null; status: SessionStatus }>(
+    () => ({ session: _session, status: _status }),
+  );
+
+  useEffect(() => {
+    // Synchroniser si l'état a changé entre le rendu initial et le montage
+    setState({ session: _session, status: _status });
+    const unsub = subscribeSession((s) => {
+      setState({ session: s, status: _status });
+    });
+    return unsub;
+  }, []);
+
+  return state;
+}
+
+/**
+ * Vérifie que la session est active et la retourne.
+ * Lance une erreur si le statut est `anonyme` ou `inconnu`.
+ * Utile dans les `beforeLoad` de routes protégées.
+ *
+ * @throws {Error} Si la session n'est pas établie.
+ *
+ * @example
+ *   // Dans un beforeLoad TanStack Router :
+ *   const session = ensureSession();
+ */
+export function ensureSession(): Session {
+  if (_session === null) {
+    throw new Error('Session requise : utilisateur non authentifié.');
+  }
+  return _session;
 }
 
 // ---------------------------------------------------------------------------
