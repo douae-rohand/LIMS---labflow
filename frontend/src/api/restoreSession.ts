@@ -45,11 +45,22 @@ interface RefreshApiResponse {
  *
  * @returns `true` si la session a été restaurée, `false` sinon.
  */
+/** Durée maximale (ms) accordée au refresh de démarrage avant abandon silencieux. */
+const STARTUP_REFRESH_TIMEOUT_MS = 5_000;
+
 export async function restoreSession(): Promise<boolean> {
+  // Délai maximal de 5 s : si le backend ne répond pas, on passe directement
+  // à l'état 'anonyme' sans bloquer l'affichage ni afficher d'erreur.
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('startup-refresh-timeout')), STARTUP_REFRESH_TIMEOUT_MS),
+  );
+
   try {
-    // postForRefresh envoie un POST /auth/refresh sans corps.
-    // Le cookie HttpOnly est transmis automatiquement (withCredentials: true).
-    const response = await apiClient.postForRefresh<RefreshApiResponse>('/auth/refresh');
+    // Race : refresh vs timeout
+    const response = await Promise.race([
+      apiClient.postForRefresh<RefreshApiResponse>('/auth/refresh'),
+      timeoutPromise,
+    ]);
 
     const { accessToken, role, tenantId, mustChangePassword } = response.data.data;
 
@@ -60,7 +71,7 @@ export async function restoreSession(): Promise<boolean> {
 
     return true;
   } catch {
-    // Pas de session valide (cookie absent, expiré, révoqué) : état normal au démarrage.
+    // Pas de session valide (cookie absent, expiré, révoqué, ou timeout 5 s).
     // On appelle clearSession() pour passer le statut à 'anonyme'.
     // IMPORTANT : onAuthFailure N'EST PAS déclenché ici — ce n'est pas une déconnexion
     // forcée mais simplement l'absence de cookie (première visite ou session expirée).
@@ -69,3 +80,4 @@ export async function restoreSession(): Promise<boolean> {
     return false;
   }
 }
+

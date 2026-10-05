@@ -97,13 +97,6 @@ export class ApiClient {
   private currentTenant: string | null = null;
 
   /**
-   * Token 2FA (type=2fa) pour les endpoints /2fa/setup et /2fa/activer.
-   * N'est pas un accessToken : ne sert qu'à ces deux endpoints précis.
-   * Effacé dès que la session 2FA est complétée.
-   */
-  private twoFactorToken: string | null = null;
-
-  /**
    * Promesse de refresh en cours. Partagée entre les requêtes concurrentes
    * pour éviter plusieurs appels /auth/refresh simultanés.
    */
@@ -136,14 +129,6 @@ export class ApiClient {
   // -------------------------------------------------------------------------
   // Gestion de session (accessToken uniquement — refresh via cookie)
   // -------------------------------------------------------------------------
-
-  /**
-   * Stocke le token 2FA temporaire pour les endpoints /2fa/setup et /2fa/activer.
-   * Passer `null` pour effacer (après activation 2FA réussie).
-   */
-  setTwoFactorToken(token: string | null): void {
-    this.twoFactorToken = token;
-  }
 
   /** Indique si un accessToken est disponible en mémoire. */
   hasToken(): boolean {
@@ -296,9 +281,9 @@ export class ApiClient {
   private registerRequestInterceptor(): void {
     this.http.interceptors.request.use(
       (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
-        // Priorité : twoFactorToken > accessToken
-        // Les endpoints /2fa/setup et /2fa/activer attendent le twoFactorToken.
-        const token = this.twoFactorToken ?? getAccessToken();
+        // Authorization ne porte QUE l'accessToken (jamais un twoFactorToken).
+        // Les twoFactorToken sont transmis dans le corps JSON des requêtes 2FA.
+        const token = getAccessToken();
         if (token !== null) {
           config.headers.set('Authorization', `Bearer ${token}`);
         }

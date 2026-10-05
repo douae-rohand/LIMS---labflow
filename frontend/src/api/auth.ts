@@ -107,7 +107,21 @@ export interface TwoFactorValiderBody {
   code: string;
 }
 
+/**
+ * Corps de POST /api/auth/2fa/setup.
+ *
+ * Deux cas :
+ *  - Enrôlement obligé (RESPONSABLE_LABO / ADMINISTRATEUR sans 2FA activé) :
+ *    twoFactorToken présent (obtenu à l'étape login, cas b).
+ *  - Activation volontaire (SUPER_ADMINISTRATEUR connecté) :
+ *    twoFactorToken absent (la session active fournit l'identité via accessToken).
+ */
+export interface TwoFactorSetupBody {
+  twoFactorToken?: string;
+}
+
 export interface TwoFactorActiverBody {
+  twoFactorToken?: string;
   code: string;
 }
 
@@ -139,17 +153,27 @@ export async function valider2FA(body: TwoFactorValiderBody): Promise<TwoFactorC
 
 /**
  * Récupère le QR code pour configurer l'application TOTP.
- * Requiert un twoFactorToken (type=2fa) dans l'Authorization header —
- * à passer via apiClient.setTwoFactorToken() avant l'appel.
+ *
+ * Deux cas :
+ *  (enrôlement forcé)  twoFactorToken issu du login (cas b) → dans le corps.
+ *  (activation libre)   pas de twoFactorToken → l'accessToken en mémoire suffit.
+ *
+ * Le twoFactorToken doit être effacé de la mémoire du consommateur après l'appel.
  */
-export async function setup2FA(): Promise<TwoFactorSetupResponse> {
-  const res = await apiClient.post<ApiResponse<TwoFactorSetupResponse>>('/auth/2fa/setup');
+export async function setup2FA(body: TwoFactorSetupBody = {}): Promise<TwoFactorSetupResponse> {
+  const res = await apiClient.post<ApiResponse<TwoFactorSetupResponse>>('/auth/2fa/setup', body);
   return res.data;
 }
 
 /**
  * Active le 2FA en soumettant le premier code TOTP valide.
+ *
+ * twoFactorToken optionnel :
+ *  - Présent si l'activation fait suite à un enrôlement forcé (même jeton que setup).
+ *  - Absent si c'est une activation volontaire (l'accessToken en mémoire suffit).
+ *
  * Pose le cookie refresh_token et retourne l'accessToken.
+ * Après succès OU échec, le consommateur doit effacer le twoFactorToken de sa mémoire.
  */
 export async function activer2FA(body: TwoFactorActiverBody): Promise<TwoFactorCompleteResponse> {
   const res = await apiClient.post<ApiResponse<TwoFactorCompleteResponse>>(
