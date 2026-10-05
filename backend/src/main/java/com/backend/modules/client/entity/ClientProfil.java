@@ -1,5 +1,6 @@
 package com.backend.modules.client.entity;
 
+import com.backend.common.config.SchemaConstants;
 import com.backend.modules.utilisateur.entity.Utilisateur;
 import jakarta.persistence.*;
 import lombok.*;
@@ -12,7 +13,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "client_profil", uniqueConstraints = {
+@Table(name = "client_profil", schema = SchemaConstants.CENTRAL_SCHEMA, uniqueConstraints = {
         @UniqueConstraint(name = "uk_client_profil_utilisateur", columnNames = "utilisateur_id")
 })
 public class ClientProfil {

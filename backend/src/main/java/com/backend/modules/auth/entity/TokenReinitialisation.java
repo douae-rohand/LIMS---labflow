@@ -1,5 +1,6 @@
 package com.backend.modules.auth.entity;
 
+import com.backend.common.config.SchemaConstants;
 import com.backend.modules.utilisateur.entity.Utilisateur;
 import jakarta.persistence.*;
 import lombok.*;
@@ -12,7 +13,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "token_reinitialisation", uniqueConstraints = {
+@Table(name = "token_reinitialisation", schema = SchemaConstants.CENTRAL_SCHEMA, uniqueConstraints = {
         @UniqueConstraint(name = "uk_token_reinitialisation_token_hash", columnNames = "token_hash")
 })
 public class TokenReinitialisation {

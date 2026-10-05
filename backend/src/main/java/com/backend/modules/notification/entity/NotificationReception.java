@@ -1,5 +1,6 @@
 package com.backend.modules.notification.entity;
 
+import com.backend.common.config.SchemaConstants;
 import com.backend.modules.utilisateur.entity.Utilisateur;
 import jakarta.persistence.*;
 import lombok.*;
@@ -10,7 +11,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "notification_reception")
+@Table(name = "notification_reception", schema = SchemaConstants.CENTRAL_SCHEMA)
 @IdClass(NotificationReceptionId.class)
 public class NotificationReception {
 

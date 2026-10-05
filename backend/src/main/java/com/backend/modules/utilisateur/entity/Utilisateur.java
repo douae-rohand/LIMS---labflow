@@ -1,5 +1,6 @@
 package com.backend.modules.utilisateur.entity;
 
+import com.backend.common.config.SchemaConstants;
 import com.backend.modules.plateforme.entity.Laboratoire;
 import jakarta.persistence.*;
 import lombok.Builder;
@@ -15,7 +16,7 @@ import java.time.Instant;
 @SuperBuilder(toBuilder = true)
 @NoArgsConstructor
 @Entity
-@Table(name = "utilisateur", uniqueConstraints = {
+@Table(name = "utilisateur", schema = SchemaConstants.CENTRAL_SCHEMA, uniqueConstraints = {
         @UniqueConstraint(name = "uk_utilisateur_matricule", columnNames = "matricule"),
         @UniqueConstraint(name = "uk_utilisateur_email", columnNames = "email")
 })
@@ -54,6 +55,9 @@ public class Utilisateur {
     @Builder.Default
     @Column(name = "double_authentification", nullable = false)
     private boolean doubleAuthentification = false;
+
+    @Column(name = "secret_2fa", length = 255)
+    private String secret2fa;
 
     @Column(name = "derniere_connexion")
     private Instant derniereConnexion;

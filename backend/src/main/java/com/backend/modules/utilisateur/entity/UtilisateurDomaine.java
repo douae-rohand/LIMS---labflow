@@ -1,5 +1,6 @@
 package com.backend.modules.utilisateur.entity;
 
+import com.backend.common.config.SchemaConstants;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,7 +10,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "utilisateur_domaine")
+@Table(name = "utilisateur_domaine", schema = SchemaConstants.CENTRAL_SCHEMA)
 @IdClass(UtilisateurDomaineId.class)
 public class UtilisateurDomaine {
 
