@@ -10,13 +10,21 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CarteRouteImport } from './routes/carte'
 import { Route as IntegrationRouteImport } from './routes/integration'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as UiKitRouteImport } from './routes/ui-kit'
+import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/index'
+import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CarteRoute = CarteRouteImport.update({
+  id: '/carte',
+  path: '/carte',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IntegrationRoute = IntegrationRouteImport.update({
@@ -34,39 +42,83 @@ const UiKitRoute = UiKitRouteImport.update({
   path: '/ui-kit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LaboratoiresIndexRoute = LaboratoiresIndexRouteImport.update({
+  id: '/laboratoires/',
+  path: '/laboratoires/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LaboratoiresIdRoute = LaboratoiresIdRouteImport.update({
+  id: '/laboratoires/$id',
+  path: '/laboratoires/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/carte': typeof CarteRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
+  '/laboratoires/$id': typeof LaboratoiresIdRoute
+  '/laboratoires/': typeof LaboratoiresIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/carte': typeof CarteRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
+  '/laboratoires/$id': typeof LaboratoiresIdRoute
+  '/laboratoires': typeof LaboratoiresIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/carte': typeof CarteRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
+  '/laboratoires/$id': typeof LaboratoiresIdRoute
+  '/laboratoires/': typeof LaboratoiresIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/integration' | '/login' | '/ui-kit'
+  fullPaths:
+    | '/'
+    | '/carte'
+    | '/integration'
+    | '/login'
+    | '/ui-kit'
+    | '/laboratoires/$id'
+    | '/laboratoires/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/integration' | '/login' | '/ui-kit'
-  id: '__root__' | '/' | '/integration' | '/login' | '/ui-kit'
+  to:
+    | '/'
+    | '/carte'
+    | '/integration'
+    | '/login'
+    | '/ui-kit'
+    | '/laboratoires/$id'
+    | '/laboratoires'
+  id:
+    | '__root__'
+    | '/'
+    | '/carte'
+    | '/integration'
+    | '/login'
+    | '/ui-kit'
+    | '/laboratoires/$id'
+    | '/laboratoires/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CarteRoute: typeof CarteRoute
   IntegrationRoute: typeof IntegrationRoute
   LoginRoute: typeof LoginRoute
   UiKitRoute: typeof UiKitRoute
+  LaboratoiresIdRoute: typeof LaboratoiresIdRoute
+  LaboratoiresIndexRoute: typeof LaboratoiresIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -76,6 +128,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/carte': {
+      id: '/carte'
+      path: '/carte'
+      fullPath: '/carte'
+      preLoaderRoute: typeof CarteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/integration': {
@@ -99,14 +158,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UiKitRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/laboratoires/': {
+      id: '/laboratoires/'
+      path: '/laboratoires'
+      fullPath: '/laboratoires/'
+      preLoaderRoute: typeof LaboratoiresIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/laboratoires/$id': {
+      id: '/laboratoires/$id'
+      path: '/laboratoires/$id'
+      fullPath: '/laboratoires/$id'
+      preLoaderRoute: typeof LaboratoiresIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CarteRoute: CarteRoute,
   IntegrationRoute: IntegrationRoute,
   LoginRoute: LoginRoute,
   UiKitRoute: UiKitRoute,
+  LaboratoiresIdRoute: LaboratoiresIdRoute,
+  LaboratoiresIndexRoute: LaboratoiresIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -37,6 +37,12 @@ public class Laboratoire {
     @Column(length = 100)
     private String ville;
 
+    @Column
+    private Double latitude;
+
+    @Column
+    private Double longitude;
+
     @Column(length = 50)
     private String telephone;
 

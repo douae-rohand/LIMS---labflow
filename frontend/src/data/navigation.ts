@@ -1,5 +1,4 @@
 export const anchors = [
-  { id: "laboratoires", label: "Laboratoires" },
   { id: "fonctionnalites", label: "Fonctionnalités" },
   { id: "workflow", label: "Workflow" },
   { id: "roles", label: "Rôles" },
@@ -12,7 +11,8 @@ export const footerLinks = [
   {
     title: "Produit",
     links: [
-      { label: "Laboratoires", href: "/#laboratoires" },
+      { label: "Laboratoires", href: "/laboratoires" },
+      { label: "Carte", href: "/carte" },
       { label: "Fonctionnalités", href: "/#fonctionnalites" },
       { label: "Workflow", href: "/#workflow" },
       { label: "Espaces par rôle", href: "/#roles" },

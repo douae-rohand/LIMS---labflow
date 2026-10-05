@@ -8,7 +8,6 @@ import {
   ClipboardList,
   Crown,
   FileSignature,
-  MapPin,
   Microscope,
   ShieldCheck,
   UserCog,
@@ -50,6 +49,8 @@ import {
   slideInRight,
   staggerContainer,
 } from "@/lib/motion";
+import { LaboratoireCard } from "@/components/laboratoires/LaboratoireCard";
+import { LabMap } from "@/components/map/LabMap";
 import { CardsSkeleton, LandingState, StatsSkeleton } from "./LandingState";
 import { AiMockup, ValidationMockup } from "./Mockups";
 import { Photo } from "./Photo";
@@ -141,13 +142,16 @@ export function Stats() {
 export function Laboratoires() {
   const { data, isPending, error, refetch } = useLandingPublic();
   const laboratoires = data?.laboratoires ?? [];
+  const withCoords = laboratoires.filter(
+    (lab) => lab.latitude != null && lab.longitude != null,
+  );
 
   return (
     <Section id="laboratoires">
       <SectionHeader
         eyebrow="Laboratoires"
         title="Laboratoires actifs sur la plateforme"
-        description="Liste réelle des laboratoires au statut ACTIF, lue depuis la base centrale."
+        description="Liste et carte alimentées par les laboratoires ACTIF de la base centrale."
       />
       <div className="mt-12">
         <LandingState
@@ -160,33 +164,30 @@ export function Laboratoires() {
           emptyMessage="Aucun laboratoire actif n'est encore enregistré."
           skeleton={<CardsSkeleton count={3} />}
         >
-          <motion.div {...grid("grid gap-4 sm:grid-cols-2 lg:grid-cols-3")}>
-            {laboratoires.map((lab) => (
-              <motion.div key={lab.id} variants={fadeUp}>
-                <Card variant="glossy" className="h-full">
-                  <div className="flex items-start justify-between gap-3">
-                    <IconBox icon={Building2} variant="brand" />
-                    <Badge size="sm" variant="mint">
-                      {lab.statut}
-                    </Badge>
-                  </div>
-                  <h3 className="mt-4 text-lg font-bold text-ink-900">
-                    {lab.raisonSociale}
-                  </h3>
-                  <p className="mt-1 text-xs font-semibold tracking-wide text-brand-600 uppercase">
-                    {lab.code}
-                  </p>
-                  <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground">
-                    <MapPin className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />
-                    {lab.ville?.trim() ? lab.ville : "Ville non renseignée"}
-                  </p>
-                  {lab.adresse?.trim() ? (
-                    <p className="mt-1 text-sm text-muted-foreground">{lab.adresse}</p>
-                  ) : null}
-                </Card>
-              </motion.div>
-            ))}
-          </motion.div>
+          <div className="flex flex-col gap-8">
+            {withCoords.length > 0 ? (
+              <div className="mx-auto w-full max-w-6xl">
+                <LabMap laboratoires={withCoords} variant="embed" />
+                <div className="mt-4 flex flex-wrap justify-end gap-2">
+                  <Link to="/laboratoires">
+                    <Button variant="secondary">Tous les laboratoires</Button>
+                  </Link>
+                  <Link to="/carte">
+                    <Button variant="secondary" icon={<ArrowRight className="size-4" aria-hidden="true" />}>
+                      Ouvrir la carte complète
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ) : null}
+            <motion.div {...grid("grid gap-4 sm:grid-cols-2 lg:grid-cols-3")}>
+              {laboratoires.map((lab) => (
+                <motion.div key={lab.id} variants={fadeUp}>
+                  <LaboratoireCard laboratoire={lab} />
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
         </LandingState>
       </div>
     </Section>

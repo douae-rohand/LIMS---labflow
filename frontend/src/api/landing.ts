@@ -20,7 +20,12 @@ export type LaboratoirePublic = {
   raisonSociale: string;
   ville?: string | null;
   adresse?: string | null;
+  telephone?: string | null;
+  email?: string | null;
+  ice?: string | null;
   statut: string;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export type LandingStatistiques = {
@@ -36,7 +41,7 @@ export type LandingPublic = {
   statutsDemande: string[];
 };
 
-function unwrap<T>(envelope: ApiEnvelope<T>, fallbackMessage: string): T {
+export function unwrapApi<T>(envelope: ApiEnvelope<T>, fallbackMessage: string): T {
   if (!envelope.success || envelope.data == null) {
     throw new Error(envelope.message ?? fallbackMessage);
   }
@@ -45,7 +50,7 @@ function unwrap<T>(envelope: ApiEnvelope<T>, fallbackMessage: string): T {
 
 export async function fetchLandingPublic(): Promise<LandingPublic> {
   const envelope = await apiClient.get<ApiEnvelope<LandingPublic>>("/public/landing");
-  const payload = unwrap(envelope, "Impossible de charger les données de la landing");
+  const payload = unwrapApi(envelope, "Impossible de charger les données de la landing");
   return {
     statistiques: payload.statistiques,
     roles: payload.roles ?? [],

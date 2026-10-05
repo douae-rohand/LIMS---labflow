@@ -48,6 +48,8 @@ class PlateformeServiceLandingTest {
                         .raisonSociale("Laboratoire Atlas")
                         .ville("Casablanca")
                         .statut("ACTIF")
+                        .latitude(33.5892)
+                        .longitude(-7.6186)
                         .build()
         ));
 
@@ -60,6 +62,8 @@ class PlateformeServiceLandingTest {
         assertEquals("Client", dto.getRoles().getFirst().getLibelle());
         assertEquals("Laboratoire Atlas", dto.getLaboratoires().getFirst().getRaisonSociale());
         assertEquals("Casablanca", dto.getLaboratoires().getFirst().getVille());
+        assertEquals(33.5892, dto.getLaboratoires().getFirst().getLatitude());
+        assertEquals(-7.6186, dto.getLaboratoires().getFirst().getLongitude());
         assertTrue(dto.getStatutsDemande().contains("SOUMISE"));
         assertTrue(dto.getStatutsDemande().contains("ACCEPTEE"));
     }

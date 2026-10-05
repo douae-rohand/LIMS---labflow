@@ -3,8 +3,11 @@ package com.backend.modules.plateforme.service;
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.common.exception.UnauthorizedTenantException;
+import com.backend.common.tenant.TenantExecutor;
 import com.backend.common.tenant.TenantProvisioner;
 import com.backend.modules.demande.entity.StatutDemande;
+import com.backend.modules.essai.entity.Essai;
+import com.backend.modules.essai.repository.EssaiRepository;
 import com.backend.modules.plateforme.dto.*;
 import com.backend.modules.plateforme.entity.*;
 import com.backend.modules.plateforme.repository.*;
@@ -34,6 +37,8 @@ public class PlateformeService {
     private final DemandeIntegrationRepository demandeIntegrationRepository;
     private final RoleRepository roleRepository;
     private final TenantProvisioner tenantProvisioner;
+    private final TenantExecutor tenantExecutor;
+    private final EssaiRepository essaiRepository;
 
     @Transactional
     public LaboratoireDto creerLaboratoire(CreerLaboratoireRequest request) {
@@ -66,6 +71,28 @@ public class PlateformeService {
         return laboratoireRepository.findByStatutOrderByRaisonSocialeAsc(STATUT_ACTIF).stream()
                 .map(this::toPublicDto)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public LaboratoirePublicDto trouverPublicParId(Long id) {
+        return toPublicDto(exigerLaboratoireActif(id));
+    }
+
+    public List<AnalysePubliqueDto> listerAnalysesPubliques(Long laboratoireId) {
+        Laboratoire lab = tenantExecutor.inCentral(() -> exigerLaboratoireActif(laboratoireId));
+        return tenantExecutor.inTenant(lab.getNomSchema(), () ->
+                essaiRepository.findActifsAvecDomaine().stream()
+                        .map(this::toAnalysePubliqueDto)
+                        .toList());
+    }
+
+    private Laboratoire exigerLaboratoireActif(Long id) {
+        Laboratoire lab = laboratoireRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Laboratoire", "id", id));
+        if (!STATUT_ACTIF.equals(lab.getStatut())) {
+            throw new ResourceNotFoundException("Laboratoire", "id", id);
+        }
+        return lab;
     }
 
     /**
@@ -197,7 +224,28 @@ public class PlateformeService {
                 .raisonSociale(l.getRaisonSociale())
                 .ville(l.getVille())
                 .adresse(l.getAdresse())
+                .telephone(l.getTelephone())
+                .email(l.getEmail())
+                .ice(l.getIce())
                 .statut(l.getStatut())
+                .latitude(l.getLatitude())
+                .longitude(l.getLongitude())
+                .build();
+    }
+
+    private AnalysePubliqueDto toAnalysePubliqueDto(Essai essai) {
+        return AnalysePubliqueDto.builder()
+                .id(essai.getId())
+                .code(essai.getCode())
+                .designation(essai.getDesignation())
+                .description(essai.getDescription())
+                .methode(essai.getMethode())
+                .domaineCode(essai.getDomaine() != null ? essai.getDomaine().getCode() : null)
+                .domaineLibelle(essai.getDomaine() != null ? essai.getDomaine().getLibelle() : null)
+                .tarif(essai.getTarif())
+                .dureeEstimee(essai.getDureeEstimee())
+                .unite(essai.getUnite())
+                .actif(essai.getActif())
                 .build();
     }
 
