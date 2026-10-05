@@ -122,7 +122,15 @@ public class JwtTokenProvider {
     }
 
     private SecretKey getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(jwtConfig.getSecret());
+        byte[] keyBytes;
+        try {
+            keyBytes = Decoders.BASE64.decode(jwtConfig.getSecret());
+        } catch (Exception ex) {
+            keyBytes = jwtConfig.getSecret().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException("JWT_SECRET trop court : la clé doit contenir au moins 32 octets (256 bits) après décodage pour la sécurité HS256/HS512. Taille actuelle : " + keyBytes.length + " octets.");
+        }
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }

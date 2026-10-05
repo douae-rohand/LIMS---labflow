@@ -1,36 +1,36 @@
 package com.backend.modules.auth.controller;
 
 import com.backend.common.dto.ApiResponse;
+import com.backend.common.exception.BusinessRuleException;
 import com.backend.modules.auth.dto.*;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
 import com.backend.modules.auth.service.AuthService;
+import com.backend.modules.auth.service.RefreshCookieService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 /**
- * Endpoints d'authentification.
- *
- * <p>Base path : {@code /api/auth}
- * <ul>
- *   <li>{@code /login}, {@code /refresh}, {@code /2fa/valider} — publics</li>
- *   <li>{@code /2fa/setup}, {@code /2fa/activer} — acceptent twoFactorToken (dans le body) ou Access Token (Bearer)</li>
- *   <li>{@code /logout} — nécessite un Access Token valide (Bearer)</li>
- * </ul>
+ * Endpoints d'authentification (briques JWT & Cookie HttpOnly).
  */
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@Tag(name = "Authentification", description = "Login, refresh token, 2FA, logout")
+@Tag(name = "Authentification", description = "Login, refresh token via cookie HttpOnly, 2FA, logout")
 public class AuthController {
 
     private final AuthService authService;
+    private final RefreshCookieService refreshCookieService;
 
     // -------------------------------------------------------------------------
     // Connexion
@@ -41,8 +41,18 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResponse>> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest) {
-        LoginResponse response = authService.login(request, httpRequest);
-        return ResponseEntity.ok(ApiResponse.success("Connexion réussie", response));
+        Object result = authService.login(request, httpRequest);
+
+        if (result instanceof AuthService.LoginResult loginResult) {
+            ResponseCookie cookie = refreshCookieService.creerCookieRefreshToken(loginResult.rawRefreshToken());
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(ApiResponse.success("Connexion réussie", loginResult.response()));
+        } else if (result instanceof LoginResponse response) {
+            return ResponseEntity.ok(ApiResponse.success("Vérification 2FA requise", response));
+        }
+
+        throw new IllegalStateException("Résultat de connexion inattendu");
     }
 
     // -------------------------------------------------------------------------
@@ -54,35 +64,59 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResponse>> validerTwoFactor(
             @Valid @RequestBody TwoFactorRequest request,
             HttpServletRequest httpRequest) {
-        LoginResponse response = authService.validerTwoFactor(request, httpRequest);
-        return ResponseEntity.ok(ApiResponse.success("2FA validée", response));
+        AuthService.LoginResult loginResult = authService.validerTwoFactor(request, httpRequest);
+        ResponseCookie cookie = refreshCookieService.creerCookieRefreshToken(loginResult.rawRefreshToken());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(ApiResponse.success("2FA validée", loginResult.response()));
     }
 
     // -------------------------------------------------------------------------
-    // Refresh token
+    // Refresh token (sans corps, via Cookie HttpOnly)
     // -------------------------------------------------------------------------
 
     @PostMapping("/refresh")
-    @Operation(summary = "Renouvellement du token d'accès (rotation)")
-    public ResponseEntity<ApiResponse<LoginResponse>> refreshToken(
-            @Valid @RequestBody RefreshTokenRequest request,
-            HttpServletRequest httpRequest) {
-        LoginResponse response = authService.refreshToken(request, httpRequest);
-        return ResponseEntity.ok(ApiResponse.success("Token renouvelé", response));
+    @Operation(summary = "Renouvellement du token d'accès via le cookie HttpOnly refreshToken")
+    public ResponseEntity<ApiResponse<LoginResponse>> refreshToken(HttpServletRequest httpRequest) {
+        Optional<String> optionalRefreshToken = refreshCookieService.extraireRefreshToken(httpRequest);
+        if (optionalRefreshToken.isEmpty()) {
+            ResponseCookie clearCookie = refreshCookieService.effacerCookieRefreshToken();
+            return ResponseEntity.status(401)
+                    .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                    .body(ApiResponse.error("Jeton de rafraîchissement absent"));
+        }
+
+        try {
+            AuthService.LoginResult loginResult = authService.refreshToken(optionalRefreshToken.get(), httpRequest);
+            ResponseCookie cookie = refreshCookieService.creerCookieRefreshToken(loginResult.rawRefreshToken());
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(ApiResponse.success("Token renouvelé", loginResult.response()));
+        } catch (BusinessRuleException ex) {
+            ResponseCookie clearCookie = refreshCookieService.effacerCookieRefreshToken();
+            return ResponseEntity.status(401)
+                    .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                    .body(ApiResponse.error("Jeton révoqué ou invalide. Veuillez vous reconnecter."));
+        }
     }
 
     // -------------------------------------------------------------------------
-    // Logout — nécessite un access token valide
+    // Logout — nécessite un access token valide (Bearer) + efface le cookie
     // -------------------------------------------------------------------------
 
     @PostMapping("/logout")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Déconnexion (révocation du refresh token)")
+    @Operation(summary = "Déconnexion (révocation du refresh token du cookie et effacement du cookie)")
     public ResponseEntity<ApiResponse<Void>> logout(
-            @Valid @RequestBody RefreshTokenRequest request,
+            HttpServletRequest httpRequest,
             @AuthenticationPrincipal UtilisateurPrincipal principal) {
-        authService.logout(request.getRefreshToken(), principal);
-        return ResponseEntity.ok(ApiResponse.success("Déconnexion réussie", null));
+        Optional<String> optionalRefreshToken = refreshCookieService.extraireRefreshToken(httpRequest);
+        optionalRefreshToken.ifPresent(token -> authService.logout(token, principal));
+
+        ResponseCookie clearCookie = refreshCookieService.effacerCookieRefreshToken();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                .body(ApiResponse.success("Déconnexion réussie", null));
     }
 
     // -------------------------------------------------------------------------
@@ -106,13 +140,16 @@ public class AuthController {
 
     @PostMapping("/2fa/activer")
     @Operation(summary = "Active la 2FA après vérification du premier code TOTP")
-    public ResponseEntity<ApiResponse<Object>> activerTwoFactor(
+    public ResponseEntity<ApiResponse<LoginResponse>> activerTwoFactor(
             @Valid @RequestBody ActivateTwoFactorRequest request,
             @AuthenticationPrincipal UtilisateurPrincipal principal,
             HttpServletRequest httpRequest) {
-        LoginResponse response = authService.activerTwoFactor(request, principal, httpRequest);
-        if (response != null) {
-            return ResponseEntity.ok(ApiResponse.success("2FA activée avec succès. Connexion établie.", response));
+        AuthService.LoginResult loginResult = authService.activerTwoFactor(request, principal, httpRequest);
+        if (loginResult != null) {
+            ResponseCookie cookie = refreshCookieService.creerCookieRefreshToken(loginResult.rawRefreshToken());
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(ApiResponse.success("2FA activée avec succès. Connexion établie.", loginResult.response()));
         }
         return ResponseEntity.ok(ApiResponse.success("2FA activée avec succès", null));
     }

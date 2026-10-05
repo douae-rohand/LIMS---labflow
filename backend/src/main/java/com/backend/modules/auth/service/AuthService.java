@@ -44,7 +44,7 @@ public class AuthService {
     // -------------------------------------------------------------------------
 
     @Transactional
-    public LoginResponse login(LoginRequest request, HttpServletRequest httpRequest) {
+    public Object login(LoginRequest request, HttpServletRequest httpRequest) {
         Authentication authentication;
         try {
             authentication = authenticationManager.authenticate(
@@ -101,7 +101,7 @@ public class AuthService {
 
         // Cas (c) : 2FA non requis -> émission des jetons finaux
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        return buildLoginResponse(principal, httpRequest);
+        return buildLoginResult(principal, httpRequest);
     }
 
     /**
@@ -116,7 +116,7 @@ public class AuthService {
     // -------------------------------------------------------------------------
 
     @Transactional
-    public LoginResponse validerTwoFactor(TwoFactorRequest request, HttpServletRequest httpRequest) {
+    public LoginResult validerTwoFactor(TwoFactorRequest request, HttpServletRequest httpRequest) {
         // Refuser un access token utilisé comme twoFactorToken
         if (jwtTokenProvider.validateToken(request.getTwoFactorToken(), "access")) {
             throw new BusinessRuleException("2FA_TOKEN_INVALID", "Un token d'accès ne peut pas être utilisé comme twoFactorToken");
@@ -150,7 +150,7 @@ public class AuthService {
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 principal, null, principal.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        return buildLoginResponse(principal, httpRequest);
+        return buildLoginResult(principal, httpRequest);
     }
 
     // -------------------------------------------------------------------------
@@ -169,7 +169,7 @@ public class AuthService {
     // -------------------------------------------------------------------------
 
     @Transactional
-    public LoginResponse activerTwoFactor(ActivateTwoFactorRequest request, UtilisateurPrincipal principal, HttpServletRequest httpRequest) {
+    public LoginResult activerTwoFactor(ActivateTwoFactorRequest request, UtilisateurPrincipal principal, HttpServletRequest httpRequest) {
         Utilisateur utilisateur = getUtilisateurFromRequestOrPrincipal(request != null ? request.twoFactorToken() : null, principal);
         twoFactorService.activerTotp(utilisateur, request.code());
 
@@ -179,7 +179,7 @@ public class AuthService {
             Authentication authentication = new UsernamePasswordAuthenticationToken(
                     userPrincipal, null, userPrincipal.getAuthorities());
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            return buildLoginResponse(userPrincipal, httpRequest);
+            return buildLoginResult(userPrincipal, httpRequest);
         }
 
         return null;
@@ -204,19 +204,25 @@ public class AuthService {
         }
     }
 
+    public record LoginResult(LoginResponse response, String rawRefreshToken) {}
+
     // -------------------------------------------------------------------------
     // Refresh token (rotation)
     // -------------------------------------------------------------------------
 
-    @Transactional
-    public LoginResponse refreshToken(RefreshTokenRequest request, HttpServletRequest httpRequest) {
+    @Transactional(noRollbackFor = BusinessRuleException.class)
+    public LoginResult refreshToken(String rawRefreshToken, HttpServletRequest httpRequest) {
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            throw new BusinessRuleException("REFRESH_TOKEN_INVALID", "Refresh token absent des cookies");
+        }
+
         // Refuser un twoFactorToken utilisé comme refresh token
-        if (jwtTokenProvider.validateToken(request.getRefreshToken(), "2fa")) {
+        if (jwtTokenProvider.validateToken(rawRefreshToken, "2fa")) {
             throw new BusinessRuleException("REFRESH_TOKEN_INVALID", "Un token 2FA ne peut pas être utilisé comme refresh token");
         }
 
         RefreshTokenService.RotationResult rotation =
-                refreshTokenService.rotation(request.getRefreshToken(), userAgent(httpRequest));
+                refreshTokenService.rotation(rawRefreshToken, userAgent(httpRequest));
 
         UtilisateurPrincipal principal =
                 (UtilisateurPrincipal) userDetailsService.loadUserByUsername(rotation.email());
@@ -225,9 +231,8 @@ public class AuthService {
                 principal, null, principal.getAuthorities());
         String accessToken = jwtTokenProvider.generateAccessToken(authentication);
 
-        return LoginResponse.builder()
+        LoginResponse response = LoginResponse.builder()
                 .accessToken(accessToken)
-                .refreshToken(rotation.nouveauToken())
                 .expiresIn(jwtConfig.getExpiration() / 1000)
                 .userId(principal.getId())
                 .email(principal.getEmail())
@@ -236,6 +241,8 @@ public class AuthService {
                 .tenantId(principal.getNomSchema())
                 .mustChangePassword(principal.isMustChangePassword())
                 .build();
+
+        return new LoginResult(response, rotation.nouveauToken());
     }
 
     // -------------------------------------------------------------------------
@@ -247,7 +254,9 @@ public class AuthService {
         if (principal == null) {
             throw new BusinessRuleException("UNAUTHORIZED", "Authentification d'accès requise pour la déconnexion");
         }
-        refreshTokenService.revoquer(rawRefreshToken, principal.getId());
+        if (rawRefreshToken != null && !rawRefreshToken.isBlank()) {
+            refreshTokenService.revoquer(rawRefreshToken, principal.getId());
+        }
         SecurityContextHolder.clearContext();
         log.info("Logout — refresh token révoqué pour userId={}", principal.getId());
     }
@@ -256,7 +265,7 @@ public class AuthService {
     // Helpers privés
     // -------------------------------------------------------------------------
 
-    private LoginResponse buildLoginResponse(UtilisateurPrincipal principal, HttpServletRequest httpRequest) {
+    public LoginResult buildLoginResult(UtilisateurPrincipal principal, HttpServletRequest httpRequest) {
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 principal, null, principal.getAuthorities());
         String accessToken = jwtTokenProvider.generateAccessToken(authentication);
@@ -269,9 +278,8 @@ public class AuthService {
             utilisateurRepository.save(utilisateur);
         });
 
-        return LoginResponse.builder()
+        LoginResponse response = LoginResponse.builder()
                 .accessToken(accessToken)
-                .refreshToken(refreshToken)
                 .expiresIn(jwtConfig.getExpiration() / 1000)
                 .userId(principal.getId())
                 .email(principal.getEmail())
@@ -280,6 +288,8 @@ public class AuthService {
                 .tenantId(principal.getNomSchema())
                 .mustChangePassword(principal.isMustChangePassword())
                 .build();
+
+        return new LoginResult(response, refreshToken);
     }
 
     private static String userAgent(HttpServletRequest request) {

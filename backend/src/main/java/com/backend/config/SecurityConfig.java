@@ -44,6 +44,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final OriginValidationFilter originValidationFilter;
     private final UserDetailsService userDetailsService;
     private final CorsConfigurationSource corsConfigurationSource;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
@@ -97,6 +98,8 @@ public class SecurityConfig {
             )
             // Fournisseur d'authentification DAO
             .authenticationProvider(authenticationProvider())
+            // Defense-in-depth Origin check
+            .addFilterBefore(originValidationFilter, UsernamePasswordAuthenticationFilter.class)
             // Filtre JWT avant le filtre Spring par défaut
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

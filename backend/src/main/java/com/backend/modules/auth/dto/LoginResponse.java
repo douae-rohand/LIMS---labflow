@@ -20,9 +20,6 @@ public class LoginResponse {
     /** Token JWT d'accès (null si 2FA requise). */
     private String accessToken;
 
-    /** Refresh token (null si 2FA requise). */
-    private String refreshToken;
-
     @Builder.Default
     private String tokenType = "Bearer";
 
