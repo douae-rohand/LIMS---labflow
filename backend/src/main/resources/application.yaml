@@ -44,7 +44,9 @@ spring:
     locations: classpath:db/migration/central
     baseline-on-migrate: true
     validate-on-migrate: true
-    out-of-order: false
+    # Permet d'appliquer une version intercalée après un merge (ex. V20 2FA
+    # alors que V21/V22 sont déjà en base).
+    out-of-order: true
 
   # ============================================================
   # Email via SendGrid SMTP relay
