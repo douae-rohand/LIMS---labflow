@@ -2,124 +2,103 @@ package com.backend.integration.sendgrid;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
+import java.time.Instant;
 import java.util.List;
 
 /**
- * Service d'envoi d'emails via SendGrid SMTP relay (spring-boot-starter-mail).
- *
- * <p>La configuration SMTP pointe sur {@code smtp.sendgrid.net:587} avec
- * {@code username=apikey} et {@code password=<SG.xxx>} dans application.yaml.
- *
- * <p>Tous les envois sont asynchrones pour ne pas bloquer le thread HTTP.
+ * Façade métier d'envoi d'e-mails via l'API SendGrid v3.
+ * Un seul mécanisme d'envoi : {@link SendGridMailClient}.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailService {
 
-    private final JavaMailSender mailSender;
+    private final SendGridMailClient sendGridMailClient;
 
-    @Value("${spring.mail.username:no-reply@lims.local}")
-    private String expediteurDefaut;
-
-    // -------------------------------------------------------------------------
-    // Envoi simple (texte brut)
-    // -------------------------------------------------------------------------
-
-    @Async
-    public void envoyerSimple(String destinataire, String sujet, String corps) {
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(expediteurDefaut);
-            message.setTo(destinataire);
-            message.setSubject(sujet);
-            message.setText(corps);
-            mailSender.send(message);
-            log.info("Email simple envoyé à : {}", destinataire);
-        } catch (MailException ex) {
-            log.error("Erreur envoi email simple à {} : {}", destinataire, ex.getMessage());
-        }
+    public ResultatEnvoiEmail envoyerHtml(List<String> destinataires, String sujet, String corpsHtml) {
+        return sendGridMailClient.envoyer(destinataires, sujet, corpsHtml, EmailTemplates.texteBrut(corpsHtml));
     }
 
-    // -------------------------------------------------------------------------
-    // Envoi HTML
-    // -------------------------------------------------------------------------
-
-    @Async
-    public void envoyerHtml(String destinataire, String sujet, String corpsHtml) {
-        envoyerHtml(List.of(destinataire), sujet, corpsHtml);
+    public ResultatEnvoiEmail envoyerHtml(String destinataire, String sujet, String corpsHtml) {
+        return envoyerHtml(destinataire == null ? List.of() : List.of(destinataire), sujet, corpsHtml);
     }
 
     @Async
-    public void envoyerHtml(List<String> destinataires, String sujet, String corpsHtml) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom(expediteurDefaut);
-            helper.setTo(destinataires.toArray(new String[0]));
-            helper.setSubject(sujet);
-            helper.setText(corpsHtml, true);
-            mailSender.send(message);
-            log.info("Email HTML envoyé à {} destinataire(s)", destinataires.size());
-        } catch (MessagingException | MailException ex) {
-            log.error("Erreur envoi email HTML : {}", ex.getMessage());
-        }
+    public void envoyerHtmlAsync(List<String> destinataires, String sujet, String corpsHtml) {
+        envoyerHtml(destinataires, sujet, corpsHtml);
     }
 
-    // -------------------------------------------------------------------------
-    // Templates métier
-    // -------------------------------------------------------------------------
+    public ResultatEnvoiEmail envoyerConfirmationDemandeIntegration(List<String> destinataires,
+                                                                   String nomContact,
+                                                                   String nomLaboratoire,
+                                                                   String numero,
+                                                                   String ville,
+                                                                   int nombreDocuments,
+                                                                   Instant dateSoumission) {
+        String sujet = "[LabFlow] Demande " + numero + " reçue";
+        String html = EmailTemplates.confirmationDemande(
+                nomContact, nomLaboratoire, numero, ville, nombreDocuments, dateSoumission);
+        return envoyerHtml(destinataires, sujet, html);
+    }
+
+    public ResultatEnvoiEmail envoyerAcceptationDemandeIntegration(List<String> destinataires,
+                                                                  String nomContact,
+                                                                  String nomLaboratoire,
+                                                                  String numero,
+                                                                  String ville,
+                                                                  Instant dateTraitement) {
+        String sujet = "[LabFlow] Demande " + numero + " acceptée";
+        String html = EmailTemplates.acceptation(
+                nomContact, nomLaboratoire, numero, ville, dateTraitement, null, 0);
+        return envoyerHtml(destinataires, sujet, html);
+    }
+
+    public ResultatEnvoiEmail envoyerRefusDemandeIntegration(List<String> destinataires,
+                                                             String nomContact,
+                                                             String nomLaboratoire,
+                                                             String numero,
+                                                             Instant dateTraitement,
+                                                             String motif) {
+        String sujet = "[LabFlow] Demande " + numero + " refusée";
+        String html = EmailTemplates.refus(nomContact, nomLaboratoire, numero, dateTraitement, motif);
+        return envoyerHtml(destinataires, sujet, html);
+    }
+
+    public ResultatEnvoiEmail envoyerInvitationAdministrateur(String email, String nomComplet,
+                                                              String nomLaboratoire,
+                                                              String lienActivation, int ttlHeures) {
+        String sujet = "[LabFlow] Activez le compte administrateur de " + nomLaboratoire;
+        String html = EmailTemplates.invitationAdministrateur(
+                nomComplet, nomLaboratoire, lienActivation, ttlHeures);
+        return envoyerHtml(email, sujet, html);
+    }
+
+    public ResultatEnvoiEmail envoyerTest(String destinataire) {
+        String sujet = "[LabFlow] Test de configuration SendGrid";
+        return envoyerHtml(destinataire, sujet, EmailTemplates.testConfiguration(destinataire));
+    }
 
     @Async
     public void envoyerNotificationDemande(String email, String nomClient,
-                                            String referenceDemande, String statut) {
-        String sujet = "[LIMS] Demande " + referenceDemande + " – " + statut;
-        String corps = String.format("""
-                <html><body>
-                <p>Bonjour %s,</p>
-                <p>Votre demande <strong>%s</strong> a changé de statut : <strong>%s</strong>.</p>
-                <p>Connectez-vous à votre espace LIMS pour plus de détails.</p>
-                <br><p>L'équipe LIMS</p>
-                </body></html>
-                """, nomClient, referenceDemande, statut);
-        envoyerHtml(email, sujet, corps);
+                                           String referenceDemande, String statut) {
+        String sujet = "[LabFlow] Demande " + referenceDemande + " – " + statut;
+        envoyerHtml(email, sujet, EmailTemplates.notificationDemande(nomClient, referenceDemande, statut));
     }
 
     @Async
     public void envoyerRapportDisponible(String email, String nomClient,
-                                          String referenceRapport, String lienRapport) {
-        String sujet = "[LIMS] Votre rapport " + referenceRapport + " est disponible";
-        String corps = String.format("""
-                <html><body>
-                <p>Bonjour %s,</p>
-                <p>Votre rapport d'analyse <strong>%s</strong> est prêt.</p>
-                <p><a href="%s">Télécharger le rapport</a></p>
-                <br><p>L'équipe LIMS</p>
-                </body></html>
-                """, nomClient, referenceRapport, lienRapport);
-        envoyerHtml(email, sujet, corps);
+                                         String referenceRapport, String lienRapport) {
+        String sujet = "[LabFlow] Votre rapport " + referenceRapport + " est disponible";
+        envoyerHtml(email, sujet, EmailTemplates.rapportDisponible(nomClient, referenceRapport, lienRapport));
     }
 
     @Async
     public void envoyerCodeOtp(String email, String code, int ttlMinutes) {
-        String sujet = "[LIMS] Code de vérification";
-        String corps = String.format("""
-                <html><body>
-                <p>Votre code de vérification est : <strong style="font-size:24px">%s</strong></p>
-                <p>Ce code expire dans %d minutes.</p>
-                <p>Si vous n'avez pas demandé ce code, ignorez cet email.</p>
-                </body></html>
-                """, code, ttlMinutes);
-        envoyerHtml(email, sujet, corps);
+        String sujet = "[LabFlow] Code de vérification";
+        envoyerHtml(email, sujet, EmailTemplates.codeOtp(code, ttlMinutes));
     }
 }

@@ -12,4 +12,6 @@ public interface DemandeIntegrationRepository extends JpaRepository<DemandeInteg
     Page<DemandeIntegration> findByStatut(String statut, Pageable pageable);
 
     boolean existsByContactEmailAndStatut(String contactEmail, String statut);
+
+    boolean existsByIceAndStatut(String ice, String statut);
 }

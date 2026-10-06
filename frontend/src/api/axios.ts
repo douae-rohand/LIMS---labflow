@@ -203,6 +203,14 @@ export class ApiClient {
     return response.data;
   }
 
+  async getBlob(url: string, timeout = 0): Promise<Blob> {
+    const response = await this.http.get<Blob>(url, {
+      responseType: "blob",
+      timeout,
+    });
+    return response.data;
+  }
+
   /**
    * POST utilisé UNIQUEMENT pour le refresh.
    * Retourne la réponse Axios brute (pas de déballage) pour que doRefresh()

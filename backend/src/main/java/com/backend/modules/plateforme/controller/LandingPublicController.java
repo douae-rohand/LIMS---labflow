@@ -2,6 +2,8 @@ package com.backend.modules.plateforme.controller;
 
 import com.backend.common.dto.ApiResponse;
 import com.backend.modules.plateforme.dto.LandingPublicDto;
+import com.backend.modules.plateforme.dto.TypeDocumentIntegrationDto;
+import com.backend.modules.plateforme.service.DemandeIntegrationService;
 import com.backend.modules.plateforme.service.PlateformeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -10,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * Données publiques de la landing page.
@@ -22,10 +26,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class LandingPublicController {
 
     private final PlateformeService plateformeService;
+    private final DemandeIntegrationService demandeIntegrationService;
 
     @GetMapping("/landing")
     @Operation(summary = "Agrégat landing : statistiques, rôles, laboratoires actifs, statuts de demande")
     public ResponseEntity<ApiResponse<LandingPublicDto>> obtenirLanding() {
         return ResponseEntity.ok(ApiResponse.success(plateformeService.obtenirLandingPublic()));
+    }
+
+    @GetMapping("/integration/documents-requis")
+    @Operation(summary = "Liste des 6 documents officiels exigés pour l'intégration d'un laboratoire")
+    public ResponseEntity<ApiResponse<List<TypeDocumentIntegrationDto>>> documentsRequis() {
+        return ResponseEntity.ok(ApiResponse.success(demandeIntegrationService.listerDocumentsRequis()));
     }
 }
