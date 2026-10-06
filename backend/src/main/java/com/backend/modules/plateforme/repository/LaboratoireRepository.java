@@ -17,6 +17,10 @@ public interface LaboratoireRepository extends JpaRepository<Laboratoire, Long> 
 
     boolean existsByCode(String code);
 
+    boolean existsByIce(String ice);
+
+    boolean existsByEmailIgnoreCase(String email);
+
     Page<Laboratoire> findByStatut(String statut, Pageable pageable);
 
     java.util.List<Laboratoire> findByStatutOrderByRaisonSocialeAsc(String statut);

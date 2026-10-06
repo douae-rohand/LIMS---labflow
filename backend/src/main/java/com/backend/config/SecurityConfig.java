@@ -81,6 +81,8 @@ public class SecurityConfig {
                     "/api/auth/2fa/valider",
                     "/api/auth/2fa/setup",
                     "/api/auth/2fa/activer",
+                    "/api/auth/compte/activer",
+                    "/api/auth/compte/activer/verifier",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/v3/api-docs/**",

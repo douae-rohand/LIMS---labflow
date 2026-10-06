@@ -1,34 +1,64 @@
 package com.backend.modules.plateforme.dto;
 
 import com.backend.modules.plateforme.entity.StatutIntegration;
-import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class DemandeIntegrationDto {
     private Long id;
-
-    @NotBlank @Size(max = 200)
-    private String nomLaboratoire;
-
-    @NotBlank @Email @Size(max = 180)
-    private String emailRepresentant;
-
-    @Size(max = 200)
-    private String nomRepresentant;
-
-    @Size(max = 20)
-    private String telephoneRepresentant;
-
-    private String message;
-
+    private String numero;
     private StatutIntegration statut;
-    private String commentaireAdmin;
     private Instant dateSoumission;
     private Instant dateTraitement;
+    private String motifRefus;
+    private String commentaireAdmin;
+
+    private String nomLaboratoire;
+    private String raisonSociale;
+    private String typeLaboratoire;
+    @Builder.Default
+    private List<String> typesLaboratoire = new ArrayList<>();
+    private String ice;
+    private String telephoneLaboratoire;
+    private String emailLaboratoire;
+    private String siteWeb;
+    private String informationsComplementaires;
+
+    private String adresse;
+    private String ville;
+    private String region;
+    private String pays;
+    private String codePostal;
+    private Double latitude;
+    private Double longitude;
+
+    private String adminNom;
+    private String adminPrenom;
+    private String adminEmail;
+    private String adminTelephone;
+    private String adminFonction;
+    private String adminCin;
+
+    /** Champs historiques conservés pour compatibilité. */
+    private String emailRepresentant;
+    private String nomRepresentant;
+    private String telephoneRepresentant;
+    private String message;
+
+    private Long laboratoireId;
+    private String laboratoireCode;
+    private String nomSchema;
+
+    @Builder.Default
+    private List<DocumentIntegrationDto> documents = new ArrayList<>();
 }

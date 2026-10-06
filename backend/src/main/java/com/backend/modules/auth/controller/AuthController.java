@@ -4,6 +4,7 @@ import com.backend.common.dto.ApiResponse;
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.modules.auth.dto.*;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
+import com.backend.modules.auth.service.ActivationCompteService;
 import com.backend.modules.auth.service.AuthService;
 import com.backend.modules.auth.service.MotDePasseService;
 import com.backend.modules.auth.service.RefreshCookieService;
@@ -33,6 +34,7 @@ public class AuthController {
     private final AuthService authService;
     private final MotDePasseService motDePasseService;
     private final RefreshCookieService refreshCookieService;
+    private final ActivationCompteService activationCompteService;
 
     // -------------------------------------------------------------------------
     // Connexion
@@ -172,5 +174,22 @@ public class AuthController {
                     .body(ApiResponse.success("2FA activée avec succès. Connexion établie.", loginResult.response()));
         }
         return ResponseEntity.ok(ApiResponse.success("2FA activée avec succès", null));
+    }
+
+    @PostMapping("/compte/activer/verifier")
+    @Operation(summary = "Vérifie un jeton d'activation de compte (public)")
+    public ResponseEntity<ApiResponse<Void>> verifierActivation(
+            @RequestParam String token) {
+        activationCompteService.verifier(token);
+        return ResponseEntity.ok(ApiResponse.success("Jeton d'activation valide", null));
+    }
+
+    @PostMapping("/compte/activer")
+    @Operation(summary = "Active un compte administrateur et définit le mot de passe (public)")
+    public ResponseEntity<ApiResponse<Void>> activerCompte(
+            @Valid @RequestBody ActiverCompteRequest request) {
+        activationCompteService.activer(request.getToken(), request.getMotDePasse());
+        return ResponseEntity.ok(ApiResponse.success(
+                "Compte activé. Vous pouvez maintenant vous connecter.", null));
     }
 }

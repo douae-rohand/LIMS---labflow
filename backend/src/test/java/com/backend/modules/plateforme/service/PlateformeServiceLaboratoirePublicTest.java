@@ -9,7 +9,6 @@ import com.backend.modules.essai.repository.EssaiRepository;
 import com.backend.modules.plateforme.dto.AnalysePubliqueDto;
 import com.backend.modules.plateforme.dto.LaboratoirePublicDto;
 import com.backend.modules.plateforme.entity.Laboratoire;
-import com.backend.modules.plateforme.repository.DemandeIntegrationRepository;
 import com.backend.modules.plateforme.repository.LaboratoireRepository;
 import com.backend.modules.utilisateur.repository.RoleRepository;
 import org.junit.jupiter.api.Test;
@@ -34,8 +33,6 @@ class PlateformeServiceLaboratoirePublicTest {
 
     @Mock
     private LaboratoireRepository laboratoireRepository;
-    @Mock
-    private DemandeIntegrationRepository demandeIntegrationRepository;
     @Mock
     private RoleRepository roleRepository;
     @Mock
