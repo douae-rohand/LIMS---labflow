@@ -140,6 +140,24 @@ export interface ChangerMotDePasseBody {
 }
 
 // ---------------------------------------------------------------------------
+// Corps inscription
+// ---------------------------------------------------------------------------
+
+/** Correspond exactement aux champs acceptés par InscriptionRequest.java.
+ *  La version du consentement est fixée côté serveur — ne pas l'envoyer. */
+export interface InscriptionBody {
+  typeClient: 'PARTICULIER' | 'ENTREPRISE';
+  nom: string;
+  prenom: string;  email: string;
+  telephone: string;
+  motDePasse: string;
+  consentementCndp: true;
+  raisonSociale?: string | undefined;
+  ice?: string | undefined;
+  adresse?: string | undefined;
+}
+
+// ---------------------------------------------------------------------------
 // Fonctions API
 // ---------------------------------------------------------------------------
 
@@ -227,6 +245,23 @@ export async function verifierJetonActivation(token: string): Promise<void> {
 
 export async function activerCompte(token: string, motDePasse: string): Promise<void> {
   await apiClient.post<ApiResponse<null>>("/auth/compte/activer", { token, motDePasse });
+}
+
+/**
+ * Inscription publique d'un client.
+ * Retourne toujours 202 — ne révèle pas si l'email existe déjà.
+ * En cas de 400, le backend retourne { data: Map<champ, message> }.
+ */
+export async function inscrire(body: InscriptionBody): Promise<void> {
+  await apiClient.post<ApiResponse<null>>('/auth/inscription', body);
+}
+
+/**
+ * Confirme l'adresse email via le jeton reçu par email.
+ * 200 = succès ; 400 = lien invalide, expiré ou déjà utilisé.
+ */
+export async function confirmerActivation(token: string): Promise<void> {
+  await apiClient.post<ApiResponse<null>>('/auth/activation/confirmer', { token });
 }
 
 /**

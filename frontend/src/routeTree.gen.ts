@@ -10,10 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ActivationRouteImport } from './routes/activation'
 import { Route as ActiverCompteRouteImport } from './routes/activer-compte'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as CarteRouteImport } from './routes/carte'
 import { Route as ChangerMotDePasseRouteImport } from './routes/changer-mot-de-passe'
+import { Route as InscriptionRouteImport } from './routes/inscription'
 import { Route as IntegrationRouteImport } from './routes/integration'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as UiKitRouteImport } from './routes/ui-kit'
@@ -26,6 +28,11 @@ import { Route as AppDemandesIntegrationIdRouteImport } from './routes/app/deman
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivationRoute = ActivationRouteImport.update({
+  id: '/activation',
+  path: '/activation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ActiverCompteRoute = ActiverCompteRouteImport.update({
@@ -46,6 +53,11 @@ const CarteRoute = CarteRouteImport.update({
 const ChangerMotDePasseRoute = ChangerMotDePasseRouteImport.update({
   id: '/changer-mot-de-passe',
   path: '/changer-mot-de-passe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InscriptionRoute = InscriptionRouteImport.update({
+  id: '/inscription',
+  path: '/inscription',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IntegrationRoute = IntegrationRouteImport.update({
@@ -93,10 +105,12 @@ const AppDemandesIntegrationIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/activation': typeof ActivationRoute
   '/activer-compte': typeof ActiverCompteRoute
   '/app': typeof AppRouteWithChildren
   '/carte': typeof CarteRoute
   '/changer-mot-de-passe': typeof ChangerMotDePasseRoute
+  '/inscription': typeof InscriptionRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
@@ -108,9 +122,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/activation': typeof ActivationRoute
   '/activer-compte': typeof ActiverCompteRoute
   '/carte': typeof CarteRoute
   '/changer-mot-de-passe': typeof ChangerMotDePasseRoute
+  '/inscription': typeof InscriptionRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
@@ -123,10 +139,12 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/activation': typeof ActivationRoute
   '/activer-compte': typeof ActiverCompteRoute
   '/app': typeof AppRouteWithChildren
   '/carte': typeof CarteRoute
   '/changer-mot-de-passe': typeof ChangerMotDePasseRoute
+  '/inscription': typeof InscriptionRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
@@ -140,10 +158,12 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/activation'
     | '/activer-compte'
     | '/app'
     | '/carte'
     | '/changer-mot-de-passe'
+    | '/inscription'
     | '/integration'
     | '/login'
     | '/ui-kit'
@@ -155,9 +175,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/activation'
     | '/activer-compte'
     | '/carte'
     | '/changer-mot-de-passe'
+    | '/inscription'
     | '/integration'
     | '/login'
     | '/ui-kit'
@@ -169,10 +191,12 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/activation'
     | '/activer-compte'
     | '/app'
     | '/carte'
     | '/changer-mot-de-passe'
+    | '/inscription'
     | '/integration'
     | '/login'
     | '/ui-kit'
@@ -185,10 +209,12 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ActivationRoute: typeof ActivationRoute
   ActiverCompteRoute: typeof ActiverCompteRoute
   AppRoute: typeof AppRouteWithChildren
   CarteRoute: typeof CarteRoute
   ChangerMotDePasseRoute: typeof ChangerMotDePasseRoute
+  InscriptionRoute: typeof InscriptionRoute
   IntegrationRoute: typeof IntegrationRoute
   LoginRoute: typeof LoginRoute
   UiKitRoute: typeof UiKitRoute
@@ -203,6 +229,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activation': {
+      id: '/activation'
+      path: '/activation'
+      fullPath: '/activation'
+      preLoaderRoute: typeof ActivationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/activer-compte': {
@@ -231,6 +264,13 @@ declare module '@tanstack/react-router' {
       path: '/changer-mot-de-passe'
       fullPath: '/changer-mot-de-passe'
       preLoaderRoute: typeof ChangerMotDePasseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inscription': {
+      id: '/inscription'
+      path: '/inscription'
+      fullPath: '/inscription'
+      preLoaderRoute: typeof InscriptionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/integration': {
@@ -308,10 +348,12 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ActivationRoute: ActivationRoute,
   ActiverCompteRoute: ActiverCompteRoute,
   AppRoute: AppRouteWithChildren,
   CarteRoute: CarteRoute,
   ChangerMotDePasseRoute: ChangerMotDePasseRoute,
+  InscriptionRoute: InscriptionRoute,
   IntegrationRoute: IntegrationRoute,
   LoginRoute: LoginRoute,
   UiKitRoute: UiKitRoute,

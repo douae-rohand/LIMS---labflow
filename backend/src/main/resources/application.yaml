@@ -193,6 +193,7 @@ app:
       max-par-email: ${APP_INSCRIPTION_MAX_PAR_EMAIL:3}
       fenetre-secondes: ${APP_INSCRIPTION_FENETRE_SECONDES:3600}
     token-expiration-heures: ${APP_INSCRIPTION_TOKEN_EXPIRATION_HEURES:24}
+    version-consentement-cndp: ${APP_INSCRIPTION_VERSION_CONSENTEMENT_CNDP:1.0}
 
 # ============================================================
 # Logging

@@ -83,6 +83,21 @@ public class EmailService {
     }
 
     @Async
+    public void envoyerConfirmationInscriptionClient(String email, String nomComplet,
+                                                     String lienActivation, int ttlHeures) {
+        String sujet = "[LabFlow] Confirmez votre adresse e-mail";
+        ResultatEnvoiEmail resultat = envoyerHtml(
+                email, sujet,
+                EmailTemplates.confirmationInscriptionClient(nomComplet, lienActivation, ttlHeures));
+        if (!resultat.accepte()) {
+            // On ne journalise jamais l'email, le lien ni le corps — uniquement le code technique
+            log.warn("Envoi confirmation inscription non accepté [code={}, temporaire={}] — " +
+                     "l'utilisateur peut réessayer l'inscription pour obtenir un nouveau lien.",
+                    resultat.code(), resultat.temporaire());
+        }
+    }
+
+    @Async
     public void envoyerNotificationDemande(String email, String nomClient,
                                            String referenceDemande, String statut) {
         String sujet = "[LabFlow] Demande " + referenceDemande + " – " + statut;

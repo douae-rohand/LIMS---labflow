@@ -25,6 +25,7 @@ public class InscriptionRequest {
     @Size(max = 100, message = "Le nom ne peut pas dépasser 100 caractères.")
     private String nom;
 
+    @NotBlank(message = "Le prénom est obligatoire.")
     @Size(max = 100, message = "Le prénom ne peut pas dépasser 100 caractères.")
     private String prenom;
 
@@ -84,14 +85,6 @@ public class InscriptionRequest {
 
     @AssertTrue(message = "Le consentement à la politique de confidentialité est obligatoire.")
     private boolean consentementCndp;
-
-    /**
-     * Version de la politique acceptée (ex. "1.0").
-     * Fournie par le frontend au moment de l'affichage du formulaire.
-     */
-    @NotBlank(message = "La version du consentement est obligatoire.")
-    @Size(max = 20)
-    private String versionConsentementCndp;
 
     // ------------------------------------------------------------------
     // Validation croisée : raison sociale obligatoire pour ENTREPRISE

@@ -128,10 +128,15 @@ public class ClientService {
 
     private Client trouverOuCreerFiche(Long utilisateurId, ClientProfil profil) {
         return clientRepository.findByUtilisateurId(utilisateurId).orElseGet(() -> {
+            // Fallback : pour un particulier, raisonSociale est null → utiliser "prénom nom"
+            String raisonSociale = (profil.getRaisonSociale() != null
+                    && !profil.getRaisonSociale().isBlank())
+                    ? profil.getRaisonSociale()
+                    : profil.getUtilisateur().getNomComplet();
             try {
                 return clientRepository.save(Client.builder()
                         .code("CLI-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-                        .raisonSociale(profil.getRaisonSociale())
+                        .raisonSociale(raisonSociale)
                         .ice(profil.getIce())
                         .adresse(profil.getAdresse())
                         .consentementCndp(profil.getConsentementCndp())
