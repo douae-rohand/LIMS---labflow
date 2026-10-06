@@ -4,15 +4,14 @@ import com.backend.common.dto.ApiResponse;
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.modules.auth.dto.*;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
-import com.backend.modules.auth.service.AuthService;
-import com.backend.modules.auth.service.MotDePasseService;
-import com.backend.modules.auth.service.RefreshCookieService;
+import com.backend.modules.auth.service.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,6 +32,43 @@ public class AuthController {
     private final AuthService authService;
     private final MotDePasseService motDePasseService;
     private final RefreshCookieService refreshCookieService;
+    private final InscriptionService inscriptionService;
+    private final ActivationService activationService;
+    private final InscriptionRateLimiter rateLimiter;
+
+    // -------------------------------------------------------------------------
+    // Inscription publique
+    // -------------------------------------------------------------------------
+
+    @PostMapping("/inscription")
+    @Operation(summary = "Inscription d'un nouveau client (public)")
+    public ResponseEntity<ApiResponse<Void>> inscrire(
+            @Valid @RequestBody InscriptionRequest request,
+            HttpServletRequest httpRequest) {
+
+        String ip = rateLimiter.extraireIp(httpRequest);
+        if (rateLimiter.estLimite(ip, request.getEmail())) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(ApiResponse.error("Trop de tentatives. Réessayez plus tard."));
+        }
+
+        // Toujours 202 — ne permet pas l'énumération des emails
+        inscriptionService.inscrire(request);
+        return ResponseEntity.accepted()
+                .body(ApiResponse.success("Si cet email est valide, un lien d'activation vous a été envoyé.", null));
+    }
+
+    // -------------------------------------------------------------------------
+    // Confirmation d'activation
+    // -------------------------------------------------------------------------
+
+    @PostMapping("/activation/confirmer")
+    @Operation(summary = "Confirme le compte via le jeton reçu par email")
+    public ResponseEntity<ApiResponse<Void>> confirmerActivation(
+            @Valid @RequestBody ActivationRequest request) {
+        activationService.confirmerCompte(request.getToken());
+        return ResponseEntity.ok(ApiResponse.success("Compte activé. Vous pouvez maintenant vous connecter.", null));
+    }
 
     // -------------------------------------------------------------------------
     // Connexion

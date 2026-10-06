@@ -45,15 +45,13 @@ public class ClientService {
         if (clientProfilRepository.existsByUtilisateur_Id(utilisateur.getId())) {
             return clientProfilRepository.findByUtilisateur_Id(utilisateur.getId()).orElseThrow();
         }
-        String libelle = StringUtils.hasText(raisonSociale)
-                ? raisonSociale
-                : utilisateur.getNomComplet();
         return clientProfilRepository.save(ClientProfil.builder()
                 .utilisateur(utilisateur)
-                .raisonSociale(libelle)
+                .raisonSociale(raisonSociale)
                 .ice(ice)
                 .adresse(adresse)
                 .consentementCndp(Boolean.TRUE.equals(consentementCndp))
+                .dateConsentementCndp(Boolean.TRUE.equals(consentementCndp) ? Instant.now() : null)
                 .dateCreation(Instant.now())
                 .build());
     }
@@ -66,7 +64,10 @@ public class ClientService {
     @Transactional
     public ClientProfilDto modifierProfil(Long utilisateurId, ModifierClientProfilRequest request) {
         ClientProfil profil = chargerProfil(utilisateurId);
-        if (StringUtils.hasText(request.getRaisonSociale())) {
+        if (request.getTypeClient() != null) {
+            profil.setTypeClient(request.getTypeClient());
+        }
+        if (request.getRaisonSociale() != null) {
             profil.setRaisonSociale(request.getRaisonSociale());
         }
         if (request.getIce() != null) {
@@ -77,6 +78,9 @@ public class ClientService {
         }
         if (request.getConsentementCndp() != null) {
             profil.setConsentementCndp(request.getConsentementCndp());
+            if (request.getConsentementCndp() && profil.getDateConsentementCndp() == null) {
+                profil.setDateConsentementCndp(Instant.now());
+            }
         }
         return toDto(clientProfilRepository.save(profil));
     }
@@ -149,10 +153,13 @@ public class ClientService {
         return ClientProfilDto.builder()
                 .id(profil.getId())
                 .utilisateurId(profil.getUtilisateur() == null ? null : profil.getUtilisateur().getId())
+                .typeClient(profil.getTypeClient())
                 .raisonSociale(profil.getRaisonSociale())
                 .ice(profil.getIce())
                 .adresse(profil.getAdresse())
                 .consentementCndp(profil.getConsentementCndp())
+                .dateConsentementCndp(profil.getDateConsentementCndp())
+                .versionConsentementCndp(profil.getVersionConsentementCndp())
                 .dateCreation(profil.getDateCreation())
                 .build();
     }

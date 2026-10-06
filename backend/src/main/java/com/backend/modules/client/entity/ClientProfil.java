@@ -27,8 +27,14 @@ public class ClientProfil {
     @JoinColumn(name = "utilisateur_id", nullable = false, unique = true)
     private Utilisateur utilisateur;
 
-    @Column(name = "raison_sociale", nullable = false, length = 255)
+    /** Nullable : les particuliers n'ont pas de raison sociale. */
+    @Column(name = "raison_sociale", length = 255)
     private String raisonSociale;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    @Column(name = "type_client", nullable = false, length = 20)
+    private TypeClient typeClient = TypeClient.PARTICULIER;
 
     @Column(length = 50)
     private String ice;
@@ -39,6 +45,14 @@ public class ClientProfil {
     @Builder.Default
     @Column(name = "consentement_cndp", nullable = false)
     private Boolean consentementCndp = false;
+
+    /** Horodatage du consentement au moment de l'inscription. */
+    @Column(name = "date_consentement_cndp")
+    private Instant dateConsentementCndp;
+
+    /** Version de la politique de confidentialité acceptée (ex. "1.0"). */
+    @Column(name = "version_consentement_cndp", length = 20)
+    private String versionConsentementCndp;
 
     @Builder.Default
     @Column(name = "date_creation", nullable = false, updatable = false)

@@ -164,6 +164,14 @@ management:
 # insérés par V21__seed_demo_central.sql (lims_atlas, lims_nord).
 app:
   demo-seed: ${APP_DEMO_SEED:true}
+  trust-proxy: ${APP_TRUST_PROXY:false}
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
+  inscription:
+    rate-limit:
+      max-par-ip: ${APP_INSCRIPTION_MAX_PAR_IP:5}
+      max-par-email: ${APP_INSCRIPTION_MAX_PAR_EMAIL:3}
+      fenetre-secondes: ${APP_INSCRIPTION_FENETRE_SECONDES:3600}
+    token-expiration-heures: ${APP_INSCRIPTION_TOKEN_EXPIRATION_HEURES:24}
 
 # ============================================================
 # Logging
