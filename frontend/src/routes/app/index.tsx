@@ -12,8 +12,9 @@ export const Route = createFileRoute("/app/")({
 const LIBELLE_ROLE: Record<RoleUtilisateur, string> = {
   SUPER_ADMINISTRATEUR: "Super Administrateur",
   ADMINISTRATEUR: "Administrateur",
-  RESPONSABLE_LABO: "Responsable",
+  RESPONSABLE: "Responsable laboratoire",
   TECHNICIEN: "Technicien",
+  ACCUEIL: "Agent d'accueil",
   CLIENT: "Client",
 };
 
@@ -46,6 +47,13 @@ function AppHomePage() {
           <div className="mt-8">
             <Link to="/app/demandes-integration">
               <Button>Traiter les demandes d'intégration</Button>
+            </Link>
+          </div>
+        )}
+        {(user.role === "ADMINISTRATEUR" || user.role === "SUPER_ADMINISTRATEUR") && (
+          <div className="mt-4">
+            <Link to="/app/utilisateurs">
+              <Button variant="secondary">Gérer les utilisateurs</Button>
             </Link>
           </div>
         )}

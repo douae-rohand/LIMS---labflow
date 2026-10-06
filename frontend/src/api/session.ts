@@ -27,8 +27,9 @@ export type SessionStatus = 'inconnu' | 'connecté' | 'anonyme';
 export type RoleUtilisateur =
   | 'SUPER_ADMINISTRATEUR'
   | 'ADMINISTRATEUR'
-  | 'RESPONSABLE_LABO'
+  | 'RESPONSABLE'
   | 'TECHNICIEN'
+  | 'ACCUEIL'
   | 'CLIENT';
 
 /** Informations minimales conservées en session après authentification. */

@@ -123,9 +123,15 @@ public class AuthService {
 
     /**
      * Règle de décision centralisée : détermine si le 2FA est OBLIGATOIRE pour un rôle.
+     *
+     * TODO(2FA) : réactiver l'obligation pour RESPONSABLE et ADMINISTRATEUR
+     * une fois le flux 2FA finalisé côté frontend.
+     * Retirer ce TODO et remettre :
+     *   return role == RoleUtilisateur.RESPONSABLE || role == RoleUtilisateur.ADMINISTRATEUR;
      */
     public boolean is2faRequiredForRole(RoleUtilisateur role) {
-        return role == RoleUtilisateur.RESPONSABLE || role == RoleUtilisateur.ADMINISTRATEUR;
+        // Temporairement désactivé pour tous les rôles — à réactiver après finalisation du frontend 2FA
+        return false;
     }
 
     // -------------------------------------------------------------------------

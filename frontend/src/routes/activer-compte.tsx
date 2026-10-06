@@ -79,7 +79,7 @@ function ActiverComptePage() {
           {etat === "ok" && (
             <div className="mt-4 flex flex-col gap-4">
               <p className="text-sm text-muted-foreground">
-                Votre compte administrateur est activé. Connectez-vous avec l'e-mail de la demande.
+                Votre compte est activé. Connectez-vous avec votre email.
               </p>
               <Link to="/login">
                 <Button>Se connecter</Button>
@@ -89,8 +89,7 @@ function ActiverComptePage() {
           {etat === "valide" && (
             <form className="mt-6 flex flex-col gap-4" onSubmit={form.handleSubmit(onSubmit)}>
               <p className="text-sm text-muted-foreground">
-                Définissez le mot de passe de l'administrateur laboratoire (10 caractères, majuscule,
-                minuscule et chiffre).
+                Définissez votre mot de passe (10 caractères minimum, majuscule, minuscule et chiffre).
               </p>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="motDePasse">Nouveau mot de passe</Label>

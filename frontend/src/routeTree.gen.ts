@@ -24,6 +24,8 @@ import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/ind
 import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
 import { Route as AppDemandesIntegrationIndexRouteImport } from './routes/app/demandes-integration/index'
 import { Route as AppDemandesIntegrationIdRouteImport } from './routes/app/demandes-integration/$id'
+import { Route as AppUtilisateursIndexRouteImport } from './routes/app/utilisateurs/index'
+import { Route as AppUtilisateursNouveauRouteImport } from './routes/app/utilisateurs/nouveau'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -102,6 +104,16 @@ const AppDemandesIntegrationIdRoute =
     path: '/demandes-integration/$id',
     getParentRoute: () => AppRoute,
   } as any)
+const AppUtilisateursIndexRoute = AppUtilisateursIndexRouteImport.update({
+  id: '/utilisateurs/',
+  path: '/utilisateurs/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppUtilisateursNouveauRoute = AppUtilisateursNouveauRouteImport.update({
+  id: '/utilisateurs/nouveau',
+  path: '/utilisateurs/nouveau',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -118,7 +130,9 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
   '/app/demandes-integration/$id': typeof AppDemandesIntegrationIdRoute
+  '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
   '/app/demandes-integration/': typeof AppDemandesIntegrationIndexRoute
+  '/app/utilisateurs/': typeof AppUtilisateursIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -134,7 +148,9 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/laboratoires': typeof LaboratoiresIndexRoute
   '/app/demandes-integration/$id': typeof AppDemandesIntegrationIdRoute
+  '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
   '/app/demandes-integration': typeof AppDemandesIntegrationIndexRoute
+  '/app/utilisateurs': typeof AppUtilisateursIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -152,7 +168,9 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
   '/app/demandes-integration/$id': typeof AppDemandesIntegrationIdRoute
+  '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
   '/app/demandes-integration/': typeof AppDemandesIntegrationIndexRoute
+  '/app/utilisateurs/': typeof AppUtilisateursIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,7 +189,9 @@ export interface FileRouteTypes {
     | '/app/'
     | '/laboratoires/'
     | '/app/demandes-integration/$id'
+    | '/app/utilisateurs/nouveau'
     | '/app/demandes-integration/'
+    | '/app/utilisateurs/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -187,7 +207,9 @@ export interface FileRouteTypes {
     | '/app'
     | '/laboratoires'
     | '/app/demandes-integration/$id'
+    | '/app/utilisateurs/nouveau'
     | '/app/demandes-integration'
+    | '/app/utilisateurs'
   id:
     | '__root__'
     | '/'
@@ -204,7 +226,9 @@ export interface FileRouteTypes {
     | '/app/'
     | '/laboratoires/'
     | '/app/demandes-integration/$id'
+    | '/app/utilisateurs/nouveau'
     | '/app/demandes-integration/'
+    | '/app/utilisateurs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -329,19 +353,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDemandesIntegrationIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/utilisateurs/': {
+      id: '/app/utilisateurs/'
+      path: '/utilisateurs'
+      fullPath: '/app/utilisateurs/'
+      preLoaderRoute: typeof AppUtilisateursIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/utilisateurs/nouveau': {
+      id: '/app/utilisateurs/nouveau'
+      path: '/utilisateurs/nouveau'
+      fullPath: '/app/utilisateurs/nouveau'
+      preLoaderRoute: typeof AppUtilisateursNouveauRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppDemandesIntegrationIdRoute: typeof AppDemandesIntegrationIdRoute
+  AppUtilisateursNouveauRoute: typeof AppUtilisateursNouveauRoute
   AppDemandesIntegrationIndexRoute: typeof AppDemandesIntegrationIndexRoute
+  AppUtilisateursIndexRoute: typeof AppUtilisateursIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppDemandesIntegrationIdRoute: AppDemandesIntegrationIdRoute,
+  AppUtilisateursNouveauRoute: AppUtilisateursNouveauRoute,
   AppDemandesIntegrationIndexRoute: AppDemandesIntegrationIndexRoute,
+  AppUtilisateursIndexRoute: AppUtilisateursIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

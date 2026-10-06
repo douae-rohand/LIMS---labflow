@@ -26,6 +26,7 @@ public class UtilisateurDto {
     private String telephone;
     private RoleUtilisateur role;
     private boolean actif;
+    private boolean compteConfirme;
     private boolean deuxFacteursActif;
     private Instant dateCreation;
     private Instant derniereConnexion;
