@@ -146,8 +146,26 @@ public final class EmailTemplates {
         );
     }
 
-    public static String testConfiguration(String destinataire) {
+    public static String confirmationInscriptionClient(String nomComplet,
+                                                       String lienActivation,
+                                                       int ttlHeures) {
         return page(
+                "Confirmez votre adresse e-mail",
+                "Activez votre compte LabFlow en confirmant votre adresse.",
+                """
+                <p>Bonjour %s,</p>
+                <p>Merci de votre inscription à LabFlow LIMS. Pour activer votre compte,
+                confirmez votre adresse e-mail en cliquant sur le bouton ci-dessous.</p>
+                <p>Ce lien expire dans <strong>%d heures</strong> et ne peut être utilisé
+                qu'une seule fois. Si vous n'êtes pas à l'origine de cette inscription,
+                ignorez simplement cet e-mail — aucun compte ne sera créé.</p>
+                """.formatted(e(nomComplet), ttlHeures),
+                lienActivation,
+                "Confirmer mon adresse e-mail"
+        );
+    }
+
+    public static String testConfiguration(String destinataire) {        return page(
                 "Test SendGrid",
                 "La configuration e-mail LabFlow fonctionne.",
                 """

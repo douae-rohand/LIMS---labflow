@@ -61,12 +61,12 @@ public class UtilisateurController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMINISTRATEUR','SUPER_ADMINISTRATEUR')")
-    @Operation(summary = "Créer un nouvel utilisateur")
+    @Operation(summary = "Créer un nouvel utilisateur et envoyer l'invitation par email")
     public ResponseEntity<ApiResponse<UtilisateurDto>> creer(
             @Valid @RequestBody CreerUtilisateurRequest request) {
         UtilisateurDto created = utilisateurService.creer(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Utilisateur créé avec succès", created));
+                .body(ApiResponse.success("Utilisateur créé. Un email d'invitation a été envoyé.", created));
     }
 
     @PatchMapping("/{id}")
@@ -92,5 +92,13 @@ public class UtilisateurController {
     public ResponseEntity<ApiResponse<Void>> activer(@PathVariable Long id) {
         utilisateurService.activer(id);
         return ResponseEntity.ok(ApiResponse.success("Compte activé", null));
+    }
+
+    @PostMapping("/{id}/renvoyer-invitation")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Renvoyer l'email d'invitation à un utilisateur dont le compte n'est pas encore activé")
+    public ResponseEntity<ApiResponse<Void>> renvoyerInvitation(@PathVariable Long id) {
+        utilisateurService.renvoyerInvitation(id);
+        return ResponseEntity.ok(ApiResponse.success("Invitation renvoyée par email.", null));
     }
 }

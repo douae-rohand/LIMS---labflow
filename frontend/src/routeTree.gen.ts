@@ -10,10 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ActivationRouteImport } from './routes/activation'
 import { Route as ActiverCompteRouteImport } from './routes/activer-compte'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as CarteRouteImport } from './routes/carte'
 import { Route as ChangerMotDePasseRouteImport } from './routes/changer-mot-de-passe'
+import { Route as InscriptionRouteImport } from './routes/inscription'
 import { Route as IntegrationRouteImport } from './routes/integration'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as UiKitRouteImport } from './routes/ui-kit'
@@ -22,10 +24,17 @@ import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/ind
 import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
 import { Route as AppDemandesIntegrationIndexRouteImport } from './routes/app/demandes-integration/index'
 import { Route as AppDemandesIntegrationIdRouteImport } from './routes/app/demandes-integration/$id'
+import { Route as AppUtilisateursIndexRouteImport } from './routes/app/utilisateurs/index'
+import { Route as AppUtilisateursNouveauRouteImport } from './routes/app/utilisateurs/nouveau'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivationRoute = ActivationRouteImport.update({
+  id: '/activation',
+  path: '/activation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ActiverCompteRoute = ActiverCompteRouteImport.update({
@@ -46,6 +55,11 @@ const CarteRoute = CarteRouteImport.update({
 const ChangerMotDePasseRoute = ChangerMotDePasseRouteImport.update({
   id: '/changer-mot-de-passe',
   path: '/changer-mot-de-passe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InscriptionRoute = InscriptionRouteImport.update({
+  id: '/inscription',
+  path: '/inscription',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IntegrationRoute = IntegrationRouteImport.update({
@@ -90,13 +104,25 @@ const AppDemandesIntegrationIdRoute =
     path: '/demandes-integration/$id',
     getParentRoute: () => AppRoute,
   } as any)
+const AppUtilisateursIndexRoute = AppUtilisateursIndexRouteImport.update({
+  id: '/utilisateurs/',
+  path: '/utilisateurs/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppUtilisateursNouveauRoute = AppUtilisateursNouveauRouteImport.update({
+  id: '/utilisateurs/nouveau',
+  path: '/utilisateurs/nouveau',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/activation': typeof ActivationRoute
   '/activer-compte': typeof ActiverCompteRoute
   '/app': typeof AppRouteWithChildren
   '/carte': typeof CarteRoute
   '/changer-mot-de-passe': typeof ChangerMotDePasseRoute
+  '/inscription': typeof InscriptionRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
@@ -104,13 +130,17 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
   '/app/demandes-integration/$id': typeof AppDemandesIntegrationIdRoute
+  '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
   '/app/demandes-integration/': typeof AppDemandesIntegrationIndexRoute
+  '/app/utilisateurs/': typeof AppUtilisateursIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/activation': typeof ActivationRoute
   '/activer-compte': typeof ActiverCompteRoute
   '/carte': typeof CarteRoute
   '/changer-mot-de-passe': typeof ChangerMotDePasseRoute
+  '/inscription': typeof InscriptionRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
@@ -118,15 +148,19 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/laboratoires': typeof LaboratoiresIndexRoute
   '/app/demandes-integration/$id': typeof AppDemandesIntegrationIdRoute
+  '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
   '/app/demandes-integration': typeof AppDemandesIntegrationIndexRoute
+  '/app/utilisateurs': typeof AppUtilisateursIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/activation': typeof ActivationRoute
   '/activer-compte': typeof ActiverCompteRoute
   '/app': typeof AppRouteWithChildren
   '/carte': typeof CarteRoute
   '/changer-mot-de-passe': typeof ChangerMotDePasseRoute
+  '/inscription': typeof InscriptionRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
@@ -134,16 +168,20 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
   '/app/demandes-integration/$id': typeof AppDemandesIntegrationIdRoute
+  '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
   '/app/demandes-integration/': typeof AppDemandesIntegrationIndexRoute
+  '/app/utilisateurs/': typeof AppUtilisateursIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/activation'
     | '/activer-compte'
     | '/app'
     | '/carte'
     | '/changer-mot-de-passe'
+    | '/inscription'
     | '/integration'
     | '/login'
     | '/ui-kit'
@@ -151,13 +189,17 @@ export interface FileRouteTypes {
     | '/app/'
     | '/laboratoires/'
     | '/app/demandes-integration/$id'
+    | '/app/utilisateurs/nouveau'
     | '/app/demandes-integration/'
+    | '/app/utilisateurs/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/activation'
     | '/activer-compte'
     | '/carte'
     | '/changer-mot-de-passe'
+    | '/inscription'
     | '/integration'
     | '/login'
     | '/ui-kit'
@@ -165,14 +207,18 @@ export interface FileRouteTypes {
     | '/app'
     | '/laboratoires'
     | '/app/demandes-integration/$id'
+    | '/app/utilisateurs/nouveau'
     | '/app/demandes-integration'
+    | '/app/utilisateurs'
   id:
     | '__root__'
     | '/'
+    | '/activation'
     | '/activer-compte'
     | '/app'
     | '/carte'
     | '/changer-mot-de-passe'
+    | '/inscription'
     | '/integration'
     | '/login'
     | '/ui-kit'
@@ -180,15 +226,19 @@ export interface FileRouteTypes {
     | '/app/'
     | '/laboratoires/'
     | '/app/demandes-integration/$id'
+    | '/app/utilisateurs/nouveau'
     | '/app/demandes-integration/'
+    | '/app/utilisateurs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ActivationRoute: typeof ActivationRoute
   ActiverCompteRoute: typeof ActiverCompteRoute
   AppRoute: typeof AppRouteWithChildren
   CarteRoute: typeof CarteRoute
   ChangerMotDePasseRoute: typeof ChangerMotDePasseRoute
+  InscriptionRoute: typeof InscriptionRoute
   IntegrationRoute: typeof IntegrationRoute
   LoginRoute: typeof LoginRoute
   UiKitRoute: typeof UiKitRoute
@@ -203,6 +253,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activation': {
+      id: '/activation'
+      path: '/activation'
+      fullPath: '/activation'
+      preLoaderRoute: typeof ActivationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/activer-compte': {
@@ -231,6 +288,13 @@ declare module '@tanstack/react-router' {
       path: '/changer-mot-de-passe'
       fullPath: '/changer-mot-de-passe'
       preLoaderRoute: typeof ChangerMotDePasseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inscription': {
+      id: '/inscription'
+      path: '/inscription'
+      fullPath: '/inscription'
+      preLoaderRoute: typeof InscriptionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/integration': {
@@ -289,29 +353,49 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDemandesIntegrationIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/utilisateurs/': {
+      id: '/app/utilisateurs/'
+      path: '/utilisateurs'
+      fullPath: '/app/utilisateurs/'
+      preLoaderRoute: typeof AppUtilisateursIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/utilisateurs/nouveau': {
+      id: '/app/utilisateurs/nouveau'
+      path: '/utilisateurs/nouveau'
+      fullPath: '/app/utilisateurs/nouveau'
+      preLoaderRoute: typeof AppUtilisateursNouveauRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppDemandesIntegrationIdRoute: typeof AppDemandesIntegrationIdRoute
+  AppUtilisateursNouveauRoute: typeof AppUtilisateursNouveauRoute
   AppDemandesIntegrationIndexRoute: typeof AppDemandesIntegrationIndexRoute
+  AppUtilisateursIndexRoute: typeof AppUtilisateursIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppDemandesIntegrationIdRoute: AppDemandesIntegrationIdRoute,
+  AppUtilisateursNouveauRoute: AppUtilisateursNouveauRoute,
   AppDemandesIntegrationIndexRoute: AppDemandesIntegrationIndexRoute,
+  AppUtilisateursIndexRoute: AppUtilisateursIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ActivationRoute: ActivationRoute,
   ActiverCompteRoute: ActiverCompteRoute,
   AppRoute: AppRouteWithChildren,
   CarteRoute: CarteRoute,
   ChangerMotDePasseRoute: ChangerMotDePasseRoute,
+  InscriptionRoute: InscriptionRoute,
   IntegrationRoute: IntegrationRoute,
   LoginRoute: LoginRoute,
   UiKitRoute: UiKitRoute,

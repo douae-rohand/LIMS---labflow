@@ -1,8 +1,9 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { Button, Card, Input, Label } from "@/components/lab";
 import { Photo } from "@/components/landing/Photo";
 import { Container } from "@/components/layout/Container";
@@ -11,6 +12,7 @@ import { PublicLayout } from "@/layouts/PublicLayout";
 import { login, toSessionUser } from "@/api/auth";
 import { setSession, getSession, getStatus } from "@/api/session";
 import { apiClient, ApiError } from "@/api/axios";
+import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Garde : si déjà connecté → /app (ou /changer-mot-de-passe)
@@ -36,6 +38,48 @@ export const Route = createFileRoute("/login")({
   },
   component: LoginPage,
 });
+
+// ---------------------------------------------------------------------------
+// Composant champ mot de passe avec icône œil
+// ---------------------------------------------------------------------------
+
+function PwdField({ id, label, error, errorId, ...props }: any) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="relative">
+        <input
+          id={id}
+          type={visible ? "text" : "password"}
+          aria-describedby={error && errorId ? errorId : undefined}
+          aria-invalid={!!error}
+          className={cn(
+            "w-full rounded-2xl border border-input bg-card px-4 py-3 pr-11 text-sm text-ink-900",
+            "placeholder:text-muted-foreground transition-colors focus:border-brand-600 focus:outline-none",
+            error && "border-red-400 focus:border-red-500",
+          )}
+          {...props}
+        />
+        <button
+          type="button"
+          aria-label={visible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+          onClick={() => setVisible((v) => !v)}
+          className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 rounded"
+        >
+          {visible
+            ? <EyeOff className="size-4" aria-hidden="true" />
+            : <Eye className="size-4" aria-hidden="true" />}
+        </button>
+      </div>
+      {error && errorId && (
+        <p id={errorId} role="alert" aria-live="polite" className="text-xs text-red-600">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Schéma de validation
@@ -112,6 +156,16 @@ function LoginPage() {
           setError("root", { message: "Identifiants invalides." });
         } else if (err.status === 0 || err.status === 503) {
           setError("root", { message: "Serveur indisponible, réessayez." });
+        } else if (
+          (err.status === 422 || err.status === 403) &&
+          err.message.includes('COMPTE_NON_ACTIVE')
+        ) {
+          setError("root", {
+            type: "compteNonActive",
+            message:
+              "Votre compte n'est pas encore activé. Vérifiez votre boîte e-mail " +
+              "(et vos courriers indésirables) ou refaites votre inscription pour recevoir un nouveau lien.",
+          });
         } else {
           setError("root", {
             message: "Une erreur est survenue. Veuillez réessayer.",
@@ -124,7 +178,6 @@ function LoginPage() {
       }
     }
   };
-
   return (
     <PublicLayout>
       <Container className="grid items-center gap-10 py-16 lg:grid-cols-2">
@@ -139,7 +192,11 @@ function LoginPage() {
             <div
               role="alert"
               aria-live="assertive"
-              className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700"
+              className={`mt-4 rounded-2xl px-4 py-3 text-sm ${
+                errors.root.type === "compteNonActive"
+                  ? "bg-amber-50 text-amber-800 border border-amber-200"
+                  : "bg-red-50 text-red-700"
+              }`}
             >
               {errors.root.message}
             </div>
@@ -175,27 +232,14 @@ function LoginPage() {
             </div>
 
             {/* Mot de passe */}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="motDePasse">Mot de passe</Label>
-              <Input
-                id="motDePasse"
-                type="password"
-                autoComplete="current-password"
-                aria-describedby={errors.motDePasse ? "mdp-error" : undefined}
-                aria-invalid={!!errors.motDePasse}
-                {...register("motDePasse")}
-              />
-              {errors.motDePasse && (
-                <p
-                  id="mdp-error"
-                  role="alert"
-                  aria-live="polite"
-                  className="text-xs text-red-600"
-                >
-                  {errors.motDePasse.message}
-                </p>
-              )}
-            </div>
+            <PwdField
+              id="motDePasse"
+              label="Mot de passe"
+              autoComplete="current-password"
+              error={errors.motDePasse?.message}
+              errorId="mdp-error"
+              {...register("motDePasse")}
+            />
 
             <Button
               type="submit"
@@ -206,6 +250,16 @@ function LoginPage() {
               {isSubmitting ? "Connexion…" : "Continuer"}
             </Button>
           </form>
+
+          <p className="mt-5 text-center text-sm text-muted-foreground">
+            Vous n'avez pas encore de compte ?{" "}
+            <Link
+              to="/inscription"
+              className="font-semibold text-brand-900 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 rounded"
+            >
+              S'inscrire
+            </Link>
+          </p>
         </Card>
 
         <Photo

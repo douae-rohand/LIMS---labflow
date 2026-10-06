@@ -19,6 +19,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,7 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final JwtConfig jwtConfig;
     private final UtilisateurRepository utilisateurRepository;
+    private final PasswordEncoder passwordEncoder;
 
     private final TwoFactorRateLimiter twoFactorRateLimiter;
 
@@ -51,6 +53,21 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(
                             request.getEmail(),
                             request.getMotDePasse()));
+        } catch (DisabledException ex) {
+            // Compte inactif — distinguer "non confirmé" de "désactivé par admin"
+            // UNIQUEMENT si le mot de passe est correct pour éviter l'énumération
+            Utilisateur utilisateur = utilisateurRepository.findByEmail(request.getEmail())
+                    .orElse(null);
+            if (utilisateur != null
+                    && passwordEncoder.matches(request.getMotDePasse(), utilisateur.getMotDePasseHash())
+                    && !utilisateur.isCompteConfirme()) {
+                // Mot de passe correct + compte en attente de confirmation → 403 spécifique
+                throw new BusinessRuleException("COMPTE_NON_ACTIVE",
+                        "Votre compte n'est pas encore activé. Vérifiez votre boîte email.");
+            }
+            // Tout autre cas (désactivé par admin, mauvais MDP sur compte inactif) → 401 générique
+            log.warn("Tentative de connexion échouée pour {}: {}", request.getEmail(), ex.getMessage());
+            throw new BadCredentialsException("Identifiants invalides");
         } catch (Exception ex) {
             log.warn("Tentative de connexion échouée pour {}: {}", request.getEmail(), ex.getMessage());
             throw new BadCredentialsException("Identifiants invalides");
@@ -106,9 +123,15 @@ public class AuthService {
 
     /**
      * Règle de décision centralisée : détermine si le 2FA est OBLIGATOIRE pour un rôle.
+     *
+     * TODO(2FA) : réactiver l'obligation pour RESPONSABLE et ADMINISTRATEUR
+     * une fois le flux 2FA finalisé côté frontend.
+     * Retirer ce TODO et remettre :
+     *   return role == RoleUtilisateur.RESPONSABLE || role == RoleUtilisateur.ADMINISTRATEUR;
      */
     public boolean is2faRequiredForRole(RoleUtilisateur role) {
-        return role == RoleUtilisateur.RESPONSABLE || role == RoleUtilisateur.ADMINISTRATEUR;
+        // Temporairement désactivé pour tous les rôles — à réactiver après finalisation du frontend 2FA
+        return false;
     }
 
     // -------------------------------------------------------------------------

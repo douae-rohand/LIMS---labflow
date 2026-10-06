@@ -334,7 +334,9 @@ export class ApiClient {
           originalConfig?.url?.includes('/auth/login') === true ||
           originalConfig?.url?.includes('/auth/refresh') === true ||
           originalConfig?.url?.includes('/auth/logout') === true ||
-          originalConfig?.url?.includes('/2fa/valider') === true;
+          originalConfig?.url?.includes('/2fa/valider') === true ||
+          originalConfig?.url?.includes('/auth/inscription') === true ||
+          originalConfig?.url?.includes('/auth/activation/confirmer') === true;
 
         // 403 PASSWORD_CHANGE_REQUIRED → rediriger vers /changer-mot-de-passe (une seule fois)
         if (status === 403) {

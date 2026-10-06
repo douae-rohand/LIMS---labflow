@@ -148,8 +148,8 @@ function InfoItem({
   icon,
 }: {
   label: string;
-  value?: string | null;
-  icon?: ReactNode;
+  value?: string | null | undefined;
+  icon?: ReactNode | undefined;
 }) {
   const text = value?.trim();
   return (

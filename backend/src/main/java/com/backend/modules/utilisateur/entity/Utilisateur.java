@@ -69,6 +69,10 @@ public class Utilisateur {
     @Column(nullable = false)
     private boolean actif = true;
 
+    @Builder.Default
+    @Column(name = "compte_confirme", nullable = false)
+    private boolean compteConfirme = true;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
