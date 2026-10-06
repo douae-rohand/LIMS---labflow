@@ -8,12 +8,17 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface TokenActivationRepository extends JpaRepository<TokenActivation, Long> {
 
     Optional<TokenActivation> findByTokenHash(String tokenHash);
+
+    Optional<TokenActivation> findByTokenHashAndUtiliseFalse(String tokenHash);
+
+    List<TokenActivation> findByUtilisateur_IdAndUtiliseFalse(Long utilisateurId);
 
     /**
      * Marque le jeton comme utilisé de façon atomique, uniquement s'il est

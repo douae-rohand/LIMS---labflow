@@ -20,10 +20,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -34,7 +32,6 @@ public class PlateformeService {
     private static final String STATUT_INACTIF = "INACTIF";
 
     private final LaboratoireRepository laboratoireRepository;
-    private final DemandeIntegrationRepository demandeIntegrationRepository;
     private final RoleRepository roleRepository;
     private final TenantProvisioner tenantProvisioner;
     private final TenantExecutor tenantExecutor;
@@ -151,64 +148,6 @@ public class PlateformeService {
         log.info("Laboratoire désactivé : id={}, code={}", id, labo.getCode());
     }
 
-    @Transactional
-    public DemandeIntegrationDto soumettreDemande(DemandeIntegrationDto dto) {
-        DemandeIntegration demande = DemandeIntegration.builder()
-                .numero("INT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-                .dateDemande(Instant.now())
-                .statut(StatutIntegration.EN_ATTENTE.name())
-                .raisonSociale(dto.getNomLaboratoire())
-                .contactNom(dto.getNomRepresentant() != null ? dto.getNomRepresentant() : dto.getNomLaboratoire())
-                .contactEmail(dto.getEmailRepresentant())
-                .contactTelephone(dto.getTelephoneRepresentant())
-                .build();
-
-        demande = demandeIntegrationRepository.save(demande);
-        log.info("Demande d'intégration soumise : id={}, labo={}", demande.getId(), demande.getRaisonSociale());
-        return toDto(demande);
-    }
-
-    @Transactional
-    public DemandeIntegrationDto traiterDemande(Long id, StatutIntegration decision, String commentaire) {
-        DemandeIntegration demande = demandeIntegrationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("DemandeIntegration", "id", id));
-
-        demande.setStatut(decision.name());
-        if (decision == StatutIntegration.REJETEE) {
-            demande.setMotifRefus(commentaire);
-        }
-
-        if (decision == StatutIntegration.APPROUVEE) {
-            Laboratoire laboratoire = demande.getLaboratoire();
-            if (laboratoire == null) {
-                String code = slugifier(demande.getRaisonSociale());
-                if (laboratoireRepository.existsByCode(code)) {
-                    code = code + "_" + demande.getId();
-                }
-                laboratoire = laboratoireRepository.save(Laboratoire.builder()
-                        .code(code)
-                        .raisonSociale(demande.getRaisonSociale())
-                        .nomSchema("lims_" + code)
-                        .email(demande.getContactEmail())
-                        .telephone(demande.getContactTelephone())
-                        .statut(STATUT_ACTIF)
-                        .build());
-                demande.setLaboratoire(laboratoire);
-            }
-            tenantProvisioner.provisionner(laboratoire);
-        }
-
-        return toDto(demandeIntegrationRepository.save(demande));
-    }
-
-    @Transactional(readOnly = true)
-    public Page<DemandeIntegrationDto> listerDemandes(StatutIntegration statut, Pageable pageable) {
-        Page<DemandeIntegration> page = (statut != null)
-                ? demandeIntegrationRepository.findByStatut(statut.name(), pageable)
-                : demandeIntegrationRepository.findAll(pageable);
-        return page.map(this::toDto);
-    }
-
     private RolePublicDto toRolePublicDto(Role role) {
         return RolePublicDto.builder()
                 .id(role.getId())
@@ -249,16 +188,6 @@ public class PlateformeService {
                 .build();
     }
 
-    private static String slugifier(String valeur) {
-        String slug = valeur == null ? "lab" : valeur.toLowerCase()
-                .replaceAll("[^a-z0-9]+", "_")
-                .replaceAll("^_|_$", "");
-        if (slug.isBlank()) {
-            slug = "lab";
-        }
-        return slug.length() > 40 ? slug.substring(0, 40) : slug;
-    }
-
     private LaboratoireDto toDto(Laboratoire l) {
         return LaboratoireDto.builder()
                 .id(l.getId())
@@ -271,30 +200,5 @@ public class PlateformeService {
                 .actif(STATUT_ACTIF.equals(l.getStatut()))
                 .dateCreation(l.getDateCreation())
                 .build();
-    }
-
-    private DemandeIntegrationDto toDto(DemandeIntegration d) {
-        return DemandeIntegrationDto.builder()
-                .id(d.getId())
-                .nomLaboratoire(d.getRaisonSociale())
-                .emailRepresentant(d.getContactEmail())
-                .nomRepresentant(d.getContactNom())
-                .telephoneRepresentant(d.getContactTelephone())
-                .message(d.getMotifRefus())
-                .statut(enumOuNull(StatutIntegration.class, d.getStatut()))
-                .commentaireAdmin(d.getMotifRefus())
-                .dateSoumission(d.getDateDemande())
-                .build();
-    }
-
-    private static <E extends Enum<E>> E enumOuNull(Class<E> type, String valeur) {
-        if (valeur == null) {
-            return null;
-        }
-        try {
-            return Enum.valueOf(type, valeur);
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
     }
 }

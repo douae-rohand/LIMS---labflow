@@ -66,3 +66,58 @@ export async function geocodePlace(
     lng: Number(item.lon),
   }));
 }
+
+export type ReverseGeocodeResult = {
+  adresse: string;
+  ville: string;
+  region: string;
+  pays: string;
+  codePostal: string;
+};
+
+export async function reverseGeocode(
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<ReverseGeocodeResult | null> {
+  const params = new URLSearchParams({
+    format: "json",
+    lat: String(lat),
+    lon: String(lng),
+    addressdetails: "1",
+  });
+  const response = await fetch(
+    `https://nominatim.openstreetmap.org/reverse?${params.toString()}`,
+    {
+      ...(signal ? { signal } : {}),
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": "fr",
+      },
+    },
+  );
+  if (!response.ok) return null;
+  const data = (await response.json()) as {
+    display_name?: string;
+    address?: {
+      road?: string;
+      house_number?: string;
+      suburb?: string;
+      city?: string;
+      town?: string;
+      village?: string;
+      state?: string;
+      country?: string;
+      postcode?: string;
+    };
+  };
+  const address = data.address ?? {};
+  const rue = [address.house_number, address.road, address.suburb].filter(Boolean).join(" ");
+  return {
+    adresse: rue || data.display_name?.split(",").slice(0, 2).join(", ").trim() || "",
+    ville: address.city || address.town || address.village || "",
+    region: address.state || "",
+    pays: address.country || "Maroc",
+    codePostal: address.postcode || "",
+  };
+}

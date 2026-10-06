@@ -10,18 +10,27 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ActiverCompteRouteImport } from './routes/activer-compte'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as CarteRouteImport } from './routes/carte'
 import { Route as ChangerMotDePasseRouteImport } from './routes/changer-mot-de-passe'
 import { Route as IntegrationRouteImport } from './routes/integration'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as UiKitRouteImport } from './routes/ui-kit'
+import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/index'
 import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
+import { Route as AppDemandesIntegrationIndexRouteImport } from './routes/app/demandes-integration/index'
+import { Route as AppDemandesIntegrationIdRouteImport } from './routes/app/demandes-integration/$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActiverCompteRoute = ActiverCompteRouteImport.update({
+  id: '/activer-compte',
+  path: '/activer-compte',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -54,6 +63,11 @@ const UiKitRoute = UiKitRouteImport.update({
   path: '/ui-kit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
 const LaboratoiresIndexRoute = LaboratoiresIndexRouteImport.update({
   id: '/laboratoires/',
   path: '/laboratoires/',
@@ -64,45 +78,69 @@ const LaboratoiresIdRoute = LaboratoiresIdRouteImport.update({
   path: '/laboratoires/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppDemandesIntegrationIndexRoute =
+  AppDemandesIntegrationIndexRouteImport.update({
+    id: '/demandes-integration/',
+    path: '/demandes-integration/',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppDemandesIntegrationIdRoute =
+  AppDemandesIntegrationIdRouteImport.update({
+    id: '/demandes-integration/$id',
+    path: '/demandes-integration/$id',
+    getParentRoute: () => AppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/activer-compte': typeof ActiverCompteRoute
+  '/app': typeof AppRouteWithChildren
   '/carte': typeof CarteRoute
   '/changer-mot-de-passe': typeof ChangerMotDePasseRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
+  '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
+  '/app/demandes-integration/$id': typeof AppDemandesIntegrationIdRoute
+  '/app/demandes-integration/': typeof AppDemandesIntegrationIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/activer-compte': typeof ActiverCompteRoute
   '/carte': typeof CarteRoute
   '/changer-mot-de-passe': typeof ChangerMotDePasseRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
+  '/app': typeof AppIndexRoute
   '/laboratoires': typeof LaboratoiresIndexRoute
+  '/app/demandes-integration/$id': typeof AppDemandesIntegrationIdRoute
+  '/app/demandes-integration': typeof AppDemandesIntegrationIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/activer-compte': typeof ActiverCompteRoute
+  '/app': typeof AppRouteWithChildren
   '/carte': typeof CarteRoute
   '/changer-mot-de-passe': typeof ChangerMotDePasseRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
   '/ui-kit': typeof UiKitRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
+  '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
+  '/app/demandes-integration/$id': typeof AppDemandesIntegrationIdRoute
+  '/app/demandes-integration/': typeof AppDemandesIntegrationIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/activer-compte'
     | '/app'
     | '/carte'
     | '/changer-mot-de-passe'
@@ -110,21 +148,28 @@ export interface FileRouteTypes {
     | '/login'
     | '/ui-kit'
     | '/laboratoires/$id'
+    | '/app/'
     | '/laboratoires/'
+    | '/app/demandes-integration/$id'
+    | '/app/demandes-integration/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/app'
+    | '/activer-compte'
     | '/carte'
     | '/changer-mot-de-passe'
     | '/integration'
     | '/login'
     | '/ui-kit'
     | '/laboratoires/$id'
+    | '/app'
     | '/laboratoires'
+    | '/app/demandes-integration/$id'
+    | '/app/demandes-integration'
   id:
     | '__root__'
     | '/'
+    | '/activer-compte'
     | '/app'
     | '/carte'
     | '/changer-mot-de-passe'
@@ -132,12 +177,16 @@ export interface FileRouteTypes {
     | '/login'
     | '/ui-kit'
     | '/laboratoires/$id'
+    | '/app/'
     | '/laboratoires/'
+    | '/app/demandes-integration/$id'
+    | '/app/demandes-integration/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AppRoute: typeof AppRoute
+  ActiverCompteRoute: typeof ActiverCompteRoute
+  AppRoute: typeof AppRouteWithChildren
   CarteRoute: typeof CarteRoute
   ChangerMotDePasseRoute: typeof ChangerMotDePasseRoute
   IntegrationRoute: typeof IntegrationRoute
@@ -154,6 +203,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activer-compte': {
+      id: '/activer-compte'
+      path: '/activer-compte'
+      fullPath: '/activer-compte'
+      preLoaderRoute: typeof ActiverCompteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -198,6 +254,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UiKitRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/laboratoires/': {
       id: '/laboratoires/'
       path: '/laboratoires'
@@ -212,12 +275,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LaboratoiresIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/demandes-integration/': {
+      id: '/app/demandes-integration/'
+      path: '/demandes-integration'
+      fullPath: '/app/demandes-integration/'
+      preLoaderRoute: typeof AppDemandesIntegrationIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/demandes-integration/$id': {
+      id: '/app/demandes-integration/$id'
+      path: '/demandes-integration/$id'
+      fullPath: '/app/demandes-integration/$id'
+      preLoaderRoute: typeof AppDemandesIntegrationIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppIndexRoute: typeof AppIndexRoute
+  AppDemandesIntegrationIdRoute: typeof AppDemandesIntegrationIdRoute
+  AppDemandesIntegrationIndexRoute: typeof AppDemandesIntegrationIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppIndexRoute: AppIndexRoute,
+  AppDemandesIntegrationIdRoute: AppDemandesIntegrationIdRoute,
+  AppDemandesIntegrationIndexRoute: AppDemandesIntegrationIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AppRoute: AppRoute,
+  ActiverCompteRoute: ActiverCompteRoute,
+  AppRoute: AppRouteWithChildren,
   CarteRoute: CarteRoute,
   ChangerMotDePasseRoute: ChangerMotDePasseRoute,
   IntegrationRoute: IntegrationRoute,

@@ -32,11 +32,23 @@ public class Laboratoire {
     @Column(length = 50)
     private String ice;
 
+    @Column(name = "type_laboratoire", length = 500)
+    private String typeLaboratoire;
+
     @Column(columnDefinition = "TEXT")
     private String adresse;
 
     @Column(length = 100)
     private String ville;
+
+    @Column(length = 100)
+    private String region;
+
+    @Column(length = 100)
+    private String pays;
+
+    @Column(name = "code_postal", length = 20)
+    private String codePostal;
 
     @Column
     private Double latitude;
@@ -49,6 +61,9 @@ public class Laboratoire {
 
     @Column(length = 255)
     private String email;
+
+    @Column(name = "site_web", length = 255)
+    private String siteWeb;
 
     @Column(name = "nom_schema", nullable = false, length = 64)
     private String nomSchema;

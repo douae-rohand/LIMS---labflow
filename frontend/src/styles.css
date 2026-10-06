@@ -344,3 +344,61 @@
   background: var(--color-accent-lime);
   box-shadow: 0 0 0 4px oklch(0.872 0.163 117.9 / 0.28);
 }
+
+.labflow-location-marker {
+  background: transparent !important;
+  border: none !important;
+  overflow: visible !important;
+}
+
+.labflow-location-marker-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.labflow-location-marker-pin {
+  position: relative;
+  width: 28px;
+  height: 40px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 6px 10px oklch(0.25 0.04 205 / 0.35));
+}
+
+.labflow-location-marker-pin::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: var(--color-brand-900);
+  border: 3px solid oklch(1 0 0);
+}
+
+.labflow-location-marker-pin::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 22px;
+  width: 12px;
+  height: 16px;
+  background: var(--color-brand-900);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.labflow-location-marker-label {
+  max-width: 11rem;
+  border-radius: 9999px;
+  background: var(--color-brand-900);
+  color: oklch(1 0 0);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: var(--shadow-soft);
+}

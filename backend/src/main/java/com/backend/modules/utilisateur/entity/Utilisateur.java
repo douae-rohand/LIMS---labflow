@@ -45,6 +45,9 @@ public class Utilisateur {
     @Column(length = 20)
     private String cin;
 
+    @Column(length = 100)
+    private String fonction;
+
     @Column(name = "mot_de_passe_hash", nullable = false, length = 255)
     private String motDePasseHash;
 

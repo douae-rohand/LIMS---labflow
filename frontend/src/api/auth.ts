@@ -219,6 +219,16 @@ export async function changerMotDePasse(body: ChangerMotDePasseBody): Promise<Lo
   return res.data;
 }
 
+export async function verifierJetonActivation(token: string): Promise<void> {
+  await apiClient.post<ApiResponse<null>>(
+    `/auth/compte/activer/verifier?token=${encodeURIComponent(token)}`,
+  );
+}
+
+export async function activerCompte(token: string, motDePasse: string): Promise<void> {
+  await apiClient.post<ApiResponse<null>>("/auth/compte/activer", { token, motDePasse });
+}
+
 /**
  * Rafraîchissement de l'accessToken.
  * Le refresh token est envoyé automatiquement via le cookie HttpOnly.

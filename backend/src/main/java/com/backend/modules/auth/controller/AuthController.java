@@ -35,9 +35,10 @@ public class AuthController {
     private final InscriptionService inscriptionService;
     private final ActivationService activationService;
     private final InscriptionRateLimiter rateLimiter;
+    private final ActivationCompteService activationCompteService;
 
     // -------------------------------------------------------------------------
-    // Inscription publique
+    // Inscription publique (client)
     // -------------------------------------------------------------------------
 
     @PostMapping("/inscription")
@@ -55,11 +56,12 @@ public class AuthController {
         // Toujours 202 — ne permet pas l'énumération des emails
         inscriptionService.inscrire(request);
         return ResponseEntity.accepted()
-                .body(ApiResponse.success("Si cet email est valide, un lien d'activation vous a été envoyé.", null));
+                .body(ApiResponse.success(
+                        "Si cet email est valide, un lien d'activation vous a été envoyé.", null));
     }
 
     // -------------------------------------------------------------------------
-    // Confirmation d'activation
+    // Confirmation d'activation (client)
     // -------------------------------------------------------------------------
 
     @PostMapping("/activation/confirmer")
@@ -67,7 +69,8 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> confirmerActivation(
             @Valid @RequestBody ActivationRequest request) {
         activationService.confirmerCompte(request.getToken());
-        return ResponseEntity.ok(ApiResponse.success("Compte activé. Vous pouvez maintenant vous connecter.", null));
+        return ResponseEntity.ok(ApiResponse.success(
+                "Compte activé. Vous pouvez maintenant vous connecter.", null));
     }
 
     // -------------------------------------------------------------------------
@@ -208,5 +211,22 @@ public class AuthController {
                     .body(ApiResponse.success("2FA activée avec succès. Connexion établie.", loginResult.response()));
         }
         return ResponseEntity.ok(ApiResponse.success("2FA activée avec succès", null));
+    }
+
+    @PostMapping("/compte/activer/verifier")
+    @Operation(summary = "Vérifie un jeton d'activation de compte (public)")
+    public ResponseEntity<ApiResponse<Void>> verifierActivation(
+            @RequestParam String token) {
+        activationCompteService.verifier(token);
+        return ResponseEntity.ok(ApiResponse.success("Jeton d'activation valide", null));
+    }
+
+    @PostMapping("/compte/activer")
+    @Operation(summary = "Active un compte administrateur et définit le mot de passe (public)")
+    public ResponseEntity<ApiResponse<Void>> activerCompte(
+            @Valid @RequestBody ActiverCompteRequest request) {
+        activationCompteService.activer(request.getToken(), request.getMotDePasse());
+        return ResponseEntity.ok(ApiResponse.success(
+                "Compte activé. Vous pouvez maintenant vous connecter.", null));
     }
 }

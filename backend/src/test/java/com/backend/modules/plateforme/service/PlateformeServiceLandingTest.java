@@ -4,7 +4,6 @@ import com.backend.common.tenant.TenantProvisioner;
 import com.backend.modules.demande.entity.StatutDemande;
 import com.backend.modules.plateforme.dto.LandingPublicDto;
 import com.backend.modules.plateforme.entity.Laboratoire;
-import com.backend.modules.plateforme.repository.DemandeIntegrationRepository;
 import com.backend.modules.plateforme.repository.LaboratoireRepository;
 import com.backend.modules.utilisateur.entity.Role;
 import com.backend.modules.utilisateur.repository.RoleRepository;
@@ -25,8 +24,6 @@ class PlateformeServiceLandingTest {
 
     @Mock
     private LaboratoireRepository laboratoireRepository;
-    @Mock
-    private DemandeIntegrationRepository demandeIntegrationRepository;
     @Mock
     private RoleRepository roleRepository;
     @Mock

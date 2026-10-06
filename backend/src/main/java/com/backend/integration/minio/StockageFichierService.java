@@ -1,92 +1,100 @@
 package com.backend.integration.minio;
 
+import com.backend.common.exception.BusinessRuleException;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 /**
- * Service de stockage de fichiers via MinIO (compatible S3).
- *
- * <p>Utilisé pour : rapports PDF, photos d'échantillons, documents qualité.
- *
- * <p>TODO: ajouter la dépendance MinIO SDK ({@code io.minio:minio}) dans le pom.xml
- * et implémenter les appels réels. Cette classe est un stub compilable.
- *
- * <pre>
- * // Dépendance à ajouter :
- * // &lt;dependency&gt;
- * //   &lt;groupId&gt;io.minio&lt;/groupId&gt;
- * //   &lt;artifactId&gt;minio&lt;/artifactId&gt;
- * //   &lt;version&gt;8.5.12&lt;/version&gt;
- * // &lt;/dependency&gt;
- * </pre>
+ * Stockage des fichiers d'intégration et documents métier.
+ * Implémentation locale (disque) utilisable immédiatement ; MinIO reste
+ * configurable via {@code minio.*} pour une bascule ultérieure.
  */
 @Slf4j
 @Service
 public class StockageFichierService {
 
+    @Value("${app.storage.path:${user.home}/lims-documents}")
+    private String storagePath;
+
     @Value("${minio.endpoint:http://localhost:9000}")
     private String endpoint;
-
-    @Value("${minio.access-key:minioadmin}")
-    private String accessKey;
-
-    @Value("${minio.secret-key:minioadmin}")
-    private String secretKey;
 
     @Value("${minio.bucket:lims-documents}")
     private String defaultBucket;
 
-    // TODO: injecter le client MinIO après ajout de la dépendance
-    // private MinioClient minioClient;
+    private Path racine;
 
-    /**
-     * Téléverse un fichier et retourne son URL publique ou présignée.
-     *
-     * @param objectName nom de l'objet dans le bucket (ex. "rapports/RAP-0001.pdf")
-     * @param contenu    flux du fichier
-     * @param taille     taille en octets (-1 si inconnue)
-     * @param contentType type MIME (ex. "application/pdf")
-     * @return URL d'accès au fichier
-     */
+    @PostConstruct
+    void initialiser() {
+        racine = Path.of(storagePath).toAbsolutePath().normalize();
+        try {
+            Files.createDirectories(racine);
+            log.info("Stockage fichiers initialisé : {}", racine);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Impossible d'initialiser le répertoire de stockage : " + racine, ex);
+        }
+    }
+
     public String televerser(String objectName, InputStream contenu, long taille, String contentType) {
-        log.info("Téléversement MinIO : bucket={}, object={}", defaultBucket, objectName);
-        // TODO: implémenter avec MinioClient
-        // minioClient.putObject(PutObjectArgs.builder()
-        //     .bucket(defaultBucket).object(objectName).stream(contenu, taille, -1)
-        //     .contentType(contentType).build());
-        return endpoint + "/" + defaultBucket + "/" + objectName;
+        Path destination = resoudre(objectName);
+        try {
+            Files.createDirectories(destination.getParent());
+            Files.copy(contenu, destination, StandardCopyOption.REPLACE_EXISTING);
+            log.info("Fichier stocké : object={}, taille={}, type={}", objectName, taille, contentType);
+            return objectName;
+        } catch (IOException ex) {
+            throw new BusinessRuleException("STOCKAGE_ECHOUE",
+                    "Impossible d'enregistrer le fichier : " + ex.getMessage());
+        }
     }
 
-    /**
-     * Télécharge un fichier depuis MinIO.
-     *
-     * @param objectName nom de l'objet dans le bucket
-     * @return flux du fichier
-     */
     public InputStream telecharger(String objectName) {
-        log.info("Téléchargement MinIO : bucket={}, object={}", defaultBucket, objectName);
-        // TODO: implémenter avec MinioClient
-        // return minioClient.getObject(GetObjectArgs.builder()
-        //     .bucket(defaultBucket).object(objectName).build());
-        throw new UnsupportedOperationException("MinIO SDK non encore configuré — voir TODO dans StockageFichierService");
+        Path source = resoudre(objectName);
+        if (!Files.exists(source)) {
+            throw new BusinessRuleException("FICHIER_INTROUVABLE",
+                    "Le fichier demandé n'existe plus sur le serveur");
+        }
+        try {
+            return Files.newInputStream(source);
+        } catch (IOException ex) {
+            throw new BusinessRuleException("LECTURE_FICHIER_ECHOUEE",
+                    "Impossible de lire le fichier : " + ex.getMessage());
+        }
     }
 
-    /**
-     * Supprime un fichier du bucket.
-     */
+    public Path cheminAbsolu(String objectName) {
+        return resoudre(objectName);
+    }
+
     public void supprimer(String objectName) {
-        log.info("Suppression MinIO : bucket={}, object={}", defaultBucket, objectName);
-        // TODO: implémenter avec MinioClient
+        Path cible = resoudre(objectName);
+        try {
+            Files.deleteIfExists(cible);
+        } catch (IOException ex) {
+            log.warn("Suppression fichier échouée : object={}, erreur={}", objectName, ex.getMessage());
+        }
     }
 
-    /**
-     * Génère une URL présignée valable {@code expirationMinutes} minutes.
-     */
     public String genererUrlPresignee(String objectName, int expirationMinutes) {
-        // TODO: implémenter avec MinioClient
-        return endpoint + "/" + defaultBucket + "/" + objectName + "?presigned=true";
+        return endpoint + "/" + defaultBucket + "/" + objectName + "?ttl=" + expirationMinutes;
+    }
+
+    private Path resoudre(String objectName) {
+        if (objectName == null || objectName.isBlank()) {
+            throw new BusinessRuleException("CHEMIN_FICHIER_INVALIDE", "Nom d'objet vide");
+        }
+        Path cible = racine.resolve(objectName).normalize();
+        if (!cible.startsWith(racine)) {
+            throw new BusinessRuleException("CHEMIN_FICHIER_INVALIDE", "Chemin de fichier hors zone de stockage");
+        }
+        return cible;
     }
 }
