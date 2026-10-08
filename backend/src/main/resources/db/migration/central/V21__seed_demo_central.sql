@@ -12,56 +12,49 @@ SELECT 'nord', 'Laboratoire du Nord', '001545678000045', '8 Avenue Mohammed VI',
 WHERE NOT EXISTS (SELECT 1 FROM laboratoire WHERE code = 'nord');
 
 INSERT INTO utilisateur (matricule, nom, prenom, email, telephone, mot_de_passe_hash, must_change_password, double_authentification, actif, role_id, laboratoire_id)
-SELECT 'SA-0001', 'El Fassi', 'Amine', 'superadmin@labflow.ma', '+212600000001',
-       '$2a$10$.kzwyrGQxJnjnsSsbpk8w.7JwybNZDiqb1fGZwcfWgZhNgJOITEN2', 0, 0, 1,
-       (SELECT id_role FROM role WHERE code = 'SUPER_ADMINISTRATEUR'),
-       NULL
-WHERE NOT EXISTS (SELECT 1 FROM utilisateur WHERE email = 'superadmin@labflow.ma');
-
-INSERT INTO utilisateur (matricule, nom, prenom, email, telephone, mot_de_passe_hash, must_change_password, double_authentification, actif, role_id, laboratoire_id)
-SELECT 'ADM-ATL', 'Bennani', 'Sara', 'admin.atlas@labflow.ma', '+212600000010',
+SELECT NULL, 'Bennani', 'Sara', 'admin.atlas@labflow.ma', '+212600000010',
        '$2a$10$.kzwyrGQxJnjnsSsbpk8w.7JwybNZDiqb1fGZwcfWgZhNgJOITEN2', 0, 0, 1,
        (SELECT id_role FROM role WHERE code = 'ADMINISTRATEUR'),
        (SELECT id_laboratoire FROM laboratoire WHERE code = 'atlas')
 WHERE NOT EXISTS (SELECT 1 FROM utilisateur WHERE email = 'admin.atlas@labflow.ma');
 
 INSERT INTO utilisateur (matricule, nom, prenom, email, telephone, mot_de_passe_hash, must_change_password, double_authentification, actif, role_id, laboratoire_id)
-SELECT 'RES-ATL', 'Amrani', 'Sofia', 'resp.atlas@labflow.ma', '+212600000011',
+SELECT NULL, 'Amrani', 'Sofia', 'resp.atlas@labflow.ma', '+212600000011',
        '$2a$10$.kzwyrGQxJnjnsSsbpk8w.7JwybNZDiqb1fGZwcfWgZhNgJOITEN2', 0, 0, 1,
        (SELECT id_role FROM role WHERE code = 'RESPONSABLE'),
        (SELECT id_laboratoire FROM laboratoire WHERE code = 'atlas')
 WHERE NOT EXISTS (SELECT 1 FROM utilisateur WHERE email = 'resp.atlas@labflow.ma');
 
 INSERT INTO utilisateur (matricule, nom, prenom, email, telephone, mot_de_passe_hash, must_change_password, double_authentification, actif, role_id, laboratoire_id)
-SELECT 'TEC-ATL', 'Idrissi', 'Youssef', 'tech.atlas@labflow.ma', '+212600000012',
+SELECT NULL, 'Idrissi', 'Youssef', 'tech.atlas@labflow.ma', '+212600000012',
        '$2a$10$.kzwyrGQxJnjnsSsbpk8w.7JwybNZDiqb1fGZwcfWgZhNgJOITEN2', 0, 0, 1,
        (SELECT id_role FROM role WHERE code = 'TECHNICIEN'),
        (SELECT id_laboratoire FROM laboratoire WHERE code = 'atlas')
 WHERE NOT EXISTS (SELECT 1 FROM utilisateur WHERE email = 'tech.atlas@labflow.ma');
 
 INSERT INTO utilisateur (matricule, nom, prenom, email, telephone, mot_de_passe_hash, must_change_password, double_authentification, actif, role_id, laboratoire_id)
-SELECT 'ACC-ATL', 'Tahiri', 'Lina', 'accueil.atlas@labflow.ma', '+212600000013',
+SELECT NULL, 'Tahiri', 'Lina', 'accueil.atlas@labflow.ma', '+212600000013',
        '$2a$10$.kzwyrGQxJnjnsSsbpk8w.7JwybNZDiqb1fGZwcfWgZhNgJOITEN2', 0, 0, 1,
        (SELECT id_role FROM role WHERE code = 'ACCUEIL'),
        (SELECT id_laboratoire FROM laboratoire WHERE code = 'atlas')
 WHERE NOT EXISTS (SELECT 1 FROM utilisateur WHERE email = 'accueil.atlas@labflow.ma');
 
 INSERT INTO utilisateur (matricule, nom, prenom, email, telephone, mot_de_passe_hash, must_change_password, double_authentification, actif, role_id, laboratoire_id)
-SELECT 'CLI-001', 'Mansouri', 'Karim', 'client.atlas@labflow.ma', '+212600000014',
+SELECT NULL, 'Mansouri', 'Karim', 'client.atlas@labflow.ma', '+212600000014',
        '$2a$10$.kzwyrGQxJnjnsSsbpk8w.7JwybNZDiqb1fGZwcfWgZhNgJOITEN2', 0, 0, 1,
        (SELECT id_role FROM role WHERE code = 'CLIENT'),
        NULL
 WHERE NOT EXISTS (SELECT 1 FROM utilisateur WHERE email = 'client.atlas@labflow.ma');
 
 INSERT INTO utilisateur (matricule, nom, prenom, email, telephone, mot_de_passe_hash, must_change_password, double_authentification, actif, role_id, laboratoire_id)
-SELECT 'ADM-NRD', 'Chraibi', 'Hanae', 'admin.nord@labflow.ma', '+212600000020',
+SELECT NULL, 'Chraibi', 'Hanae', 'admin.nord@labflow.ma', '+212600000020',
        '$2a$10$.kzwyrGQxJnjnsSsbpk8w.7JwybNZDiqb1fGZwcfWgZhNgJOITEN2', 0, 0, 1,
        (SELECT id_role FROM role WHERE code = 'ADMINISTRATEUR'),
        (SELECT id_laboratoire FROM laboratoire WHERE code = 'nord')
 WHERE NOT EXISTS (SELECT 1 FROM utilisateur WHERE email = 'admin.nord@labflow.ma');
 
 INSERT INTO utilisateur (matricule, nom, prenom, email, telephone, mot_de_passe_hash, must_change_password, double_authentification, actif, role_id, laboratoire_id)
-SELECT 'TEC-NRD', 'Alaoui', 'Mehdi', 'tech.nord@labflow.ma', '+212600000021',
+SELECT NULL, 'Alaoui', 'Mehdi', 'tech.nord@labflow.ma', '+212600000021',
        '$2a$10$.kzwyrGQxJnjnsSsbpk8w.7JwybNZDiqb1fGZwcfWgZhNgJOITEN2', 0, 0, 1,
        (SELECT id_role FROM role WHERE code = 'TECHNICIEN'),
        (SELECT id_laboratoire FROM laboratoire WHERE code = 'nord')

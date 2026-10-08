@@ -44,6 +44,7 @@ public class UtilisateurService {
     private final PasswordEncoder passwordEncoder;
     private final ActivationCompteService activationCompteService;
     private final TenantExecutor tenantExecutor;
+    private final MatriculeGeneratorService matriculeGeneratorService;
 
     /** Rôles que peut créer un ADMINISTRATEUR (les siens exclus). */
     private static final Set<RoleUtilisateur> ROLES_CREABLES_PAR_ADMIN = Set.of(
@@ -100,7 +101,10 @@ public class UtilisateurService {
 
         boolean fluxInvitation = !StringUtils.hasText(request.getMotDePasse());
 
+        String matricule = matriculeGeneratorService.genererMatricule(role.getCode());
+
         Utilisateur utilisateur = Utilisateur.builder()
+                .matricule(matricule)
                 .nom(request.getNom())
                 .prenom(request.getPrenom())
                 .email(request.getEmail())

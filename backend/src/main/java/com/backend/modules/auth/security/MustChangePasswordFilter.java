@@ -47,6 +47,8 @@ public class MustChangePasswordFilter extends OncePerRequestFilter {
 
     private static final Set<String> CHEMINS_AUTORISES = Set.of(
             "/api/auth/mot-de-passe/changer",
+            "/api/auth/mot-de-passe/oublie",
+            "/api/auth/mot-de-passe/reinitialiser",
             "/api/auth/logout",
             "/api/auth/refresh",
             "/api/auth/inscription",

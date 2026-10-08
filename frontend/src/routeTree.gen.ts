@@ -18,6 +18,8 @@ import { Route as ChangerMotDePasseRouteImport } from './routes/changer-mot-de-p
 import { Route as InscriptionRouteImport } from './routes/inscription'
 import { Route as IntegrationRouteImport } from './routes/integration'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MotDePasseOublieRouteImport } from './routes/mot-de-passe-oublie'
+import { Route as ReinitialiserMotDePasseRouteImport } from './routes/reinitialiser-mot-de-passe'
 import { Route as UiKitRouteImport } from './routes/ui-kit'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/index'
@@ -70,6 +72,16 @@ const IntegrationRoute = IntegrationRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MotDePasseOublieRoute = MotDePasseOublieRouteImport.update({
+  id: '/mot-de-passe-oublie',
+  path: '/mot-de-passe-oublie',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReinitialiserMotDePasseRoute = ReinitialiserMotDePasseRouteImport.update({
+  id: '/reinitialiser-mot-de-passe',
+  path: '/reinitialiser-mot-de-passe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UiKitRoute = UiKitRouteImport.update({
@@ -125,6 +137,8 @@ export interface FileRoutesByFullPath {
   '/inscription': typeof InscriptionRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
+  '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
+  '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
@@ -143,6 +157,8 @@ export interface FileRoutesByTo {
   '/inscription': typeof InscriptionRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
+  '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
+  '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app': typeof AppIndexRoute
@@ -163,6 +179,8 @@ export interface FileRoutesById {
   '/inscription': typeof InscriptionRoute
   '/integration': typeof IntegrationRoute
   '/login': typeof LoginRoute
+  '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
+  '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
@@ -184,6 +202,8 @@ export interface FileRouteTypes {
     | '/inscription'
     | '/integration'
     | '/login'
+    | '/mot-de-passe-oublie'
+    | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
     | '/laboratoires/$id'
     | '/app/'
@@ -202,6 +222,8 @@ export interface FileRouteTypes {
     | '/inscription'
     | '/integration'
     | '/login'
+    | '/mot-de-passe-oublie'
+    | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
     | '/laboratoires/$id'
     | '/app'
@@ -221,6 +243,8 @@ export interface FileRouteTypes {
     | '/inscription'
     | '/integration'
     | '/login'
+    | '/mot-de-passe-oublie'
+    | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
     | '/laboratoires/$id'
     | '/app/'
@@ -241,6 +265,8 @@ export interface RootRouteChildren {
   InscriptionRoute: typeof InscriptionRoute
   IntegrationRoute: typeof IntegrationRoute
   LoginRoute: typeof LoginRoute
+  MotDePasseOublieRoute: typeof MotDePasseOublieRoute
+  ReinitialiserMotDePasseRoute: typeof ReinitialiserMotDePasseRoute
   UiKitRoute: typeof UiKitRoute
   LaboratoiresIdRoute: typeof LaboratoiresIdRoute
   LaboratoiresIndexRoute: typeof LaboratoiresIndexRoute
@@ -309,6 +335,20 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mot-de-passe-oublie': {
+      id: '/mot-de-passe-oublie'
+      path: '/mot-de-passe-oublie'
+      fullPath: '/mot-de-passe-oublie'
+      preLoaderRoute: typeof MotDePasseOublieRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reinitialiser-mot-de-passe': {
+      id: '/reinitialiser-mot-de-passe'
+      path: '/reinitialiser-mot-de-passe'
+      fullPath: '/reinitialiser-mot-de-passe'
+      preLoaderRoute: typeof ReinitialiserMotDePasseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ui-kit': {
@@ -398,6 +438,8 @@ const rootRouteChildren: RootRouteChildren = {
   InscriptionRoute: InscriptionRoute,
   IntegrationRoute: IntegrationRoute,
   LoginRoute: LoginRoute,
+  MotDePasseOublieRoute: MotDePasseOublieRoute,
+  ReinitialiserMotDePasseRoute: ReinitialiserMotDePasseRoute,
   UiKitRoute: UiKitRoute,
   LaboratoiresIdRoute: LaboratoiresIdRoute,
   LaboratoiresIndexRoute: LaboratoiresIndexRoute,

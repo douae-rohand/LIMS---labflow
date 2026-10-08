@@ -14,12 +14,14 @@ const field =
 export function Label({
   children,
   htmlFor,
+  className,
 }: {
   children: ReactNode;
   htmlFor?: string;
+  className?: string;
 }) {
   return (
-    <label htmlFor={htmlFor} className="text-sm font-semibold text-ink-900">
+    <label htmlFor={htmlFor} className={cn("text-sm font-semibold text-ink-900", className)}>
       {children}
     </label>
   );

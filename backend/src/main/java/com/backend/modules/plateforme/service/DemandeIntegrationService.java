@@ -18,6 +18,7 @@ import com.backend.modules.utilisateur.entity.RoleUtilisateur;
 import com.backend.modules.utilisateur.entity.Utilisateur;
 import com.backend.modules.utilisateur.repository.RoleRepository;
 import com.backend.modules.utilisateur.repository.UtilisateurRepository;
+import com.backend.modules.utilisateur.service.MatriculeGeneratorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -64,6 +65,7 @@ public class DemandeIntegrationService {
     private final ActivationCompteService activationCompteService;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final MatriculeGeneratorService matriculeGeneratorService;
 
     @Value("${app.integration.max-file-size-bytes:10485760}")
     private long tailleMaxOctets;
@@ -302,8 +304,11 @@ public class DemandeIntegrationService {
         Role role = roleRepository.findByCode(RoleUtilisateur.ADMINISTRATEUR.name())
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "code", RoleUtilisateur.ADMINISTRATEUR.name()));
 
+        String matricule = matriculeGeneratorService.genererMatricule(RoleUtilisateur.ADMINISTRATEUR);
+
         String motDePasseTemporaire = UUID.randomUUID().toString() + "A1a";
         Utilisateur admin = Utilisateur.builder()
+                .matricule(matricule)
                 .nom(demande.getContactNom())
                 .prenom(demande.getContactPrenom())
                 .email(demande.getContactEmail())
