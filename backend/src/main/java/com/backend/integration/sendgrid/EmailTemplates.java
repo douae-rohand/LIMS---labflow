@@ -146,8 +146,26 @@ public final class EmailTemplates {
         );
     }
 
-    public static String confirmationInscriptionClient(String nomComplet,
-                                                       String lienActivation,
+    public static String reinitMotDePasse(String nomComplet,
+                                          String lienReinit,
+                                          int ttlMinutes) {
+        return page(
+                "Réinitialisation de votre mot de passe",
+                "Choisissez un nouveau mot de passe pour votre compte LabFlow.",
+                """
+                <p>Bonjour %s,</p>
+                <p>Nous avons reçu une demande de réinitialisation du mot de passe associé à votre compte LabFlow.
+                Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe.</p>
+                <p>Ce lien expire dans <strong>%d minutes</strong> et ne peut être utilisé qu'une seule fois.</p>
+                <p>Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.
+                Votre mot de passe actuel restera inchangé.</p>
+                """.formatted(e(nomComplet), ttlMinutes),
+                lienReinit,
+                "Réinitialiser mon mot de passe"
+        );
+    }
+
+    public static String confirmationInscriptionClient(String nomComplet,                                                       String lienActivation,
                                                        int ttlHeures) {
         return page(
                 "Confirmez votre adresse e-mail",

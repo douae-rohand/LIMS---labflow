@@ -265,6 +265,40 @@ export async function confirmerActivation(token: string): Promise<void> {
 }
 
 /**
+ * Demande le renvoi du lien d'activation de compte client (CLI-02).
+ * Retourne toujours 202 (ou 429 en cas de rate-limit / cooldown).
+ */
+export async function renvoyerActivation(email: string): Promise<void> {
+  await apiClient.post<ApiResponse<null>>('/auth/activation/renvoyer', { email });
+}
+
+/**
+ * Demande de réinitialisation de mot de passe.
+ * Retourne toujours 202 (même si l'email n'existe pas) — anti-énumération.
+ * 429 en cas de cooldown (60 s) ou de limite dépassée.
+ */
+export async function motDePasseOublie(email: string): Promise<void> {
+  await apiClient.post<ApiResponse<null>>('/auth/mot-de-passe/oublie', { email });
+}
+
+/**
+ * Réinitialise le mot de passe via le jeton reçu par e-mail.
+ * 200 = succès (aucune session créée).
+ * 400 = jeton invalide/expiré/utilisé, ou politique non respectée (message du serveur).
+ * 429 = limite par IP dépassée.
+ * Le jeton n'est PAS consommé si la politique est refusée.
+ */
+export async function reinitialiserMotDePasse(
+  token: string,
+  nouveauMotDePasse: string,
+): Promise<void> {
+  await apiClient.post<ApiResponse<null>>('/auth/mot-de-passe/reinitialiser', {
+    token,
+    nouveauMotDePasse,
+  });
+}
+
+/**
  * Rafraîchissement de l'accessToken.
  * Le refresh token est envoyé automatiquement via le cookie HttpOnly.
  * Ne pas appeler directement : utiliser l'intercepteur 401 de ApiClient.

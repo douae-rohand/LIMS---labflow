@@ -45,6 +45,12 @@ public class Utilisateur {
     @Column(length = 20)
     private String cin;
 
+    @Column(name = "date_creation", nullable = false, updatable = false)
+    private Instant dateCreation;
+
+    @Column(name = "date_modification", nullable = false)
+    private Instant dateModification;
+
     @Column(length = 100)
     private String fonction;
 
@@ -80,6 +86,18 @@ public class Utilisateur {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "laboratoire_id")
     private Laboratoire laboratoire;
+
+    @PrePersist
+    protected void onCreate() {
+        Instant now = Instant.now();
+        if (dateCreation == null) dateCreation = now;
+        if (dateModification == null) dateModification = now;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        dateModification = Instant.now();
+    }
 
     public String getNomComplet() {
         if (prenom == null || prenom.isBlank()) {

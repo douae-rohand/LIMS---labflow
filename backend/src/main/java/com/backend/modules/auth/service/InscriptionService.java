@@ -8,6 +8,7 @@ import com.backend.modules.utilisateur.entity.Role;
 import com.backend.modules.utilisateur.entity.Utilisateur;
 import com.backend.modules.utilisateur.repository.RoleRepository;
 import com.backend.modules.utilisateur.repository.UtilisateurRepository;
+import com.backend.modules.utilisateur.service.MatriculeGeneratorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,6 +49,7 @@ public class InscriptionService {
     private final PasswordEncoder passwordEncoder;
     private final ActivationService activationService;
     private final ActivationEmailService activationEmailService;
+    private final MatriculeGeneratorService matriculeGeneratorService;
 
     @Value("${app.inscription.version-consentement-cndp:1.0}")
     private String versionConsentementCndp;
@@ -85,7 +87,10 @@ public class InscriptionService {
             Role roleClient = roleRepository.findByCode("CLIENT")
                     .orElseThrow(() -> new IllegalStateException("Rôle CLIENT absent en base"));
 
+            String matricule = matriculeGeneratorService.genererMatricule("CLIENT");
+
             utilisateur = utilisateurRepository.save(Utilisateur.builder()
+                    .matricule(matricule)
                     .nom(request.getNom().trim())
                     .prenom(request.getPrenom() != null ? request.getPrenom().trim() : null)
                     .email(request.getEmail().toLowerCase().trim())

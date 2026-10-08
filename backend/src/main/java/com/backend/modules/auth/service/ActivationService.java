@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -19,7 +21,7 @@ import java.time.Instant;
 import java.util.Base64;
 
 /**
- * Gestion des jetons d'activation de compte.
+ * Gestion des jetons d'activation de compte client (CLI-01 et CLI-02).
  *
  * <p>Sécurité :
  * <ul>
@@ -38,6 +40,7 @@ public class ActivationService {
 
     private final TokenActivationRepository tokenActivationRepository;
     private final UtilisateurRepository utilisateurRepository;
+    private final ActivationEmailService activationEmailService;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
@@ -56,7 +59,7 @@ public class ActivationService {
      */
     @Transactional
     public String genererJeton(Utilisateur utilisateur) {
-        // Révoquer les anciens jetons non utilisés (cas de ré-inscription)
+        // Révoquer les anciens jetons non utilisés (cas de ré-inscription / renvoi)
         int nb = tokenActivationRepository.revoquerTousParUtilisateur(utilisateur.getId());
         if (nb > 0) {
             log.debug("Activation : {} jeton(s) précédent(s) révoqué(s) pour userId={}",
@@ -76,6 +79,53 @@ public class ActivationService {
                 .build());
 
         return tokenBrut;
+    }
+
+    // -------------------------------------------------------------------------
+    // Renvoi du lien d'activation (CLI-02)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Traite le renvoi du lien d'activation du compte.
+     *
+     * <p>Si et seulement si un utilisateur existe avec {@code compteConfirme == false} :
+     * <ul>
+     *   <li>Révocation des anciens jetons + création du nouveau jeton dans UNE seule transaction.</li>
+     *   <li>Envoi de l'e-mail déclenché uniquement APRÈS le commit de la transaction.</li>
+     * </ul>
+     * Dans tous les cas, aucune exception n'est levée pour préserver le silence (anti-énumération).
+     */
+    @Transactional
+    public void renvoyerLienActivation(String emailRaw) {
+        if (emailRaw == null || emailRaw.isBlank()) {
+            return;
+        }
+
+        String emailNormalized = emailRaw.toLowerCase().trim();
+        Utilisateur utilisateur = utilisateurRepository.findByEmail(emailNormalized).orElse(null);
+
+        if (utilisateur == null || utilisateur.isCompteConfirme()) {
+            log.debug("Renvoi d'activation ignoré — utilisateur absent ou déjà confirmé.");
+            return;
+        }
+
+        // Régénérer le jeton (invalide les anciens et crée le nouveau dans la transaction courante)
+        final String tokenBrut = genererJeton(utilisateur);
+        final String email = utilisateur.getEmail();
+        final String nomComplet = utilisateur.getNomComplet();
+
+        // Programmer l'envoi de l'email uniquement après le commit réussi de la transaction
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    activationEmailService.envoyerLienActivation(email, nomComplet, tokenBrut);
+                } catch (Exception ex) {
+                    log.error("Erreur envoi renvoi lien activation [userId={}] : {}",
+                            utilisateur.getId(), ex.getMessage());
+                }
+            }
+        });
     }
 
     // -------------------------------------------------------------------------

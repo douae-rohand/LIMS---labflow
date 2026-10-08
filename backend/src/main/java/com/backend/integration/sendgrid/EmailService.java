@@ -83,6 +83,20 @@ public class EmailService {
     }
 
     @Async
+    public void envoyerReinitMotDePasse(String email, String nomComplet,
+                                        String lienReinit, int ttlMinutes) {
+        String sujet = "[LabFlow] Réinitialisation de votre mot de passe";
+        ResultatEnvoiEmail resultat = envoyerHtml(
+                email, sujet,
+                EmailTemplates.reinitMotDePasse(nomComplet, lienReinit, ttlMinutes));
+        if (!resultat.accepte()) {
+            // Jamais l'email, le lien ni le corps dans les logs
+            log.warn("Envoi e-mail réinitialisation non accepté [code={}, temporaire={}]",
+                    resultat.code(), resultat.temporaire());
+        }
+    }
+
+    @Async
     public void envoyerConfirmationInscriptionClient(String email, String nomComplet,
                                                      String lienActivation, int ttlHeures) {
         String sujet = "[LabFlow] Confirmez votre adresse e-mail";

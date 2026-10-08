@@ -31,10 +31,12 @@ public class AuthController {
 
     private final AuthService authService;
     private final MotDePasseService motDePasseService;
+    private final ReinitMotDePasseService reinitMotDePasseService;
     private final RefreshCookieService refreshCookieService;
     private final InscriptionService inscriptionService;
     private final ActivationService activationService;
     private final InscriptionRateLimiter rateLimiter;
+    private final ReinitRateLimiter reinitRateLimiter;
     private final ActivationCompteService activationCompteService;
 
     // -------------------------------------------------------------------------
@@ -71,6 +73,79 @@ public class AuthController {
         activationService.confirmerCompte(request.getToken());
         return ResponseEntity.ok(ApiResponse.success(
                 "Compte activé. Vous pouvez maintenant vous connecter.", null));
+    }
+
+    // -------------------------------------------------------------------------
+    // Renvoi du lien d'activation (client CLI-02)
+    // -------------------------------------------------------------------------
+
+    @PostMapping("/activation/renvoyer")
+    @Operation(summary = "Demande le renvoi du lien d'activation de compte (public)")
+    public ResponseEntity<ApiResponse<Void>> renvoyerActivation(
+            @Valid @RequestBody RenvoyerActivationRequest request,
+            HttpServletRequest httpRequest) {
+
+        String ip = rateLimiter.extraireIp(httpRequest);
+        String emailNorm = request.getEmail().toLowerCase().trim();
+
+        if (rateLimiter.estEnCooldownOuLimiteRenvoi(ip, emailNorm)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(ApiResponse.error("Trop de tentatives. Réessayez plus tard."));
+        }
+
+        activationService.renvoyerLienActivation(emailNorm);
+
+        return ResponseEntity.accepted()
+                .body(ApiResponse.success(
+                        "Si un compte non activé existe pour cette adresse, un nouveau lien d'activation a été envoyé.", null));
+    }
+
+    // -------------------------------------------------------------------------
+    // Mot de passe oublié
+    // -------------------------------------------------------------------------
+
+    @PostMapping("/mot-de-passe/oublie")
+    @Operation(summary = "Demande de réinitialisation de mot de passe (public, toujours 202)")
+    public ResponseEntity<ApiResponse<Void>> motDePasseOublie(
+            @Valid @RequestBody MotDePasseOublieRequest request,
+            HttpServletRequest httpRequest) {
+
+        // Rate-limiting AVANT la recherche en base (le 429 ne révèle pas l'existence du compte)
+        // Compteurs dédiés — séparés de ceux de l'inscription pour éviter toute interférence
+        String ip = reinitRateLimiter.extraireIp(httpRequest);
+        if (reinitRateLimiter.estLimiteOuCooldown(ip, request.getEmail())) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(ApiResponse.error("Trop de tentatives. Réessayez dans quelques minutes."));
+        }
+
+        // Traitement silencieux — la réponse est toujours 202
+        reinitMotDePasseService.demanderReinit(request.getEmail());
+        return ResponseEntity.accepted()
+                .body(ApiResponse.success(
+                        "Si un compte actif correspond à cette adresse, vous recevrez un e-mail.", null));
+    }
+
+    // -------------------------------------------------------------------------
+    // Réinitialisation effective
+    // -------------------------------------------------------------------------
+
+    @PostMapping("/mot-de-passe/reinitialiser")
+    @Operation(summary = "Réinitialise le mot de passe via un jeton reçu par e-mail")
+    public ResponseEntity<ApiResponse<Void>> reinitialiserMotDePasse(
+            @Valid @RequestBody ReinitialiserMotDePasseRequest request,
+            HttpServletRequest httpRequest) {
+
+        // Rate-limiting par IP uniquement (la requête ne contient pas d'e-mail)
+        // Compteurs dédiés — séparés de ceux de l'inscription
+        String ip = reinitRateLimiter.extraireIp(httpRequest);
+        if (reinitRateLimiter.estLimiteParIp(ip)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(ApiResponse.error("Trop de tentatives. Réessayez plus tard."));
+        }
+
+        reinitMotDePasseService.reinitialiser(request.getToken(), request.getNouveauMotDePasse());
+        return ResponseEntity.ok(ApiResponse.success(
+                "Mot de passe réinitialisé. Vous pouvez maintenant vous connecter.", null));
     }
 
     // -------------------------------------------------------------------------

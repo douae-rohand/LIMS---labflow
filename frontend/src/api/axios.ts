@@ -336,7 +336,10 @@ export class ApiClient {
           originalConfig?.url?.includes('/auth/logout') === true ||
           originalConfig?.url?.includes('/2fa/valider') === true ||
           originalConfig?.url?.includes('/auth/inscription') === true ||
-          originalConfig?.url?.includes('/auth/activation/confirmer') === true;
+          originalConfig?.url?.includes('/auth/activation/confirmer') === true ||
+          originalConfig?.url?.includes('/auth/activation/renvoyer') === true ||
+          originalConfig?.url?.includes('/auth/mot-de-passe/oublie') === true ||
+          originalConfig?.url?.includes('/auth/mot-de-passe/reinitialiser') === true;
 
         // 403 PASSWORD_CHANGE_REQUIRED → rediriger vers /changer-mot-de-passe (une seule fois)
         if (status === 403) {

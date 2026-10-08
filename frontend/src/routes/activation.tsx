@@ -5,6 +5,7 @@ import { Button, Card } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import { PublicLayout } from "@/layouts/PublicLayout";
 import { confirmerActivation } from "@/api/auth";
+import { RenvoyerLienActivation } from "@/components/auth/RenvoyerLienActivation";
 
 // ---------------------------------------------------------------------------
 // Cache module : garantit UN SEUL appel réseau par jeton, même en StrictMode.
@@ -111,6 +112,9 @@ function ActivationPage() {
                 Ce lien est invalide, expiré ou a déjà été utilisé. Si vous avez déjà
                 activé votre compte, vous pouvez vous connecter directement.
               </p>
+
+              <RenvoyerLienActivation />
+
               <div className="mt-6 flex flex-col gap-3">
                 <Link to="/login">
                   <Button className="w-full">Se connecter</Button>

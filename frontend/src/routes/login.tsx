@@ -13,6 +13,7 @@ import { login, toSessionUser } from "@/api/auth";
 import { setSession, getSession, getStatus } from "@/api/session";
 import { apiClient, ApiError } from "@/api/axios";
 import { cn } from "@/lib/utils";
+import { RenvoyerLienActivation } from "@/components/auth/RenvoyerLienActivation";
 
 // ---------------------------------------------------------------------------
 // Garde : si déjà connecté → /app (ou /changer-mot-de-passe)
@@ -107,6 +108,7 @@ function LoginPage() {
     handleSubmit,
     setError,
     setFocus,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -198,7 +200,10 @@ function LoginPage() {
                   : "bg-red-50 text-red-700"
               }`}
             >
-              {errors.root.message}
+              <p>{errors.root.message}</p>
+              {errors.root.type === "compteNonActive" && (
+                <RenvoyerLienActivation emailInitial={getValues("email")} />
+              )}
             </div>
           )}
 
@@ -258,6 +263,14 @@ function LoginPage() {
               className="font-semibold text-brand-900 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 rounded"
             >
               S'inscrire
+            </Link>
+          </p>
+          <p className="mt-2 text-center text-sm text-muted-foreground">
+            <Link
+              to="/mot-de-passe-oublie"
+              className="underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 rounded"
+            >
+              Mot de passe oublié ?
             </Link>
           </p>
         </Card>
