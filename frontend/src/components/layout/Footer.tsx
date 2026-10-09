@@ -1,4 +1,3 @@
-import { FlaskConical } from "lucide-react";
 import { Container } from "./Container";
 import { footerLinks } from "@/data/navigation";
 
@@ -8,12 +7,9 @@ export function Footer() {
       <Container>
         <div className="grid gap-10 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
-            <div className="flex items-center gap-2 font-extrabold text-ink-900">
-              <span className="glossy-top flex size-9 items-center justify-center rounded-xl bg-brand-900 text-primary-foreground">
-                <FlaskConical className="size-5" aria-hidden="true" />
-              </span>
-              LabFlow
-            </div>
+            <a href="/" className="inline-block">
+              <img src="/nom.png" alt="LabFlow" className="h-10" />
+            </a>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
               Système de gestion de laboratoire multi-tenant : de la demande client
               au rapport validé, avec traçabilité complète.

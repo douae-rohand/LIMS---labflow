@@ -30,9 +30,9 @@ function DocumentSlot({
   onChange,
 }: {
   type: TypeDocumentIntegration;
-  file?: File;
-  error?: string;
-  preview?: string;
+  file?: File | undefined;
+  error?: string | undefined;
+  preview?: string | undefined;
   onChange: (file: File | null) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
