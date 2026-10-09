@@ -40,12 +40,12 @@ function Frame({
 }
 
 type DashboardMockupProps = {
-  className?: string;
-  loading?: boolean;
-  nombreLaboratoires?: number;
-  nombreRoles?: number;
-  laboratoires?: LaboratoirePublic[];
-  statutsDemande?: string[];
+  className?: string | undefined;
+  loading?: boolean | undefined;
+  nombreLaboratoires?: number | undefined;
+  nombreRoles?: number | undefined;
+  laboratoires?: LaboratoirePublic[] | undefined;
+  statutsDemande?: string[] | undefined;
 };
 
 export function DashboardMockup({
