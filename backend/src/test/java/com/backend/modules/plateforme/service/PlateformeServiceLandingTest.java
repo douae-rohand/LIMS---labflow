@@ -25,9 +25,17 @@ class PlateformeServiceLandingTest {
     @Mock
     private LaboratoireRepository laboratoireRepository;
     @Mock
+    private com.backend.modules.plateforme.repository.DemandeIntegrationRepository demandeIntegrationRepository;
+    @Mock
     private RoleRepository roleRepository;
     @Mock
     private TenantProvisioner tenantProvisioner;
+    @Mock
+    private com.backend.common.tenant.TenantExecutor tenantExecutor;
+    @Mock
+    private com.backend.modules.essai.repository.EssaiRepository essaiRepository;
+    @Mock
+    private com.backend.modules.utilisateur.repository.UtilisateurRepository utilisateurRepository;
 
     @InjectMocks
     private PlateformeService plateformeService;
