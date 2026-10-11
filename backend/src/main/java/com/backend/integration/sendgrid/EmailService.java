@@ -77,6 +77,15 @@ public class EmailService {
         return envoyerHtml(email, sujet, html);
     }
 
+    public ResultatEnvoiEmail envoyerInvitationEmploye(String email, String nomComplet,
+                                                        String nomLaboratoire,
+                                                        String lienActivation, int ttlHeures) {
+        String sujet = "[LabFlow] Activez votre compte " + nomLaboratoire;
+        String html = EmailTemplates.invitationEmploye(
+                nomComplet, nomLaboratoire, lienActivation, ttlHeures);
+        return envoyerHtml(email, sujet, html);
+    }
+
     public ResultatEnvoiEmail envoyerTest(String destinataire) {
         String sujet = "[LabFlow] Test de configuration SendGrid";
         return envoyerHtml(destinataire, sujet, EmailTemplates.testConfiguration(destinataire));

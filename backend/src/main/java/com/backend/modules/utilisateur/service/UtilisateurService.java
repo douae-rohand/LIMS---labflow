@@ -4,7 +4,9 @@ import com.backend.common.audit.Auditable;
 import com.backend.common.dto.PageResponse;
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
+import com.backend.common.exception.TropDeRequetesException;
 import com.backend.common.tenant.TenantExecutor;
+import com.backend.modules.auth.repository.TokenActivationRepository;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
 import com.backend.modules.auth.service.ActivationCompteService;
 import com.backend.modules.client.service.ClientService;
@@ -48,6 +50,8 @@ public class UtilisateurService {
     private final UtilisateurMapper utilisateurMapper;
     private final PasswordEncoder passwordEncoder;
     private final ActivationCompteService activationCompteService;
+    private final TokenActivationRepository tokenActivationRepository;
+    private final com.backend.modules.auth.repository.RefreshTokenRepository refreshTokenRepository;
     private final TenantExecutor tenantExecutor;
     private final MatriculeGeneratorService matriculeGeneratorService;
     private final com.backend.common.audit.JournalAuditService journalAuditService;
@@ -338,7 +342,7 @@ public class UtilisateurService {
                     new org.springframework.transaction.support.TransactionSynchronization() {
                         @Override
                         public void afterCommit() {
-                            activationCompteService.envoyerInvitation(userFinal, lienActivation);
+                            activationCompteService.envoyerInvitationEmploye(userFinal, lienActivation);
                         }
                     }
             );
@@ -369,6 +373,152 @@ public class UtilisateurService {
         }
 
         return versEmployeDetailDto(utilisateur);
+    }
+
+    @Transactional
+    public com.backend.modules.utilisateur.dto.EmployeDetailDto desactiverEmploye(Long id) {
+        return tenantExecutor.inCentral(() -> {
+            Utilisateur utilisateur = chargerPourAppelant(id, false);
+            desactiverUtilisateurInterne(utilisateur);
+            return versEmployeDetailDto(utilisateur);
+        });
+    }
+
+    @Transactional
+    public com.backend.modules.utilisateur.dto.EmployeDetailDto reactiverEmploye(Long id) {
+        return tenantExecutor.inCentral(() -> {
+            Utilisateur utilisateur = chargerPourAppelant(id, false);
+            reactiverUtilisateurInterne(utilisateur);
+            return versEmployeDetailDto(utilisateur);
+        });
+    }
+
+    @Transactional
+    public com.backend.modules.utilisateur.dto.EmployeDetailDto renvoyerInvitationEmploye(Long id) {
+        return tenantExecutor.inCentral(() -> {
+            Utilisateur utilisateur = chargerPourAppelant(id, false);
+            renvoyerInvitationUtilisateurInterne(utilisateur);
+            return versEmployeDetailDto(utilisateur);
+        });
+    }
+
+    private void desactiverUtilisateurInterne(Utilisateur utilisateur) {
+        UtilisateurPrincipal principal = principalConnecte();
+        if (principal.getRole() == RoleUtilisateur.SUPER_ADMINISTRATEUR) {
+            boolean cibleEstLuiMeme = principal.getId() != null && principal.getId().equals(utilisateur.getId());
+            boolean cibleEstAutreSuperAdmin = utilisateur.getRole() != null
+                    && RoleUtilisateur.SUPER_ADMINISTRATEUR.name().equalsIgnoreCase(utilisateur.getRole().getCode());
+            if (cibleEstLuiMeme || cibleEstAutreSuperAdmin) {
+                throw new BusinessRuleException("CIBLE_NON_AUTORISEE",
+                        "Impossible de désactiver un compte Super Administrateur.");
+            }
+        }
+
+        com.backend.modules.utilisateur.entity.StatutEmploye statutActuel =
+                calculerStatutEmploye(utilisateur.isActif(), utilisateur.isCompteConfirme());
+
+        if (statutActuel == com.backend.modules.utilisateur.entity.StatutEmploye.DESACTIVE) {
+            // Idempotent : 200 sans modification ni audit
+            return;
+        }
+        if (statutActuel == com.backend.modules.utilisateur.entity.StatutEmploye.EN_ATTENTE) {
+            throw new BusinessRuleException("COMPTE_EN_ATTENTE_ACTIVATION",
+                    "Impossible de désactiver un compte en attente d'activation.");
+        }
+
+        utilisateur.setActif(false);
+        utilisateurRepository.save(utilisateur);
+
+        // Révocation de tous les refresh tokens pour couper les sessions actives
+        refreshTokenRepository.revoquerTousParUtilisateur(utilisateur.getId());
+
+        auditerStatutEmploye(utilisateur.getId(), "DESACTIVATION_EMPLOYE", "Désactivation du compte", "{\"actif\":true}", "{\"actif\":false}");
+        log.info("Utilisateur désactivé : id={}", utilisateur.getId());
+    }
+
+    private void reactiverUtilisateurInterne(Utilisateur utilisateur) {
+        com.backend.modules.utilisateur.entity.StatutEmploye statutActuel =
+                calculerStatutEmploye(utilisateur.isActif(), utilisateur.isCompteConfirme());
+
+        if (statutActuel == com.backend.modules.utilisateur.entity.StatutEmploye.ACTIF) {
+            // Idempotent : 200 sans modification ni audit
+            return;
+        }
+        if (statutActuel == com.backend.modules.utilisateur.entity.StatutEmploye.EN_ATTENTE) {
+            throw new BusinessRuleException("COMPTE_EN_ATTENTE_ACTIVATION",
+                    "Impossible d'activer un compte qui n'a pas encore validé son mot de passe.");
+        }
+
+        utilisateur.setActif(true);
+        utilisateurRepository.save(utilisateur);
+
+        auditerStatutEmploye(utilisateur.getId(), "REACTIVATION_EMPLOYE", "Réactivation du compte", "{\"actif\":false}", "{\"actif\":true}");
+        log.info("Utilisateur réactivé : id={}", utilisateur.getId());
+    }
+
+    private void renvoyerInvitationUtilisateurInterne(Utilisateur utilisateur) {
+        com.backend.modules.utilisateur.entity.StatutEmploye statutActuel =
+                calculerStatutEmploye(utilisateur.isActif(), utilisateur.isCompteConfirme());
+
+        if (statutActuel != com.backend.modules.utilisateur.entity.StatutEmploye.EN_ATTENTE) {
+            throw new BusinessRuleException("COMPTE_DEJA_ACTIVE",
+                    "Ce compte est déjà activé. Impossible de renvoyer une invitation.");
+        }
+
+        // Vérification du délai de 60 secondes basé sur le jeton le plus récent
+        tokenActivationRepository.findFirstByUtilisateur_IdOrderByCreatedAtDesc(utilisateur.getId())
+                .ifPresent(dernierToken -> {
+                    if (dernierToken.getCreatedAt() != null
+                            && dernierToken.getCreatedAt().plusSeconds(60).isAfter(Instant.now())) {
+                        throw new TropDeRequetesException(
+                                "Veuillez patienter 60 secondes avant de renvoyer une nouvelle invitation.");
+                    }
+                });
+
+        final Utilisateur userFinal = utilisateur;
+        final String lienActivation = activationCompteService.creerJeton(userFinal);
+
+        // Si l'utilisateur est ADMINISTRATEUR, conserver le modèle administrateur ; sinon, modèle neutre employé
+        final boolean estAdmin = userFinal.getRole() != null
+                && RoleUtilisateur.ADMINISTRATEUR.name().equalsIgnoreCase(userFinal.getRole().getCode());
+
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        if (estAdmin) {
+                            activationCompteService.envoyerInvitation(userFinal, lienActivation);
+                        } else {
+                            activationCompteService.envoyerInvitationEmploye(userFinal, lienActivation);
+                        }
+                    }
+                }
+        );
+
+        auditerStatutEmploye(userFinal.getId(), "RENVOI_INVITATION_EMPLOYE", "Renvoi de l'invitation d'activation", null, null);
+        log.info("Invitation renvoyée : id={}", userFinal.getId());
+    }
+
+    private void auditerStatutEmploye(Long cibleId, String action, String description, String valeurAvant, String valeurApres) {
+        try {
+            UtilisateurPrincipal principal = principalConnecte();
+            Utilisateur auteur = utilisateurRepository.findByEmail(principal.getEmail()).orElse(null);
+            if (auteur != null) {
+                com.backend.common.audit.JournalAudit entree = com.backend.common.audit.JournalAudit.builder()
+                        .code("AUD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                        .dateAction(Instant.now())
+                        .action(action)
+                        .objet("Utilisateur#" + cibleId)
+                        .motif(description)
+                        .valeurAvant(valeurAvant)
+                        .valeurApres(valeurApres)
+                        .utilisateur(auteur)
+                        .build();
+                journalAuditService.enregistrer(entree);
+            }
+        } catch (Exception ex) {
+            log.warn("Impossible d'enregistrer l'audit [{}] pour utilisateur id={} : {}", action, cibleId, ex.getMessage());
+        }
     }
 
     private com.backend.modules.utilisateur.dto.EmployeDetailDto versEmployeDetailDto(Utilisateur u) {
@@ -443,12 +593,14 @@ public class UtilisateurService {
         }
 
         if (fluxInvitation) {
-            activationCompteService.creerEtEnvoyer(utilisateur);
-            log.info("Invitation envoyée : id={}, email={}, role={}", utilisateur.getId(),
-                    utilisateur.getEmail(), request.getRole());
+            if (estPersonnelLaboratoire(request.getRole())) {
+                activationCompteService.creerEtEnvoyerEmploye(utilisateur);
+            } else {
+                activationCompteService.creerEtEnvoyer(utilisateur);
+            }
+            log.info("Invitation envoyée : id={}, role={}", utilisateur.getId(), request.getRole());
         } else {
-            log.info("Utilisateur créé (direct) : id={}, email={}, role={}",
-                    utilisateur.getId(), utilisateur.getEmail(), request.getRole());
+            log.info("Utilisateur créé (direct) : id={}, role={}", utilisateur.getId(), request.getRole());
         }
 
         return utilisateurMapper.toDto(utilisateur);
@@ -459,16 +611,10 @@ public class UtilisateurService {
      * Invalide l'ancien jeton et en génère un nouveau.
      */
     @Transactional
-    @Auditable(action = "RENVOI_INVITATION", entite = "Utilisateur")
     public void renvoyerInvitation(Long id) {
         tenantExecutor.inCentral(() -> {
             Utilisateur utilisateur = chargerPourAppelant(id, false);
-            if (utilisateur.isCompteConfirme()) {
-                throw new BusinessRuleException("COMPTE_DEJA_ACTIVE",
-                        "Ce compte est déjà activé. Impossible de renvoyer une invitation.");
-            }
-            activationCompteService.creerEtEnvoyer(utilisateur);
-            log.info("Invitation renvoyée : userId={}, email={}", utilisateur.getId(), utilisateur.getEmail());
+            renvoyerInvitationUtilisateurInterne(utilisateur);
             return null;
         });
     }
@@ -530,25 +676,19 @@ public class UtilisateurService {
     }
 
     @Transactional
-    @Auditable(action = "DESACTIVATION_UTILISATEUR", entite = "Utilisateur")
     public void desactiver(Long id) {
         tenantExecutor.inCentral(() -> {
             Utilisateur utilisateur = chargerPourAppelant(id, false);
-            utilisateur.setActif(false);
-            utilisateurRepository.save(utilisateur);
-            log.info("Utilisateur désactivé : id={}", id);
+            desactiverUtilisateurInterne(utilisateur);
             return null;
         });
     }
 
     @Transactional
-    @Auditable(action = "ACTIVATION_UTILISATEUR", entite = "Utilisateur")
     public void activer(Long id) {
         tenantExecutor.inCentral(() -> {
             Utilisateur utilisateur = chargerPourAppelant(id, false);
-            utilisateur.setActif(true);
-            utilisateurRepository.save(utilisateur);
-            log.info("Utilisateur activé : id={}", id);
+            reactiverUtilisateurInterne(utilisateur);
             return null;
         });
     }

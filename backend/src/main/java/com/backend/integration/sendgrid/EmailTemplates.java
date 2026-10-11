@@ -105,6 +105,23 @@ public final class EmailTemplates {
         );
     }
 
+    public static String invitationEmploye(String nomComplet, String nomLaboratoire,
+                                           String lienActivation, int ttlHeures) {
+        return page(
+                "Activez votre compte",
+                "Définissez votre mot de passe pour accéder à LabFlow.",
+                """
+                <p>Bonjour %s,</p>
+                <p>Vous avez été invité à rejoindre l'équipe de <strong>%s</strong> sur LabFlow.
+                Cliquez sur le bouton ci-dessous pour activer votre compte et choisir votre mot de passe.</p>
+                <p>Ce lien expire dans <strong>%d heures</strong> et ne peut être utilisé qu'une seule fois.
+                Aucun mot de passe ne vous est envoyé par e-mail.</p>
+                """.formatted(e(nomComplet), e(nomLaboratoire), ttlHeures),
+                lienActivation,
+                "Activer mon compte"
+        );
+    }
+
     public static String codeOtp(String code, int ttlMinutes) {
         return page(
                 "Code de vérification",

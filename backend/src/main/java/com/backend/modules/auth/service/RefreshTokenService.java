@@ -145,6 +145,22 @@ public class RefreshTokenService {
         }
     }
 
+    /**
+     * Révoque tous les refresh tokens non-expirés d'un utilisateur.
+     */
+    @Transactional
+    public void revoquerTousParUtilisateur(Long utilisateurId) {
+        if (utilisateurId == null) {
+            return;
+        }
+        try {
+            int nb = refreshTokenRepository.revoquerTousParUtilisateur(utilisateurId);
+            log.debug("Révocation globale : {} tokens révoqués pour userId={}", nb, utilisateurId);
+        } catch (Exception ex) {
+            log.warn("Erreur lors de la révocation globale des tokens pour userId={} : {}", utilisateurId, ex.getMessage());
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Utilitaires
     // -------------------------------------------------------------------------

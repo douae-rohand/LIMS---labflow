@@ -60,4 +60,29 @@ public class EmployeController {
             @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody com.backend.modules.utilisateur.dto.ModifierEmployeRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Employé modifié avec succès", utilisateurService.modifierEmploye(id, request)));
     }
+
+    @org.springframework.web.bind.annotation.PatchMapping("/{id}/desactiver")
+    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @Operation(summary = "Désactiver un employé du laboratoire courant")
+    public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> desactiverEmploye(
+            @org.springframework.web.bind.annotation.PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success("Employé désactivé avec succès", utilisateurService.desactiverEmploye(id)));
+    }
+
+    @org.springframework.web.bind.annotation.PatchMapping("/{id}/reactiver")
+    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @Operation(summary = "Réactiver un employé du laboratoire courant")
+    public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> reactiverEmploye(
+            @org.springframework.web.bind.annotation.PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success("Employé réactivé avec succès", utilisateurService.reactiverEmploye(id)));
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/{id}/renvoyer-invitation")
+    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @Operation(summary = "Renvoyer l'email d'invitation à un employé en attente d'activation")
+    public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> renvoyerInvitationEmploye(
+            @org.springframework.web.bind.annotation.PathVariable Long id) {
+        com.backend.modules.utilisateur.dto.EmployeDetailDto employe = utilisateurService.renvoyerInvitationEmploye(id);
+        return ResponseEntity.ok(ApiResponse.success("Invitation renvoyée par email.", employe));
+    }
 }
