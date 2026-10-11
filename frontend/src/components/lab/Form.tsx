@@ -9,7 +9,7 @@ import type {
 import { cn } from "@/lib/utils";
 
 const field =
-  "w-full rounded-2xl border border-input bg-card px-4 py-3 text-sm text-ink-900 placeholder:text-muted-foreground transition-colors duration-200 focus:border-brand-600";
+  "w-full rounded-2xl border border-input bg-card px-4 py-3 text-sm text-ink-900 placeholder:text-muted-foreground transition-colors duration-200 focus:border-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900";
 
 export function Label({
   children,
