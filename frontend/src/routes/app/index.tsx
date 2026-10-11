@@ -50,10 +50,17 @@ function AppHomePage() {
             </Link>
           </div>
         )}
-        {(user.role === "ADMINISTRATEUR" || user.role === "SUPER_ADMINISTRATEUR") && (
+        {user.role === "SUPER_ADMINISTRATEUR" && (
           <div className="mt-4">
             <Link to="/app/utilisateurs">
               <Button variant="secondary">Gérer les utilisateurs</Button>
+            </Link>
+          </div>
+        )}
+        {user.role === "ADMINISTRATEUR" && (
+          <div className="mt-4">
+            <Link to="/app/employes">
+              <Button variant="secondary">Gérer les employés</Button>
             </Link>
           </div>
         )}

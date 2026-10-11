@@ -22,10 +22,12 @@ import { Route as MotDePasseOublieRouteImport } from './routes/mot-de-passe-oubl
 import { Route as ReinitialiserMotDePasseRouteImport } from './routes/reinitialiser-mot-de-passe'
 import { Route as UiKitRouteImport } from './routes/ui-kit'
 import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as AppEmployesRouteImport } from './routes/app/employes'
 import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/index'
 import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
 import { Route as AppDemandesIntegrationIndexRouteImport } from './routes/app/demandes-integration/index'
 import { Route as AppDemandesIntegrationIdRouteImport } from './routes/app/demandes-integration/$id'
+import { Route as AppEmployesIndexRouteImport } from './routes/app/employes/index'
 import { Route as AppUtilisateursIndexRouteImport } from './routes/app/utilisateurs/index'
 import { Route as AppUtilisateursNouveauRouteImport } from './routes/app/utilisateurs/nouveau'
 
@@ -94,6 +96,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppEmployesRoute = AppEmployesRouteImport.update({
+  id: '/employes',
+  path: '/employes',
+  getParentRoute: () => AppRoute,
+} as any)
 const LaboratoiresIndexRoute = LaboratoiresIndexRouteImport.update({
   id: '/laboratoires/',
   path: '/laboratoires/',
@@ -116,6 +123,11 @@ const AppDemandesIntegrationIdRoute =
     path: '/demandes-integration/$id',
     getParentRoute: () => AppRoute,
   } as any)
+const AppEmployesIndexRoute = AppEmployesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppEmployesRoute,
+} as any)
 const AppUtilisateursIndexRoute = AppUtilisateursIndexRouteImport.update({
   id: '/utilisateurs/',
   path: '/utilisateurs/',
@@ -140,12 +152,14 @@ export interface FileRoutesByFullPath {
   '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
+  '/app/employes': typeof AppEmployesRouteWithChildren
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
   '/app/demandes-integration/$id': typeof AppDemandesIntegrationIdRoute
   '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
   '/app/demandes-integration/': typeof AppDemandesIntegrationIndexRoute
+  '/app/employes/': typeof AppEmployesIndexRoute
   '/app/utilisateurs/': typeof AppUtilisateursIndexRoute
 }
 export interface FileRoutesByTo {
@@ -166,6 +180,7 @@ export interface FileRoutesByTo {
   '/app/demandes-integration/$id': typeof AppDemandesIntegrationIdRoute
   '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
   '/app/demandes-integration': typeof AppDemandesIntegrationIndexRoute
+  '/app/employes': typeof AppEmployesIndexRoute
   '/app/utilisateurs': typeof AppUtilisateursIndexRoute
 }
 export interface FileRoutesById {
@@ -182,12 +197,14 @@ export interface FileRoutesById {
   '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
+  '/app/employes': typeof AppEmployesRouteWithChildren
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
   '/app/demandes-integration/$id': typeof AppDemandesIntegrationIdRoute
   '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
   '/app/demandes-integration/': typeof AppDemandesIntegrationIndexRoute
+  '/app/employes/': typeof AppEmployesIndexRoute
   '/app/utilisateurs/': typeof AppUtilisateursIndexRoute
 }
 export interface FileRouteTypes {
@@ -205,12 +222,14 @@ export interface FileRouteTypes {
     | '/mot-de-passe-oublie'
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
+    | '/app/employes'
     | '/laboratoires/$id'
     | '/app/'
     | '/laboratoires/'
     | '/app/demandes-integration/$id'
     | '/app/utilisateurs/nouveau'
     | '/app/demandes-integration/'
+    | '/app/employes/'
     | '/app/utilisateurs/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -231,6 +250,7 @@ export interface FileRouteTypes {
     | '/app/demandes-integration/$id'
     | '/app/utilisateurs/nouveau'
     | '/app/demandes-integration'
+    | '/app/employes'
     | '/app/utilisateurs'
   id:
     | '__root__'
@@ -246,12 +266,14 @@ export interface FileRouteTypes {
     | '/mot-de-passe-oublie'
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
+    | '/app/employes'
     | '/laboratoires/$id'
     | '/app/'
     | '/laboratoires/'
     | '/app/demandes-integration/$id'
     | '/app/utilisateurs/nouveau'
     | '/app/demandes-integration/'
+    | '/app/employes/'
     | '/app/utilisateurs/'
   fileRoutesById: FileRoutesById
 }
@@ -365,6 +387,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/employes': {
+      id: '/app/employes'
+      path: '/employes'
+      fullPath: '/app/employes'
+      preLoaderRoute: typeof AppEmployesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/laboratoires/': {
       id: '/laboratoires/'
       path: '/laboratoires'
@@ -393,6 +422,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDemandesIntegrationIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/employes/': {
+      id: '/app/employes/'
+      path: '/'
+      fullPath: '/app/employes/'
+      preLoaderRoute: typeof AppEmployesIndexRouteImport
+      parentRoute: typeof AppEmployesRoute
+    }
     '/app/utilisateurs/': {
       id: '/app/utilisateurs/'
       path: '/utilisateurs'
@@ -410,7 +446,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppEmployesRouteChildren {
+  AppEmployesIndexRoute: typeof AppEmployesIndexRoute
+}
+
+const AppEmployesRouteChildren: AppEmployesRouteChildren = {
+  AppEmployesIndexRoute: AppEmployesIndexRoute,
+}
+
+const AppEmployesRouteWithChildren = AppEmployesRoute._addFileChildren(
+  AppEmployesRouteChildren,
+)
+
 interface AppRouteChildren {
+  AppEmployesRoute: typeof AppEmployesRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
   AppDemandesIntegrationIdRoute: typeof AppDemandesIntegrationIdRoute
   AppUtilisateursNouveauRoute: typeof AppUtilisateursNouveauRoute
@@ -419,6 +468,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppEmployesRoute: AppEmployesRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
   AppDemandesIntegrationIdRoute: AppDemandesIntegrationIdRoute,
   AppUtilisateursNouveauRoute: AppUtilisateursNouveauRoute,

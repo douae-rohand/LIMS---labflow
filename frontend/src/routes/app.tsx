@@ -1,6 +1,6 @@
 import { Outlet, createFileRoute, useRouter } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { LogOut } from "lucide-react";
+import { LogOut, Users } from "lucide-react";
 import { Button } from "@/components/lab";
 import { logout } from "@/api/auth";
 import { clearSession, getSession, getStatus } from "@/api/session";
@@ -34,6 +34,7 @@ function AppLayout() {
   const session = getSession();
   const user = session?.user;
   const isSuperAdmin = user?.role === "SUPER_ADMINISTRATEUR";
+  const isAdmin = user?.role === "ADMINISTRATEUR";
 
   const handleLogout = async () => {
     try {
@@ -59,19 +60,28 @@ function AppLayout() {
             <Link to="/app" className="flex items-center">
               <img src="/nom.png" alt="LabFlow" className="h-10" />
             </Link>
-            {isSuperAdmin && (
-              <nav className="hidden items-center gap-3 text-sm font-semibold sm:flex">
-                <Link to="/app" className="text-ink-900/70 hover:text-ink-900">
-                  Tableau de bord
-                </Link>
+            <nav className="hidden items-center gap-3 text-sm font-semibold sm:flex">
+              <Link to="/app" className="text-ink-900/70 hover:text-ink-900">
+                Tableau de bord
+              </Link>
+              {isSuperAdmin && (
                 <Link
                   to="/app/demandes-integration"
                   className="text-ink-900/70 hover:text-ink-900"
                 >
                   Demandes d'intégration
                 </Link>
-              </nav>
-            )}
+              )}
+              {isAdmin && (
+                <Link
+                  to="/app/employes"
+                  className="flex items-center gap-1.5 text-ink-900/70 hover:text-ink-900"
+                >
+                  <Users className="size-4" aria-hidden="true" />
+                  Employés
+                </Link>
+              )}
+            </nav>
           </div>
           <Button
             variant="ghost"
