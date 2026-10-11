@@ -31,8 +31,8 @@ public class UtilisateurController {
     private final UtilisateurService utilisateurService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','SUPER_ADMINISTRATEUR')")
-    @Operation(summary = "Lister les utilisateurs avec recherche et pagination")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Lister les utilisateurs avec recherche et pagination (Super-administrateur uniquement)")
     public ResponseEntity<ApiResponse<PageResponse<UtilisateurDto>>> lister(
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
@@ -42,8 +42,8 @@ public class UtilisateurController {
     }
 
     @GetMapping("/role/{role}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','SUPER_ADMINISTRATEUR')")
-    @Operation(summary = "Lister les utilisateurs par rôle")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Lister les utilisateurs par rôle (Super-administrateur uniquement)")
     public ResponseEntity<ApiResponse<PageResponse<UtilisateurDto>>> listerParRole(
             @PathVariable RoleUtilisateur role,
             @RequestParam(defaultValue = "0") int page,

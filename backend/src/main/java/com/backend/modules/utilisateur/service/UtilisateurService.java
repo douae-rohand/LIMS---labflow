@@ -23,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -74,6 +75,143 @@ public class UtilisateurService {
             PageResponse.from(
                 utilisateurRepository.findByRole(role, pageable)
                         .map(utilisateurMapper::toDto)));
+    }
+
+    /**
+     * Liste les employés du laboratoire de l'administrateur connecté avec filtres, recherche et pagination.
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<com.backend.modules.utilisateur.dto.EmployeDto> listerEmployes(
+            String q,
+            String statutStr,
+            String roleStr,
+            int page,
+            int size,
+            String tri,
+            String direction) {
+
+        UtilisateurPrincipal principal = principalConnecte();
+        if (principal.getLaboratoireId() == null) {
+            throw new BusinessRuleException("ADMIN_SANS_LABORATOIRE",
+                    "Votre compte administrateur n'est pas rattaché à un laboratoire.");
+        }
+
+        // 1. Validation et normalisation du rôle (doit être RESPONSABLE, TECHNICIEN ou ACCUEIL)
+        String roleFiltre = null;
+        if (StringUtils.hasText(roleStr)) {
+            String roleNorm = roleStr.trim().toUpperCase();
+            if (!Set.of("RESPONSABLE", "TECHNICIEN", "ACCUEIL").contains(roleNorm)) {
+                throw new BusinessRuleException("ROLE_INVALIDE",
+                        "Rôle invalide. Valeurs autorisées : RESPONSABLE, TECHNICIEN, ACCUEIL.");
+            }
+            roleFiltre = roleNorm;
+        }
+
+        // 2. Validation et normalisation du statut
+        String statutFiltre = null;
+        if (StringUtils.hasText(statutStr)) {
+            String statutNorm = statutStr.trim().toUpperCase();
+            try {
+                com.backend.modules.utilisateur.entity.StatutEmploye.valueOf(statutNorm);
+                statutFiltre = statutNorm;
+            } catch (IllegalArgumentException ex) {
+                throw new BusinessRuleException("STATUT_INVALIDE",
+                        "Statut invalide. Valeurs autorisées : ACTIF, EN_ATTENTE, DESACTIVE.");
+            }
+        }
+
+        // 3. Traitement et échappement de la recherche partielle
+        String qFiltre = null;
+        if (StringUtils.hasText(q)) {
+            String qTrim = q.trim();
+            if (qTrim.length() > 100) {
+                throw new BusinessRuleException("RECHERCHE_TROP_LONGUE",
+                        "Le terme de recherche ne doit pas dépasser 100 caractères.");
+            }
+            if (!qTrim.isEmpty()) {
+                // Échappement des caractères spéciaux SQL avec '!'
+                qFiltre = qTrim.replace("!", "!!")
+                               .replace("%", "!%")
+                               .replace("_", "!_");
+            }
+        }
+
+        // 4. Plafonnement de la taille de page
+        int taillePlafonnee = Math.min(Math.max(1, size), 50);
+        int pageAjustee = Math.max(0, page);
+
+        // 5. Validation de la liste blanche de tri et de la direction
+        Set<String> champsTriAutorises = Set.of(
+                "nom", "prenom", "matricule", "dateCreation", "derniereConnexion"
+        );
+        String champTri = (StringUtils.hasText(tri)) ? tri.trim() : "nom";
+        if (!champsTriAutorises.contains(champTri)) {
+            throw new BusinessRuleException("TRI_INVALIDE",
+                    "Champ de tri non autorisé : " + tri + ". Champs autorisés : nom, prenom, matricule, dateCreation, derniereConnexion.");
+        }
+
+        Sort.Direction sortDirection;
+        String dirNorm = StringUtils.hasText(direction) ? direction.trim().toLowerCase() : "asc";
+        if ("asc".equals(dirNorm)) {
+            sortDirection = Sort.Direction.ASC;
+        } else if ("desc".equals(dirNorm)) {
+            sortDirection = Sort.Direction.DESC;
+        } else {
+            throw new BusinessRuleException("DIRECTION_TRI_INVALIDE",
+                    "Direction de tri invalide : " + direction + ". Valeurs autorisées : asc, desc.");
+        }
+
+        // Tri avec bris d'égalité par 'id' pour assurer la stabilité de pagination
+        Sort sort = Sort.by(sortDirection, champTri).and(Sort.by(Sort.Direction.ASC, "id"));
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(pageAjustee, taillePlafonnee, sort);
+
+        final String finalRole = roleFiltre;
+        final String finalStatut = statutFiltre;
+        final String finalQ = qFiltre;
+
+        return tenantExecutor.inCentral(() -> {
+            Page<Utilisateur> pageResult = utilisateurRepository.rechercherEmployesLaboratoire(
+                    principal.getLaboratoireId(),
+                    finalRole,
+                    finalStatut,
+                    finalQ,
+                    pageable
+            );
+
+            // Mapping vers EmployeDto à l'intérieur du contexte central (résolution LAZY du Role sécurisée)
+            return PageResponse.from(pageResult.map(this::versEmployeDto));
+        });
+    }
+
+    private com.backend.modules.utilisateur.dto.EmployeDto versEmployeDto(Utilisateur u) {
+        com.backend.modules.utilisateur.entity.StatutEmploye statut =
+                calculerStatutEmploye(u.isActif(), u.isCompteConfirme());
+
+        String roleCode = u.getRole() != null ? u.getRole().getCode() : null;
+
+        return com.backend.modules.utilisateur.dto.EmployeDto.builder()
+                .id(u.getId())
+                .matricule(u.getMatricule())
+                .nom(u.getNom())
+                .prenom(u.getPrenom())
+                .nomComplet(u.getNomComplet())
+                .email(u.getEmail())
+                .telephone(u.getTelephone())
+                .role(roleCode)
+                .statut(statut)
+                .derniereConnexion(u.getDerniereConnexion())
+                .dateCreation(u.getDateCreation())
+                .build();
+    }
+
+    private static com.backend.modules.utilisateur.entity.StatutEmploye calculerStatutEmploye(
+            boolean actif, boolean compteConfirme) {
+        if (!compteConfirme) {
+            // Note : couvre aussi (actif=true, compteConfirme=false) tant que le lot 4 n'interdit pas d'activer un compte non confirmé
+            return com.backend.modules.utilisateur.entity.StatutEmploye.EN_ATTENTE;
+        }
+        return actif ? com.backend.modules.utilisateur.entity.StatutEmploye.ACTIF
+                     : com.backend.modules.utilisateur.entity.StatutEmploye.DESACTIVE;
     }
 
     @Transactional
@@ -239,8 +377,10 @@ public class UtilisateurService {
         if (principal.getRole() == RoleUtilisateur.ADMINISTRATEUR) {
             String roleCode = utilisateur.getRole() != null ? utilisateur.getRole().getCode() : null;
 
-            // Interdiction de cibler un CLIENT ou un SUPER_ADMINISTRATEUR (404 générique opaque)
-            if ("CLIENT".equalsIgnoreCase(roleCode) || "SUPER_ADMINISTRATEUR".equalsIgnoreCase(roleCode)) {
+            // Interdiction de cibler un CLIENT, un SUPER_ADMINISTRATEUR ou un autre ADMINISTRATEUR (404 générique opaque)
+            if ("CLIENT".equalsIgnoreCase(roleCode)
+                    || "SUPER_ADMINISTRATEUR".equalsIgnoreCase(roleCode)
+                    || "ADMINISTRATEUR".equalsIgnoreCase(roleCode)) {
                 throw new ResourceNotFoundException("Utilisateur", "id", id);
             }
 
