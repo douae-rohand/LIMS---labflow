@@ -55,7 +55,7 @@ public class UtilisateurService {
 
     @Transactional(readOnly = true)
     public UtilisateurDto trouverParId(Long id) {
-        return tenantExecutor.inCentral(() -> utilisateurMapper.toDto(chargerParId(id)));
+        return tenantExecutor.inCentral(() -> utilisateurMapper.toDto(chargerPourAppelant(id, true)));
     }
 
     @Transactional(readOnly = true)
@@ -144,7 +144,7 @@ public class UtilisateurService {
     @Auditable(action = "RENVOI_INVITATION", entite = "Utilisateur")
     public void renvoyerInvitation(Long id) {
         tenantExecutor.inCentral(() -> {
-            Utilisateur utilisateur = chargerParId(id);
+            Utilisateur utilisateur = chargerPourAppelant(id, false);
             if (utilisateur.isCompteConfirme()) {
                 throw new BusinessRuleException("COMPTE_DEJA_ACTIVE",
                         "Ce compte est déjà activé. Impossible de renvoyer une invitation.");
@@ -162,7 +162,7 @@ public class UtilisateurService {
     }
 
     private UtilisateurDto modifierInterne(Long id, ModifierUtilisateurRequest request) {
-        Utilisateur utilisateur = chargerParId(id);
+        Utilisateur utilisateur = chargerPourAppelant(id, true);
 
         if (StringUtils.hasText(request.getNom())) utilisateur.setNom(request.getNom());
         if (StringUtils.hasText(request.getPrenom())) utilisateur.setPrenom(request.getPrenom());
@@ -192,7 +192,7 @@ public class UtilisateurService {
     @Auditable(action = "DESACTIVATION_UTILISATEUR", entite = "Utilisateur")
     public void desactiver(Long id) {
         tenantExecutor.inCentral(() -> {
-            Utilisateur utilisateur = chargerParId(id);
+            Utilisateur utilisateur = chargerPourAppelant(id, false);
             utilisateur.setActif(false);
             utilisateurRepository.save(utilisateur);
             log.info("Utilisateur désactivé : id={}", id);
@@ -204,7 +204,7 @@ public class UtilisateurService {
     @Auditable(action = "ACTIVATION_UTILISATEUR", entite = "Utilisateur")
     public void activer(Long id) {
         tenantExecutor.inCentral(() -> {
-            Utilisateur utilisateur = chargerParId(id);
+            Utilisateur utilisateur = chargerPourAppelant(id, false);
             utilisateur.setActif(true);
             utilisateurRepository.save(utilisateur);
             log.info("Utilisateur activé : id={}", id);
@@ -219,6 +219,42 @@ public class UtilisateurService {
     private Utilisateur chargerParId(Long id) {
         return utilisateurRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur", "id", id));
+    }
+
+    private Utilisateur chargerPourAppelant(Long id, boolean autoriserProprietaire) {
+        UtilisateurPrincipal principal = principalConnecte();
+        Utilisateur utilisateur = chargerParId(id);
+
+        // 1. Raccourci propriétaire traité avant tout contrôle par rôle (uniquement pour GET et PATCH /{id})
+        if (autoriserProprietaire && principal.getId() != null && principal.getId().equals(utilisateur.getId())) {
+            return utilisateur;
+        }
+
+        // 2. Si l'appelant est SUPER_ADMINISTRATEUR : accès global (aucun contrôle supplémentaire)
+        if (principal.getRole() == RoleUtilisateur.SUPER_ADMINISTRATEUR) {
+            return utilisateur;
+        }
+
+        // 3. Si l'appelant est ADMINISTRATEUR :
+        if (principal.getRole() == RoleUtilisateur.ADMINISTRATEUR) {
+            String roleCode = utilisateur.getRole() != null ? utilisateur.getRole().getCode() : null;
+
+            // Interdiction de cibler un CLIENT ou un SUPER_ADMINISTRATEUR (404 générique opaque)
+            if ("CLIENT".equalsIgnoreCase(roleCode) || "SUPER_ADMINISTRATEUR".equalsIgnoreCase(roleCode)) {
+                throw new ResourceNotFoundException("Utilisateur", "id", id);
+            }
+
+            // Exigence de laboratoire identique (404 générique opaque)
+            Long laboCibleId = utilisateur.getLaboratoire() != null ? utilisateur.getLaboratoire().getId() : null;
+            if (principal.getLaboratoireId() == null || !principal.getLaboratoireId().equals(laboCibleId)) {
+                throw new ResourceNotFoundException("Utilisateur", "id", id);
+            }
+
+            return utilisateur;
+        }
+
+        // Tout autre rôle non autorisé
+        throw new ResourceNotFoundException("Utilisateur", "id", id);
     }
 
     /**

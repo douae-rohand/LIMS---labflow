@@ -291,8 +291,8 @@ public class AuthController {
     @PostMapping("/compte/activer/verifier")
     @Operation(summary = "Vérifie un jeton d'activation de compte (public)")
     public ResponseEntity<ApiResponse<Void>> verifierActivation(
-            @RequestParam String token) {
-        activationCompteService.verifier(token);
+            @Valid @RequestBody VerifierJetonActivationRequest request) {
+        activationCompteService.verifier(request.getToken());
         return ResponseEntity.ok(ApiResponse.success("Jeton d'activation valide", null));
     }
 
