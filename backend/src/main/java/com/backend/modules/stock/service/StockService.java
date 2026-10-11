@@ -4,6 +4,7 @@ import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.modules.produit.entity.Lot;
 import com.backend.modules.produit.entity.Produit;
+import com.backend.modules.produit.entity.StatutLot;
 import com.backend.modules.produit.repository.LotRepository;
 import com.backend.modules.produit.repository.ProduitRepository;
 import com.backend.modules.stock.dto.ArticleStockDto;
@@ -59,8 +60,10 @@ public class StockService {
             }
         };
         lot.setQuantite(nouvelle);
-        if (motif != null && !motif.isBlank()) {
-            lot.setStatut(motif);
+        if (nouvelle.compareTo(BigDecimal.ZERO) == 0) {
+            lot.setStatut(StatutLot.EPUISE.name());
+        } else if (lot.getStatut() == null || StatutLot.EPUISE.name().equals(lot.getStatut())) {
+            lot.setStatut(StatutLot.DISPONIBLE.name());
         }
         lotRepository.save(lot);
         return toDto(produit);

@@ -4,6 +4,7 @@ import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.modules.conformite.dto.NonConformiteDto;
 import com.backend.modules.conformite.entity.StatutNonConformite;
 import com.backend.modules.echantillon.entity.Echantillon;
+import com.backend.modules.echantillon.entity.StatutEchantillon;
 import com.backend.modules.echantillon.repository.EchantillonRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -34,6 +35,7 @@ public class ConformiteService {
         Echantillon echantillon = echantillonRepository.findById(dto.getIdEntiteSource())
                 .orElseThrow(() -> new ResourceNotFoundException("Echantillon", "id", dto.getIdEntiteSource()));
         echantillon.setConformite(false);
+        echantillon.setStatut(StatutEchantillon.NON_CONFORME);
         echantillon.setMotif(dto.getDescription() != null ? dto.getDescription() : dto.getTitre());
         return toDto(echantillonRepository.save(echantillon), StatutNonConformite.OUVERTE);
     }
@@ -43,6 +45,7 @@ public class ConformiteService {
         Echantillon echantillon = charger(id);
         echantillon.setMotif(actionCorrective);
         echantillon.setConformite(false);
+        echantillon.setStatut(StatutEchantillon.NON_CONFORME);
         return toDto(echantillonRepository.save(echantillon), StatutNonConformite.EN_TRAITEMENT);
     }
 
@@ -50,6 +53,11 @@ public class ConformiteService {
     public NonConformiteDto cloturer(Long id) {
         Echantillon echantillon = charger(id);
         echantillon.setConformite(true);
+        if (echantillon.getStatut() == null || echantillon.getStatut() == StatutEchantillon.NON_CONFORME) {
+            echantillon.setStatut(echantillon.getDateReception() != null
+                    ? StatutEchantillon.RECEPTIONNE
+                    : StatutEchantillon.EN_ATTENTE_RECEPTION);
+        }
         return toDto(echantillonRepository.save(echantillon), StatutNonConformite.CLOTUREE);
     }
 

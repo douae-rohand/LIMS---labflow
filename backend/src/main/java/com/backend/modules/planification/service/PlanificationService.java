@@ -55,7 +55,8 @@ public class PlanificationService {
                         "Aucun essai actif dans le catalogue"));
         LigneEssai ligne = LigneEssai.builder()
                 .code("PLN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-                .statut(dto.getStatut() == null ? StatutPlanification.PLANIFIEE.name() : dto.getStatut().name())
+                .statut(CorrespondanceStatutLigne.versLigne(
+                        dto.getStatut() == null ? StatutPlanification.PLANIFIEE : dto.getStatut()))
                 .montant(BigDecimal.ZERO)
                 .demande(demande)
                 .essai(essai)
@@ -70,7 +71,7 @@ public class PlanificationService {
     @Transactional
     public PlanificationDto changerStatut(Long id, StatutPlanification statut) {
         LigneEssai ligne = charger(id);
-        ligne.setStatut(statut.name());
+        ligne.setStatut(CorrespondanceStatutLigne.versLigne(statut));
         if (statut == StatutPlanification.EN_COURS && ligne.getDateDebut() == null) {
             ligne.setDateDebut(Instant.now());
         }
@@ -94,7 +95,7 @@ public class PlanificationService {
                 .dateFinPrevue(toLocalDate(ligne.getDateFin()))
                 .dateDebutEffective(ligne.getDateDebut())
                 .dateFinEffective(ligne.getDateFin())
-                .statut(enumOuNull(StatutPlanification.class, ligne.getStatut()))
+                .statut(CorrespondanceStatutLigne.versPlanification(ligne.getStatut()))
                 .notes(ligne.getMotif())
                 .build();
     }
@@ -107,14 +108,4 @@ public class PlanificationService {
         return instant == null ? null : LocalDate.ofInstant(instant, ZoneOffset.UTC);
     }
 
-    private static <E extends Enum<E>> E enumOuNull(Class<E> type, String valeur) {
-        if (valeur == null) {
-            return null;
-        }
-        try {
-            return Enum.valueOf(type, valeur);
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
-    }
 }

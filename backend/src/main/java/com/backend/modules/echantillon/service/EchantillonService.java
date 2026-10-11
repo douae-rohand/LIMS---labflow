@@ -45,6 +45,7 @@ public class EchantillonService {
                 .receptionneurId(dto.getReceptionnaireId())
                 .conditionsConservation(dto.getConditionsConservation())
                 .motif(dto.getObservations())
+                .statut(StatutEchantillon.EN_ATTENTE_RECEPTION)
                 .build();
         return toDto(echantillonRepository.save(echantillon));
     }
@@ -55,13 +56,22 @@ public class EchantillonService {
         echantillon.setReceptionneurId(receptionnaireId);
         echantillon.setDateReception(Instant.now());
         echantillon.setConformite(true);
+        echantillon.setStatut(StatutEchantillon.RECEPTIONNE);
         return toDto(echantillonRepository.save(echantillon));
     }
 
     @Transactional
     public EchantillonDto changerStatut(Long id, StatutEchantillon statut) {
         Echantillon echantillon = charger(id);
-        echantillon.setConformite(statut != StatutEchantillon.NON_CONFORME);
+        echantillon.setStatut(statut);
+        if (statut == StatutEchantillon.NON_CONFORME) {
+            echantillon.setConformite(false);
+        } else if (statut == StatutEchantillon.RECEPTIONNE) {
+            echantillon.setConformite(true);
+            if (echantillon.getDateReception() == null) {
+                echantillon.setDateReception(Instant.now());
+            }
+        }
         return toDto(echantillonRepository.save(echantillon));
     }
 
@@ -71,19 +81,13 @@ public class EchantillonService {
     }
 
     private EchantillonDto toDto(Echantillon e) {
-        StatutEchantillon statut = null;
-        if (Boolean.FALSE.equals(e.getConformite())) {
-            statut = StatutEchantillon.NON_CONFORME;
-        } else if (e.getDateReception() != null) {
-            statut = StatutEchantillon.RECEPTIONNE;
-        }
         return EchantillonDto.builder()
                 .id(e.getId())
                 .codeBarre(e.getReference())
                 .nature(e.getNature())
                 .demandeId(e.getDemande() == null ? null : e.getDemande().getId())
                 .receptionnaireId(e.getReceptionneurId())
-                .statut(statut)
+                .statut(e.getStatut())
                 .dateReception(e.getDateReception())
                 .conditionsConservation(e.getConditionsConservation())
                 .observations(e.getMotif())

@@ -8,6 +8,7 @@ import com.backend.modules.client.dto.ModifierClientProfilRequest;
 import com.backend.modules.client.entity.Client;
 import com.backend.modules.client.entity.ClientLaboratoire;
 import com.backend.modules.client.entity.ClientProfil;
+import com.backend.modules.client.entity.TypeClient;
 import com.backend.modules.client.repository.ClientLaboratoireRepository;
 import com.backend.modules.client.repository.ClientProfilRepository;
 import com.backend.modules.client.repository.ClientRepository;
@@ -45,8 +46,12 @@ public class ClientService {
         if (clientProfilRepository.existsByUtilisateur_Id(utilisateur.getId())) {
             return clientProfilRepository.findByUtilisateur_Id(utilisateur.getId()).orElseThrow();
         }
+        TypeClient typeClient = StringUtils.hasText(raisonSociale)
+                ? TypeClient.ENTREPRISE
+                : TypeClient.PARTICULIER;
         return clientProfilRepository.save(ClientProfil.builder()
                 .utilisateur(utilisateur)
+                .typeClient(typeClient)
                 .raisonSociale(raisonSociale)
                 .ice(ice)
                 .adresse(adresse)

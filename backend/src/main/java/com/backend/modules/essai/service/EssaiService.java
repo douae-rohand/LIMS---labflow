@@ -45,7 +45,7 @@ public class EssaiService {
 
         LigneEssai ligne = LigneEssai.builder()
                 .code("LIG-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-                .statut(StatutEssai.EN_ATTENTE.name())
+                .statut(StatutEssai.EN_ATTENTE)
                 .montant(BigDecimal.ZERO)
                 .demande(echantillon.getDemande())
                 .essai(essai)
@@ -59,7 +59,7 @@ public class EssaiService {
     public EssaiDto saisirResultat(Long id, EssaiDto dto) {
         LigneEssai ligne = charger(id);
         ligne.setValeur(dto.getResultatValeur());
-        ligne.setStatut(StatutEssai.TERMINE.name());
+        ligne.setStatut(StatutEssai.TERMINE);
         ligne.setDateFin(Instant.now());
         ligne.setMotif(dto.getObservations());
         if (dto.getValeurMin() != null && dto.getValeurMax() != null && dto.getResultatValeur() != null) {
@@ -84,7 +84,7 @@ public class EssaiService {
                 .echantillonId(ligne.getEchantillon() == null ? null : ligne.getEchantillon().getId())
                 .analyseTypeCode(ligne.getEssai() == null ? null : ligne.getEssai().getCode())
                 .technicienId(ligne.getTechnicienId())
-                .statut(enumOuNull(StatutEssai.class, ligne.getStatut()))
+                .statut(ligne.getStatut())
                 .resultatValeur(ligne.getValeur())
                 .conforme(ligne.getConformite())
                 .observations(ligne.getMotif())
@@ -93,14 +93,4 @@ public class EssaiService {
                 .build();
     }
 
-    private static <E extends Enum<E>> E enumOuNull(Class<E> type, String valeur) {
-        if (valeur == null) {
-            return null;
-        }
-        try {
-            return Enum.valueOf(type, valeur);
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
-    }
 }

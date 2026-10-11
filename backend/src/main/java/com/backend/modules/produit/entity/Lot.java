@@ -31,6 +31,10 @@ public class Lot {
     @Column(nullable = false)
     private LocalDate peremption;
 
+    /**
+     * {@link StatutLot} ({@code DISPONIBLE}, {@code EPUISE}). Conservé en String
+     * pour ne pas refuser un libellé historique déjà écrit dans la colonne.
+     */
     @Column(nullable = false, length = 50)
     private String statut;
 
