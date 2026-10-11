@@ -7,8 +7,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 /**
- * Planification d'une demande d'analyse (M02).
- * Associe une demande à des créneaux, techniciens et équipements.
+ * Modèle de planification (M02). Cette classe n'est pas une entité JPA :
+ * les créneaux sont persistés sur {@code ligne_essai}. Le statut canonique
+ * en base est {@link com.backend.modules.essai.entity.StatutEssai} ;
+ * {@link StatutPlanification} reste le vocabulaire exposé par l'API.
  */
 @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
 public class Planification {

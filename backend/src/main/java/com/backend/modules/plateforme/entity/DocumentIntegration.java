@@ -1,6 +1,7 @@
 package com.backend.modules.plateforme.entity;
 
 import com.backend.common.config.SchemaConstants;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -23,6 +24,7 @@ public class DocumentIntegration {
     @Column(name = "id_document")
     private Long id;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "demande_id", nullable = false)
     private DemandeIntegration demande;

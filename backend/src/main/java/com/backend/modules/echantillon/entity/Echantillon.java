@@ -31,6 +31,11 @@ public class Echantillon {
     @Column(name = "date_reception")
     private Instant dateReception;
 
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    @Column(nullable = false, length = 30)
+    private StatutEchantillon statut = StatutEchantillon.EN_ATTENTE_RECEPTION;
+
     private Boolean conformite;
 
     @Column(columnDefinition = "TEXT")

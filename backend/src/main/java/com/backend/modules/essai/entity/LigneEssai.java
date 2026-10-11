@@ -27,8 +27,9 @@ public class LigneEssai {
     @Column(nullable = false, length = 50)
     private String code;
 
+    @Convert(converter = StatutEssaiConverter.class)
     @Column(length = 50)
-    private String statut;
+    private StatutEssai statut;
 
     @Column(name = "date_attribution")
     private Instant dateAttribution;

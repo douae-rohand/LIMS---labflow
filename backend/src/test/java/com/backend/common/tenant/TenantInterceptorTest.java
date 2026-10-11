@@ -1,7 +1,10 @@
 package com.backend.common.tenant;
 
+import com.backend.common.exception.TenantHeaderRequiredException;
 import com.backend.common.exception.UnauthorizedTenantException;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
+import com.backend.modules.client.entity.ClientLaboratoire;
+import com.backend.modules.client.repository.ClientLaboratoireRepository;
 import com.backend.modules.plateforme.entity.Laboratoire;
 import com.backend.modules.utilisateur.entity.RoleUtilisateur;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,6 +21,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import java.util.Optional;
+
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,6 +30,8 @@ class TenantInterceptorTest {
 
     @Mock
     private TenantResolver tenantResolver;
+    @Mock
+    private ClientLaboratoireRepository clientLaboratoireRepository;
     @Mock
     private HttpServletRequest request;
     @Mock
@@ -44,6 +51,8 @@ class TenantInterceptorTest {
         authentifier(principal(RoleUtilisateur.CLIENT, null, null));
         when(request.getHeader(TenantInterceptor.TENANT_HEADER)).thenReturn("labo_a");
         when(tenantResolver.exigerActif("labo_a")).thenReturn(labo("labo_a", "lims_labo_a", "ACTIF"));
+        when(clientLaboratoireRepository.findByUtilisateur_IdAndLaboratoire_Id(1L, 1L))
+                .thenReturn(Optional.of(ClientLaboratoire.builder().statut("ACTIF").clientLocalId(3L).build()));
 
         interceptor.preHandle(request, response, new Object());
 
@@ -51,11 +60,23 @@ class TenantInterceptorTest {
     }
 
     @Test
-    void clientSansEnTeteEstRefuse() {
+    void clientSansEnTeteResteSurLeContexteCentral() throws Exception {
         authentifier(principal(RoleUtilisateur.CLIENT, null, null));
         when(request.getHeader(TenantInterceptor.TENANT_HEADER)).thenReturn(null);
+        when(request.getRequestURI()).thenReturn("/api/client/profil");
 
-        assertThrows(UnauthorizedTenantException.class,
+        interceptor.preHandle(request, response, new Object());
+
+        assertNull(TenantContext.getCurrentTenant());
+    }
+
+    @Test
+    void clientSansEnTeteEstRefuseSurLesDemandes() {
+        authentifier(principal(RoleUtilisateur.CLIENT, null, null));
+        when(request.getHeader(TenantInterceptor.TENANT_HEADER)).thenReturn(null);
+        when(request.getRequestURI()).thenReturn("/api/client/demandes");
+
+        assertThrows(TenantHeaderRequiredException.class,
                 () -> interceptor.preHandle(request, response, new Object()));
     }
 
@@ -74,6 +95,7 @@ class TenantInterceptorTest {
     void employeNePeutPasChangerDeTenant() {
         authentifier(principal(RoleUtilisateur.TECHNICIEN, 10L, "lims_labo_a"));
         when(request.getHeader(TenantInterceptor.TENANT_HEADER)).thenReturn("labo_b");
+        when(tenantResolver.exigerActif("lims_labo_a")).thenReturn(labo("labo_a", "lims_labo_a", "ACTIF"));
         when(tenantResolver.resoudre("labo_b")).thenReturn(labo("labo_b", "lims_labo_b", "ACTIF"));
 
         assertThrows(UnauthorizedTenantException.class,
@@ -84,6 +106,7 @@ class TenantInterceptorTest {
     void employeEstForceSurSonLaboratoire() throws Exception {
         authentifier(principal(RoleUtilisateur.TECHNICIEN, 10L, "lims_labo_a"));
         when(request.getHeader(TenantInterceptor.TENANT_HEADER)).thenReturn(null);
+        when(tenantResolver.exigerActif("lims_labo_a")).thenReturn(labo("labo_a", "lims_labo_a", "ACTIF"));
 
         interceptor.preHandle(request, response, new Object());
 
