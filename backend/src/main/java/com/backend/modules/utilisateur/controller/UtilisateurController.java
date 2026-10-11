@@ -70,7 +70,7 @@ public class UtilisateurController {
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','SUPER_ADMINISTRATEUR') or #id == authentication.principal.id")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR') or #id == authentication.principal.id")
     @Operation(summary = "Modifier partiellement un utilisateur")
     public ResponseEntity<ApiResponse<UtilisateurDto>> modifier(
             @PathVariable Long id,

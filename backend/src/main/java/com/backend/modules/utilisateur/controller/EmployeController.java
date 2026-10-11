@@ -43,4 +43,21 @@ public class EmployeController {
         );
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @Operation(summary = "Obtenir le détail d'un employé du laboratoire courant")
+    public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> trouverEmployeParId(
+            @org.springframework.web.bind.annotation.PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(utilisateurService.trouverEmployeParId(id)));
+    }
+
+    @org.springframework.web.bind.annotation.PatchMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @Operation(summary = "Modifier un employé du laboratoire courant")
+    public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> modifierEmploye(
+            @org.springframework.web.bind.annotation.PathVariable Long id,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody com.backend.modules.utilisateur.dto.ModifierEmployeRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Employé modifié avec succès", utilisateurService.modifierEmploye(id, request)));
+    }
 }

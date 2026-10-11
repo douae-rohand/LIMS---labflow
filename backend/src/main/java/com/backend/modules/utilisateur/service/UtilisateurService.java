@@ -30,7 +30,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -46,6 +50,8 @@ public class UtilisateurService {
     private final ActivationCompteService activationCompteService;
     private final TenantExecutor tenantExecutor;
     private final MatriculeGeneratorService matriculeGeneratorService;
+    private final com.backend.common.audit.JournalAuditService journalAuditService;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     /** Rôles que peut créer un ADMINISTRATEUR (les siens exclus). */
     private static final Set<RoleUtilisateur> ROLES_CREABLES_PAR_ADMIN = Set.of(
@@ -214,6 +220,180 @@ public class UtilisateurService {
                      : com.backend.modules.utilisateur.entity.StatutEmploye.DESACTIVE;
     }
 
+    @Transactional(readOnly = true)
+    public com.backend.modules.utilisateur.dto.EmployeDetailDto trouverEmployeParId(Long id) {
+        return tenantExecutor.inCentral(() -> {
+            Utilisateur u = chargerPourAppelant(id, false);
+            return versEmployeDetailDto(u);
+        });
+    }
+
+    @Transactional
+    public com.backend.modules.utilisateur.dto.EmployeDetailDto modifierEmploye(
+            Long id, com.backend.modules.utilisateur.dto.ModifierEmployeRequest request) {
+        return tenantExecutor.inCentral(() -> modifierEmployeInterne(id, request));
+    }
+
+    private com.backend.modules.utilisateur.dto.EmployeDetailDto modifierEmployeInterne(
+            Long id, com.backend.modules.utilisateur.dto.ModifierEmployeRequest request) {
+
+        UtilisateurPrincipal principal = principalConnecte();
+        Utilisateur utilisateur = chargerPourAppelant(id, false);
+
+        Map<String, Object> avant = new LinkedHashMap<>();
+        Map<String, Object> apres = new LinkedHashMap<>();
+
+        // 1. Validation et mise à jour du nom
+        if (request.getNom() != null) {
+            String nomTrim = request.getNom().trim();
+            if (nomTrim.isEmpty()) {
+                throw new BusinessRuleException("CHAMP_OBLIGATOIRE", "Le nom ne peut pas être vide.");
+            }
+            if (!nomTrim.equals(utilisateur.getNom())) {
+                avant.put("nom", utilisateur.getNom());
+                apres.put("nom", nomTrim);
+                utilisateur.setNom(nomTrim);
+            }
+        }
+
+        // 2. Validation et mise à jour du prénom
+        if (request.getPrenom() != null) {
+            String prenomTrim = request.getPrenom().trim();
+            if (prenomTrim.isEmpty()) {
+                throw new BusinessRuleException("CHAMP_OBLIGATOIRE", "Le prénom ne peut pas être vide.");
+            }
+            if (!prenomTrim.equals(utilisateur.getPrenom())) {
+                avant.put("prenom", utilisateur.getPrenom());
+                apres.put("prenom", prenomTrim);
+                utilisateur.setPrenom(prenomTrim);
+            }
+        }
+
+        // 3. Validation et mise à jour du téléphone
+        if (request.getTelephone() != null) {
+            String telTrim = request.getTelephone().trim();
+            if (!telTrim.equals(utilisateur.getTelephone())) {
+                avant.put("telephone", utilisateur.getTelephone());
+                apres.put("telephone", telTrim);
+                utilisateur.setTelephone(telTrim);
+            }
+        }
+
+        // 4. Validation et mise à jour du rôle
+        if (request.getRole() != null) {
+            String roleCode = request.getRole().trim().toUpperCase();
+            if (!Set.of("RESPONSABLE", "TECHNICIEN", "ACCUEIL").contains(roleCode)) {
+                throw new BusinessRuleException("ROLE_INTERDIT",
+                        "Rôle invalide. Rôles autorisés : RESPONSABLE, TECHNICIEN, ACCUEIL.");
+            }
+            String roleActuel = utilisateur.getRole() != null ? utilisateur.getRole().getCode() : null;
+            if (!roleCode.equalsIgnoreCase(roleActuel)) {
+                Role nouveauRole = roleRepository.findByCode(roleCode)
+                        .orElseThrow(() -> new ResourceNotFoundException("Role", "code", roleCode));
+                avant.put("role", roleActuel);
+                apres.put("role", roleCode);
+                utilisateur.setRole(nouveauRole);
+            }
+        }
+
+        // 5. Validation et mise à jour de l'e-mail
+        boolean emailModifie = false;
+        if (request.getEmail() != null) {
+            String emailNorm = request.getEmail().trim().toLowerCase();
+            if (!emailNorm.equalsIgnoreCase(utilisateur.getEmail())) {
+                // E-mail modifiable UNIQUEMENT si compte_confirme == false (EN_ATTENTE)
+                if (utilisateur.isCompteConfirme()) {
+                    throw new BusinessRuleException("EMAIL_NON_MODIFIABLE",
+                            "L'adresse e-mail d'un compte déjà confirmé ne peut pas être modifiée.");
+                }
+                if (utilisateurRepository.existsByEmail(emailNorm)) {
+                    throw new BusinessRuleException("EMAIL_DEJA_UTILISE",
+                            "Cette adresse e-mail ne peut pas être utilisée.");
+                }
+                avant.put("email", utilisateur.getEmail());
+                apres.put("email", emailNorm);
+                utilisateur.setEmail(emailNorm);
+                emailModifie = true;
+            }
+        }
+
+        // 6. Si aucun champ n'a réellement changé : pas de save, pas d'audit, pas de jeton
+        if (avant.isEmpty()) {
+            return versEmployeDetailDto(utilisateur);
+        }
+
+        // 7. Sauvegarde avec gestion des conflits d'unicité concurrents
+        try {
+            utilisateur = utilisateurRepository.saveAndFlush(utilisateur);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            throw new BusinessRuleException("EMAIL_DEJA_UTILISE",
+                    "Cette adresse e-mail ne peut pas être utilisée.");
+        }
+
+        // 8. Changement d'email : invalidation anciens jetons + création nouveau jeton + envoi afterCommit
+        if (emailModifie) {
+            final Utilisateur userFinal = utilisateur;
+            final String lienActivation = activationCompteService.creerJeton(userFinal);
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            activationCompteService.envoyerInvitation(userFinal, lienActivation);
+                        }
+                    }
+            );
+        }
+
+        // 9. Écriture explicite dans JournalAudit
+        try {
+            String jsonAvant = objectMapper.writeValueAsString(avant);
+            String jsonApres = objectMapper.writeValueAsString(apres);
+            String description = "Champs modifiés : " + String.join(", ", apres.keySet());
+
+            Utilisateur auteur = utilisateurRepository.findByEmail(principal.getEmail()).orElse(null);
+            if (auteur != null) {
+                com.backend.common.audit.JournalAudit entree = com.backend.common.audit.JournalAudit.builder()
+                        .code("AUD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                        .dateAction(Instant.now())
+                        .action("MODIFICATION_EMPLOYE")
+                        .objet("Utilisateur#" + id)
+                        .motif(description)
+                        .valeurAvant(jsonAvant)
+                        .valeurApres(jsonApres)
+                        .utilisateur(auteur)
+                        .build();
+                journalAuditService.enregistrer(entree);
+            }
+        } catch (Exception ex) {
+            log.warn("Impossible de sérialiser l'audit pour la modification de l'employé id={} : {}", id, ex.getMessage());
+        }
+
+        return versEmployeDetailDto(utilisateur);
+    }
+
+    private com.backend.modules.utilisateur.dto.EmployeDetailDto versEmployeDetailDto(Utilisateur u) {
+        com.backend.modules.utilisateur.entity.StatutEmploye statut =
+                calculerStatutEmploye(u.isActif(), u.isCompteConfirme());
+
+        String roleCode = u.getRole() != null ? u.getRole().getCode() : null;
+
+        return com.backend.modules.utilisateur.dto.EmployeDetailDto.builder()
+                .id(u.getId())
+                .matricule(u.getMatricule())
+                .nom(u.getNom())
+                .prenom(u.getPrenom())
+                .nomComplet(u.getNomComplet())
+                .email(u.getEmail())
+                .telephone(u.getTelephone())
+                .role(roleCode)
+                .statut(statut)
+                .actif(u.isActif())
+                .compteConfirme(u.isCompteConfirme())
+                .derniereConnexion(u.getDerniereConnexion())
+                .dateCreation(u.getDateCreation())
+                .build();
+    }
+
     @Transactional
     @Auditable(action = "CREATION_UTILISATEUR", entite = "Utilisateur")
     public UtilisateurDto creer(CreerUtilisateurRequest request) {
@@ -300,7 +480,30 @@ public class UtilisateurService {
     }
 
     private UtilisateurDto modifierInterne(Long id, ModifierUtilisateurRequest request) {
+        UtilisateurPrincipal principal = principalConnecte();
         Utilisateur utilisateur = chargerPourAppelant(id, true);
+
+        // Si l'utilisateur modifie son propre compte et n'est pas SUPER_ADMINISTRATEUR :
+        // les champs actif, deuxFacteursActif, nouveauMotDePasse et email sont strictement refusés s'ils sont soumis et différents
+        if (principal.getId() != null && principal.getId().equals(utilisateur.getId())
+                && principal.getRole() != RoleUtilisateur.SUPER_ADMINISTRATEUR) {
+            if (request.getActif() != null && request.getActif() != utilisateur.isActif()) {
+                throw new BusinessRuleException("MODIFICATION_NON_AUTORISEE",
+                        "Vous ne pouvez pas modifier votre propre statut d'activité.");
+            }
+            if (request.getDeuxFacteursActif() != null && request.getDeuxFacteursActif() != utilisateur.isDoubleAuthentification()) {
+                throw new BusinessRuleException("MODIFICATION_NON_AUTORISEE",
+                        "La modification du statut 2FA doit être effectuée via les endpoints d'enrôlement 2FA.");
+            }
+            if (StringUtils.hasText(request.getNouveauMotDePasse())) {
+                throw new BusinessRuleException("MODIFICATION_NON_AUTORISEE",
+                        "Le changement de mot de passe doit être effectué via /api/auth/mot-de-passe/changer.");
+            }
+            if (StringUtils.hasText(request.getEmail()) && !request.getEmail().equalsIgnoreCase(utilisateur.getEmail())) {
+                throw new BusinessRuleException("MODIFICATION_NON_AUTORISEE",
+                        "Vous ne pouvez pas modifier votre propre adresse e-mail via cet endpoint.");
+            }
+        }
 
         if (StringUtils.hasText(request.getNom())) utilisateur.setNom(request.getNom());
         if (StringUtils.hasText(request.getPrenom())) utilisateur.setPrenom(request.getPrenom());
