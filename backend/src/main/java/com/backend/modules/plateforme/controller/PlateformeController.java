@@ -9,6 +9,8 @@ import com.backend.modules.plateforme.dto.*;
 import com.backend.modules.plateforme.entity.StatutIntegration;
 import com.backend.modules.plateforme.entity.TypeDocumentIntegration;
 import com.backend.modules.plateforme.service.DemandeIntegrationService;
+import com.backend.modules.plateforme.service.LaboratoireExportService;
+import com.backend.modules.plateforme.service.LaboratoireImportService;
 import com.backend.modules.plateforme.service.PlateformeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,7 +21,7 @@ import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -46,6 +48,8 @@ public class PlateformeController {
 
     private final PlateformeService plateformeService;
     private final DemandeIntegrationService demandeIntegrationService;
+    private final LaboratoireExportService laboratoireExportService;
+    private final LaboratoireImportService laboratoireImportService;
     private final EmailService emailService;
     private final SendGridProperties sendGridProperties;
     private final ObjectMapper objectMapper;
@@ -60,12 +64,84 @@ public class PlateformeController {
 
     @GetMapping("/laboratoires")
     @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
-    @Operation(summary = "Lister tous les laboratoires")
+    @Operation(summary = "Rechercher les laboratoires")
     public ResponseEntity<ApiResponse<Page<LaboratoireDto>>> listerLaboratoires(
+            @RequestParam(required = false) String recherche,
+            @RequestParam(required = false) String statut,
+            @RequestParam(required = false) String ville,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "dateCreation") String tri,
+            @RequestParam(defaultValue = "desc") String ordre) {
         return ResponseEntity.ok(ApiResponse.success(
-                plateformeService.listerLaboratoires(PageRequest.of(page, size))));
+                plateformeService.rechercherLaboratoires(recherche, statut, ville, page, size, tri, ordre)));
+    }
+
+    @GetMapping("/laboratoires/statistiques")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Indicateurs de la plateforme")
+    public ResponseEntity<ApiResponse<StatistiquesPlateformeDto>> statistiques() {
+        return ResponseEntity.ok(ApiResponse.success(plateformeService.statistiques()));
+    }
+
+    @GetMapping("/laboratoires/villes")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Lister les villes des laboratoires")
+    public ResponseEntity<ApiResponse<java.util.List<String>>> listerVilles() {
+        return ResponseEntity.ok(ApiResponse.success(plateformeService.listerVilles()));
+    }
+
+    @GetMapping("/laboratoires/export")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Exporter les laboratoires en PDF, Excel ou CSV")
+    public ResponseEntity<byte[]> exporterLaboratoires(
+            @RequestParam String format,
+            @RequestParam(defaultValue = "filtres") String portee,
+            @RequestParam(required = false) String recherche,
+            @RequestParam(required = false) String statut,
+            @RequestParam(required = false) String ville) {
+        boolean tous = "tous".equalsIgnoreCase(portee);
+        FichierGenere fichier = laboratoireExportService.exporter(format, recherche, statut, ville, tous);
+        return fichier(fichier);
+    }
+
+    @GetMapping("/laboratoires/import/modele")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Télécharger le modèle d'importation Excel ou CSV")
+    public ResponseEntity<byte[]> modeleImport(@RequestParam String format) {
+        return fichier(laboratoireImportService.modele(format));
+    }
+
+    @PostMapping(value = "/laboratoires/import/analyser", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Analyser un fichier d'importation sans rien enregistrer")
+    public ResponseEntity<ApiResponse<RapportImportLaboratoireDto>> analyserImport(
+            @RequestPart("fichier") MultipartFile fichier) {
+        return ResponseEntity.ok(ApiResponse.success(laboratoireImportService.analyser(fichier)));
+    }
+
+    @PostMapping("/laboratoires/import/verifier")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Revérifier des lignes corrigées sans les enregistrer")
+    public ResponseEntity<ApiResponse<RapportImportLaboratoireDto>> verifierImport(
+            @Valid @RequestBody ConfirmerImportLaboratoireRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(laboratoireImportService.verifier(request.getLignes())));
+    }
+
+    @PostMapping("/laboratoires/import/confirmer")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Créer les demandes d'intégration pour les lignes valides")
+    public ResponseEntity<ApiResponse<RapportImportLaboratoireDto>> confirmerImport(
+            @Valid @RequestBody ConfirmerImportLaboratoireRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Importation terminée", laboratoireImportService.confirmer(request.getLignes())));
+    }
+
+    @GetMapping("/laboratoires/{id}/demande")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Demande d'intégration rattachée à un laboratoire, avec ses documents")
+    public ResponseEntity<ApiResponse<DemandeIntegrationDto>> demandeDuLaboratoire(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(demandeIntegrationService.trouverParLaboratoire(id)));
     }
 
     @GetMapping("/laboratoires/{code}")
@@ -84,12 +160,40 @@ public class PlateformeController {
                 .body(ApiResponse.success("Laboratoire créé", plateformeService.creerLaboratoire(request)));
     }
 
+    @PatchMapping("/laboratoires/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Modifier les informations d'un laboratoire")
+    public ResponseEntity<ApiResponse<LaboratoireDto>> modifierLaboratoire(
+            @PathVariable Long id,
+            @Valid @RequestBody ModifierLaboratoireRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Laboratoire mis à jour", plateformeService.modifierLaboratoire(id, request)));
+    }
+
+    @PatchMapping("/laboratoires/{id}/administrateur")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Modifier l'administrateur d'un laboratoire")
+    public ResponseEntity<ApiResponse<LaboratoireDto>> modifierAdministrateur(
+            @PathVariable Long id,
+            @Valid @RequestBody ModifierAdministrateurLaboratoireRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Administrateur mis à jour", plateformeService.modifierAdministrateur(id, request)));
+    }
+
+    @PatchMapping("/laboratoires/{id}/activer")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Activer un laboratoire")
+    public ResponseEntity<ApiResponse<LaboratoireDto>> activerLaboratoire(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Laboratoire activé", plateformeService.activerLaboratoire(id)));
+    }
+
     @PatchMapping("/laboratoires/{id}/desactiver")
     @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
-    @Operation(summary = "Désactiver un laboratoire")
-    public ResponseEntity<ApiResponse<Void>> desactiverLaboratoire(@PathVariable Long id) {
-        plateformeService.desactiverLaboratoire(id);
-        return ResponseEntity.ok(ApiResponse.success("Laboratoire désactivé", null));
+    @Operation(summary = "Désactiver un laboratoire sans supprimer ses données")
+    public ResponseEntity<ApiResponse<LaboratoireDto>> desactiverLaboratoire(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Laboratoire désactivé", plateformeService.desactiverLaboratoire(id)));
     }
 
     // -------------------------------------------------------------------------
@@ -124,10 +228,13 @@ public class PlateformeController {
     @Operation(summary = "Lister les demandes d'intégration")
     public ResponseEntity<ApiResponse<Page<DemandeIntegrationDto>>> listerDemandes(
             @RequestParam(required = false) StatutIntegration statut,
+            @RequestParam(required = false) String recherche,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "dateDemande") String tri,
+            @RequestParam(defaultValue = "desc") String ordre) {
         return ResponseEntity.ok(ApiResponse.success(
-                demandeIntegrationService.lister(statut, PageRequest.of(page, size))));
+                demandeIntegrationService.lister(statut, recherche, page, size, tri, ordre)));
     }
 
     @GetMapping("/demandes/{id}")
@@ -169,6 +276,17 @@ public class PlateformeController {
             @PathVariable TypeDocumentIntegration type,
             @RequestParam(defaultValue = "false") boolean download) {
         return demandeIntegrationService.telechargerDocument(id, type, download);
+    }
+
+    @PostMapping(value = "/demandes/{id}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Ajouter ou remplacer un document justificatif")
+    public ResponseEntity<ApiResponse<DemandeIntegrationDto>> ajouterDocument(
+            @PathVariable Long id,
+            @RequestParam TypeDocumentIntegration type,
+            @RequestPart("fichier") MultipartFile fichier) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Document enregistré", demandeIntegrationService.ajouterDocument(id, type, fichier)));
     }
 
     @PostMapping("/demandes/{id}/invitation")
@@ -221,5 +339,12 @@ public class PlateformeController {
             throw new BusinessRuleException("DEMANDE_INVALIDE",
                     "Le contenu JSON de la demande est illisible");
         }
+    }
+
+    private ResponseEntity<byte[]> fichier(FichierGenere fichier) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fichier.nom() + "\"")
+                .contentType(MediaType.parseMediaType(fichier.typeMime()))
+                .body(fichier.contenu());
     }
 }

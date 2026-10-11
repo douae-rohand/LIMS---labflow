@@ -34,6 +34,8 @@ class PlateformeServiceLaboratoirePublicTest {
     @Mock
     private LaboratoireRepository laboratoireRepository;
     @Mock
+    private com.backend.modules.plateforme.repository.DemandeIntegrationRepository demandeIntegrationRepository;
+    @Mock
     private RoleRepository roleRepository;
     @Mock
     private TenantProvisioner tenantProvisioner;
@@ -41,6 +43,8 @@ class PlateformeServiceLaboratoirePublicTest {
     private TenantExecutor tenantExecutor;
     @Mock
     private EssaiRepository essaiRepository;
+    @Mock
+    private com.backend.modules.utilisateur.repository.UtilisateurRepository utilisateurRepository;
 
     @InjectMocks
     private PlateformeService plateformeService;

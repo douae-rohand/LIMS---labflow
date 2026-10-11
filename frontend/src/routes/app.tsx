@@ -1,10 +1,10 @@
-import { Outlet, createFileRoute, useRouter } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
+import { Link, Outlet, createFileRoute, useRouter } from "@tanstack/react-router";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/lab";
 import { logout } from "@/api/auth";
 import { clearSession, getSession, getStatus } from "@/api/session";
 import type { RoleUtilisateur } from "@/api/session";
+import { SuperAdminShell } from "@/features/super-admin/SuperAdminShell";
 
 export function cheminTableauDeBord(_role: RoleUtilisateur): "/app" {
   return "/app";
@@ -51,28 +51,21 @@ function AppLayout() {
     return null;
   }
 
+  if (isSuperAdmin) {
+    return (
+      <SuperAdminShell utilisateur={user} onLogout={() => void handleLogout()}>
+        <Outlet />
+      </SuperAdminShell>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-brand-900/10 bg-card px-6 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-          <div className="flex items-center gap-6">
-            <Link to="/app" className="flex items-center">
-              <img src="/nom.png" alt="LabFlow" className="h-10" />
-            </Link>
-            {isSuperAdmin && (
-              <nav className="hidden items-center gap-3 text-sm font-semibold sm:flex">
-                <Link to="/app" className="text-ink-900/70 hover:text-ink-900">
-                  Tableau de bord
-                </Link>
-                <Link
-                  to="/app/demandes-integration"
-                  className="text-ink-900/70 hover:text-ink-900"
-                >
-                  Demandes d'intégration
-                </Link>
-              </nav>
-            )}
-          </div>
+          <Link to="/app" className="flex items-center">
+            <img src="/nom.png" alt="LabFlow" className="h-10" />
+          </Link>
           <Button
             variant="ghost"
             size="sm"

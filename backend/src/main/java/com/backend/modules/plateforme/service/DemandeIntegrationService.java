@@ -25,7 +25,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -131,16 +133,33 @@ public class DemandeIntegrationService {
     }
 
     @Transactional(readOnly = true)
-    public Page<DemandeIntegrationDto> lister(StatutIntegration statut, Pageable pageable) {
-        Page<DemandeIntegration> page = (statut != null)
-                ? demandeIntegrationRepository.findByStatut(statut.name(), pageable)
-                : demandeIntegrationRepository.findAll(pageable);
-        return page.map(d -> toDto(d, false));
+    public Page<DemandeIntegrationDto> lister(StatutIntegration statut, String recherche,
+                                              int page, int size, String tri, String ordre) {
+        Set<String> tris = Set.of("dateDemande", "numero", "nomLaboratoire", "ville", "statut", "contactEmail");
+        String champ = tris.contains(tri) ? tri : "dateDemande";
+        Sort.Direction direction = "asc".equalsIgnoreCase(ordre) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(
+                Math.max(page, 0),
+                Math.min(Math.max(size, 1), 100),
+                Sort.by(direction, champ));
+        String terme = StringUtils.hasText(recherche)
+                ? recherche.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                : null;
+        return demandeIntegrationRepository
+                .rechercher(statut == null ? null : statut.name(), terme, pageable)
+                .map(d -> toDto(d, false));
     }
 
     @Transactional(readOnly = true)
     public DemandeIntegrationDto trouver(Long id) {
         return toDto(charger(id), true);
+    }
+
+    @Transactional(readOnly = true)
+    public DemandeIntegrationDto trouverParLaboratoire(Long laboratoireId) {
+        return demandeIntegrationRepository.findFirstByLaboratoire_IdOrderByIdDesc(laboratoireId)
+                .map(demande -> toDto(demande, true))
+                .orElse(null);
     }
 
     @Transactional
@@ -201,6 +220,26 @@ public class DemandeIntegrationService {
                 .contentType(mediaType)
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition)
                 .body(resource);
+    }
+
+    @Transactional
+    public DemandeIntegrationDto ajouterDocument(Long demandeId, TypeDocumentIntegration type, MultipartFile fichier) {
+        DemandeIntegration demande = charger(demandeId);
+        StatutIntegration statut = enumOuNull(StatutIntegration.class, demande.getStatut());
+        if (statut != StatutIntegration.EN_ATTENTE && statut != StatutIntegration.EN_COURS_VALIDATION) {
+            throw new BusinessRuleException("DEMANDE_DEJA_TRAITEE",
+                    "Les documents ne peuvent être ajoutés que sur une demande encore en attente");
+        }
+        validerFichier(type, fichier);
+        documentIntegrationRepository.findByDemande_IdAndTypeDocument(demandeId, type)
+                .ifPresent(existant -> {
+                    stockageFichierService.supprimer(existant.getCheminStockage());
+                    documentIntegrationRepository.delete(existant);
+                    documentIntegrationRepository.flush();
+                });
+        enregistrerDocument(demande, type, fichier);
+        log.info("Document d'intégration ajouté : demande={}, type={}", demandeId, type);
+        return toDto(charger(demandeId), true);
     }
 
     @Transactional
@@ -377,25 +416,29 @@ public class DemandeIntegrationService {
         }
         for (TypeDocumentIntegration type : TypeDocumentIntegration.values()) {
             MultipartFile fichier = fichiers.get(type);
-            if (fichier == null || fichier.isEmpty()) {
-                throw new BusinessRuleException("DOCUMENT_MANQUANT",
-                        "Le document obligatoire est manquant : " + type.getLibelle());
-            }
-            if (fichier.getSize() > tailleMaxOctets) {
-                throw new BusinessRuleException("DOCUMENT_TROP_VOLUMINEUX",
-                        type.getLibelle() + " dépasse la taille maximale de 10 Mo");
-            }
-            String extension = extension(fichier.getOriginalFilename());
-            if (!EXTENSIONS_AUTORISEES.contains(extension)) {
-                throw new BusinessRuleException("FORMAT_DOCUMENT_INVALIDE",
-                        type.getLibelle() + " : formats acceptés PDF, JPG, PNG, WEBP");
-            }
-            String mime = fichier.getContentType() == null ? "" : fichier.getContentType().toLowerCase();
-            if (StringUtils.hasText(mime) && !MIME_AUTORISES.contains(mime)
-                    && !"application/octet-stream".equals(mime)) {
-                throw new BusinessRuleException("FORMAT_DOCUMENT_INVALIDE",
-                        type.getLibelle() + " : type MIME non autorisé (" + mime + ")");
-            }
+            validerFichier(type, fichier);
+        }
+    }
+
+    private void validerFichier(TypeDocumentIntegration type, MultipartFile fichier) {
+        if (fichier == null || fichier.isEmpty()) {
+            throw new BusinessRuleException("DOCUMENT_MANQUANT",
+                    "Le document obligatoire est manquant : " + type.getLibelle());
+        }
+        if (fichier.getSize() > tailleMaxOctets) {
+            throw new BusinessRuleException("DOCUMENT_TROP_VOLUMINEUX",
+                    type.getLibelle() + " dépasse la taille maximale de 10 Mo");
+        }
+        String extension = extension(fichier.getOriginalFilename());
+        if (!EXTENSIONS_AUTORISEES.contains(extension)) {
+            throw new BusinessRuleException("FORMAT_DOCUMENT_INVALIDE",
+                    type.getLibelle() + " : formats acceptés PDF, JPG, PNG, WEBP");
+        }
+        String mime = fichier.getContentType() == null ? "" : fichier.getContentType().toLowerCase(Locale.ROOT);
+        if (StringUtils.hasText(mime) && !MIME_AUTORISES.contains(mime)
+                && !"application/octet-stream".equals(mime)) {
+            throw new BusinessRuleException("FORMAT_DOCUMENT_INVALIDE",
+                    type.getLibelle() + " : type MIME non autorisé (" + mime + ")");
         }
     }
 
@@ -443,14 +486,41 @@ public class DemandeIntegrationService {
                 .laboratoireId(lab != null ? lab.getId() : null)
                 .laboratoireCode(lab != null ? lab.getCode() : null)
                 .nomSchema(lab != null ? lab.getNomSchema() : null)
+                .historique(construireHistorique(d))
                 .build();
 
         if (avecDocuments) {
             dto.setDocuments(documentIntegrationRepository.findByDemande_Id(d.getId()).stream()
                     .map(this::toDocumentDto)
                     .toList());
+            dto.setNombreDocuments(dto.getDocuments().size());
+        } else {
+            dto.setNombreDocuments((int) documentIntegrationRepository.countByDemande_Id(d.getId()));
         }
+        dto.setDossierComplet(dto.getNombreDocuments() == TypeDocumentIntegration.values().length);
         return dto;
+    }
+
+    private List<HistoriqueDecisionDto> construireHistorique(DemandeIntegration demande) {
+        List<HistoriqueDecisionDto> evenements = new ArrayList<>();
+        evenements.add(HistoriqueDecisionDto.builder()
+                .evenement("Demande reçue")
+                .date(demande.getDateDemande())
+                .detail(null)
+                .build());
+        if (demande.getDateTraitement() != null) {
+            String evenement = switch (demande.getStatut()) {
+                case "APPROUVEE" -> "Demande acceptée";
+                case "REJETEE" -> "Demande refusée";
+                default -> "Demande traitée";
+            };
+            evenements.add(HistoriqueDecisionDto.builder()
+                    .evenement(evenement)
+                    .date(demande.getDateTraitement())
+                    .detail(demande.getMotifRefus())
+                    .build());
+        }
+        return evenements;
     }
 
     private DocumentIntegrationDto toDocumentDto(DocumentIntegration doc) {

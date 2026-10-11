@@ -59,6 +59,12 @@ public class DemandeIntegrationDto {
     private String laboratoireCode;
     private String nomSchema;
 
+    private int nombreDocuments;
+    private boolean dossierComplet;
+
+    @Builder.Default
+    private List<HistoriqueDecisionDto> historique = new ArrayList<>();
+
     @Builder.Default
     private List<DocumentIntegrationDto> documents = new ArrayList<>();
 }
