@@ -36,6 +36,8 @@ export interface EmployeDto {
 export interface EmployeDetailDto extends EmployeDto {
   actif: boolean;
   compteConfirme: boolean;
+  invitationExpiree: boolean | null;
+  invitationExpireLe: string | null;
 }
 
 export interface ListerEmployesParams {

@@ -466,7 +466,7 @@ public class UtilisateurService {
         }
 
         // Vérification du délai de 60 secondes basé sur le jeton le plus récent
-        tokenActivationRepository.findFirstByUtilisateur_IdOrderByCreatedAtDesc(utilisateur.getId())
+        tokenActivationRepository.findFirstByUtilisateur_IdOrderByCreatedAtDescIdDesc(utilisateur.getId())
                 .ifPresent(dernierToken -> {
                     if (dernierToken.getCreatedAt() != null
                             && dernierToken.getCreatedAt().plusSeconds(60).isAfter(Instant.now())) {
@@ -527,6 +527,23 @@ public class UtilisateurService {
 
         String roleCode = u.getRole() != null ? u.getRole().getCode() : null;
 
+        Boolean invitationExpiree = null;
+        Instant invitationExpireLe = null;
+
+        if (statut == com.backend.modules.utilisateur.entity.StatutEmploye.EN_ATTENTE) {
+            Instant maintenant = Instant.now();
+            java.util.Optional<com.backend.modules.auth.entity.TokenActivation> dernierJetonOpt =
+                    tokenActivationRepository.findFirstByUtilisateur_IdOrderByCreatedAtDescIdDesc(u.getId());
+            if (dernierJetonOpt.isEmpty()) {
+                invitationExpiree = true;
+                invitationExpireLe = null;
+            } else {
+                com.backend.modules.auth.entity.TokenActivation jeton = dernierJetonOpt.get();
+                invitationExpireLe = jeton.getDateExpiration();
+                invitationExpiree = jeton.getDateExpiration() == null || jeton.getDateExpiration().isBefore(maintenant);
+            }
+        }
+
         return com.backend.modules.utilisateur.dto.EmployeDetailDto.builder()
                 .id(u.getId())
                 .matricule(u.getMatricule())
@@ -541,6 +558,8 @@ public class UtilisateurService {
                 .compteConfirme(u.isCompteConfirme())
                 .derniereConnexion(u.getDerniereConnexion())
                 .dateCreation(u.getDateCreation())
+                .invitationExpiree(invitationExpiree)
+                .invitationExpireLe(invitationExpireLe)
                 .build();
     }
 

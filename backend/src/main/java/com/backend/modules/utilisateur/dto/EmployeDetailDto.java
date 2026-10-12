@@ -32,4 +32,6 @@ public class EmployeDetailDto {
     private boolean compteConfirme;
     private Instant derniereConnexion;
     private Instant dateCreation;
+    private Boolean invitationExpiree;
+    private Instant invitationExpireLe;
 }
