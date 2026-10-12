@@ -74,6 +74,7 @@ public class AuthService {
         }
 
         UtilisateurPrincipal principal = (UtilisateurPrincipal) authentication.getPrincipal();
+        refuserSiLaboratoireDesactive(principal);
 
         if (!principal.isEnabled()) {
             log.warn("Tentative de connexion sur compte inactif : {}", request.getEmail());
@@ -254,6 +255,7 @@ public class AuthService {
 
         UtilisateurPrincipal principal =
                 (UtilisateurPrincipal) userDetailsService.loadUserByUsername(rotation.email());
+        refuserSiLaboratoireDesactive(principal);
 
         // Refuser les comptes inactifs : révocation de tous les tokens et 401 générique
         if (!principal.isEnabled()) {
@@ -300,6 +302,7 @@ public class AuthService {
     // -------------------------------------------------------------------------
 
     public LoginResult buildLoginResult(UtilisateurPrincipal principal, HttpServletRequest httpRequest) {
+        refuserSiLaboratoireDesactive(principal);
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 principal, null, principal.getAuthorities());
         String accessToken = jwtTokenProvider.generateAccessToken(authentication);
@@ -330,5 +333,23 @@ public class AuthService {
         if (request == null) return null;
         String ua = request.getHeader("User-Agent");
         return ua != null ? ua.substring(0, Math.min(ua.length(), 255)) : null;
+    }
+
+    /**
+     * Un laboratoire désactivé conserve ses données, mais ses utilisateurs
+     * ne peuvent plus ouvrir de session ni renouveler un jeton.
+     */
+    private void refuserSiLaboratoireDesactive(UtilisateurPrincipal principal) {
+        if (principal.isSuperAdministrateur() || principal.isClient()) {
+            return;
+        }
+        Utilisateur utilisateur = utilisateurRepository.findByEmailWithRoleAndLaboratoire(principal.getEmail())
+                .orElseThrow(() -> new BusinessRuleException("USER_NOT_FOUND", "Utilisateur introuvable"));
+        if (utilisateur.getLaboratoire() != null
+                && !"ACTIF".equalsIgnoreCase(utilisateur.getLaboratoire().getStatut())) {
+            throw new BusinessRuleException("LABORATOIRE_DESACTIVE",
+                    "Le laboratoire « " + utilisateur.getLaboratoire().getRaisonSociale()
+                            + " » est désactivé. L'accès de l'administrateur et des utilisateurs est suspendu. Les données sont conservées.");
+        }
     }
 }

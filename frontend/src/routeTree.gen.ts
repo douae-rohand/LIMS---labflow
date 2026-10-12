@@ -23,6 +23,7 @@ import { Route as ReinitialiserMotDePasseRouteImport } from './routes/reinitiali
 import { Route as UiKitRouteImport } from './routes/ui-kit'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppEmployesRouteImport } from './routes/app/employes'
+import { Route as AppGestionLaboratoiresRouteImport } from './routes/app/gestion-laboratoires'
 import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/index'
 import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
 import { Route as AppDemandesIntegrationIndexRouteImport } from './routes/app/demandes-integration/index'
@@ -102,6 +103,11 @@ const AppEmployesRoute = AppEmployesRouteImport.update({
   path: '/employes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppGestionLaboratoiresRoute = AppGestionLaboratoiresRouteImport.update({
+  id: '/gestion-laboratoires',
+  path: '/gestion-laboratoires',
+  getParentRoute: () => AppRoute,
+} as any)
 const LaboratoiresIndexRoute = LaboratoiresIndexRouteImport.update({
   id: '/laboratoires/',
   path: '/laboratoires/',
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
   '/app/employes': typeof AppEmployesRouteWithChildren
+  '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByTo {
   '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
+  '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app': typeof AppIndexRoute
   '/laboratoires': typeof LaboratoiresIndexRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
   '/app/employes': typeof AppEmployesRouteWithChildren
+  '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
@@ -232,6 +241,7 @@ export interface FileRouteTypes {
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
     | '/app/employes'
+    | '/app/gestion-laboratoires'
     | '/laboratoires/$id'
     | '/app/'
     | '/laboratoires/'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | '/mot-de-passe-oublie'
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
+    | '/app/gestion-laboratoires'
     | '/laboratoires/$id'
     | '/app'
     | '/laboratoires'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
     | '/app/employes'
+    | '/app/gestion-laboratoires'
     | '/laboratoires/$id'
     | '/app/'
     | '/laboratoires/'
@@ -406,6 +418,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEmployesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/gestion-laboratoires': {
+      id: '/app/gestion-laboratoires'
+      path: '/gestion-laboratoires'
+      fullPath: '/app/gestion-laboratoires'
+      preLoaderRoute: typeof AppGestionLaboratoiresRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/laboratoires/': {
       id: '/laboratoires/'
       path: '/laboratoires'
@@ -481,6 +500,7 @@ const AppEmployesRouteWithChildren = AppEmployesRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppEmployesRoute: typeof AppEmployesRouteWithChildren
+  AppGestionLaboratoiresRoute: typeof AppGestionLaboratoiresRoute
   AppIndexRoute: typeof AppIndexRoute
   AppDemandesIntegrationIdRoute: typeof AppDemandesIntegrationIdRoute
   AppUtilisateursNouveauRoute: typeof AppUtilisateursNouveauRoute
@@ -490,6 +510,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppEmployesRoute: AppEmployesRouteWithChildren,
+  AppGestionLaboratoiresRoute: AppGestionLaboratoiresRoute,
   AppIndexRoute: AppIndexRoute,
   AppDemandesIntegrationIdRoute: AppDemandesIntegrationIdRoute,
   AppUtilisateursNouveauRoute: AppUtilisateursNouveauRoute,

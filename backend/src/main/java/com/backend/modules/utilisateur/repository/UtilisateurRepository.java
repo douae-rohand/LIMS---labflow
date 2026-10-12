@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -46,6 +48,9 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
             """)
     Page<Utilisateur> rechercher(@Param("search") String search, Pageable pageable);
 
+    /**
+     * Recherche et filtre les employés d'un laboratoire (utilisé par l'Administrateur du laboratoire).
+     */
     @Query("""
             SELECT u FROM Utilisateur u
             JOIN u.role r
@@ -72,4 +77,16 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
             @Param("statut") String statut,
             @Param("q") String q,
             Pageable pageable);
+
+    /**
+     * Recherche les administrateurs pour une collection de laboratoires (utilisé par le Super Administrateur).
+     */
+    @Query("""
+            SELECT u FROM Utilisateur u
+            JOIN FETCH u.role r
+            WHERE u.laboratoire.id IN :ids
+              AND r.code = 'ADMINISTRATEUR'
+            ORDER BY u.id ASC
+            """)
+    List<Utilisateur> findAdministrateursDesLaboratoires(@Param("ids") Collection<Long> ids);
 }

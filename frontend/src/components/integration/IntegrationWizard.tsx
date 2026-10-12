@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -8,6 +7,7 @@ import { ApiError } from "@/api/axios";
 import { Button, Card, Input, Label, Select, Textarea } from "@/components/lab";
 import { cn } from "@/lib/utils";
 import { DocumentUploader } from "./DocumentUploader";
+import { IndicateurEtapes } from "./IndicateurEtapes";
 import { LocationPicker } from "./LocationPicker";
 import {
   REGIONS_MAROC,
@@ -154,31 +154,15 @@ export function IntegrationWizard() {
 
   return (
     <Card variant="glossy" padding="lg">
-      <ol className="mb-8 grid grid-cols-2 gap-2 sm:grid-cols-5">
-        {STEPS.map((label, index) => (
-          <li key={label}>
-            <button
-              type="button"
-              className={cn(
-                "flex w-full items-center gap-2 rounded-full px-3 py-2 text-left text-xs font-semibold",
-                index === step
-                  ? "bg-brand-900 text-primary-foreground"
-                  : index < step
-                    ? "bg-mint-200 text-brand-900"
-                    : "bg-surface-card text-muted-foreground",
-              )}
-              onClick={() => {
-                if (index < step) setStep(index);
-              }}
-            >
-              <span className="flex size-5 items-center justify-center rounded-full bg-white/20">
-                {index < step ? <Check className="size-3" /> : index + 1}
-              </span>
-              {label}
-            </button>
-          </li>
-        ))}
-      </ol>
+      <div className="mb-8">
+        <IndicateurEtapes
+          etapes={STEPS}
+          etape={step}
+          onAller={(index) => {
+            if (index < step) setStep(index);
+          }}
+        />
+      </div>
 
       <form className="flex flex-col gap-5" onSubmit={form.handleSubmit(onSubmit)}>
         {step === 0 && (

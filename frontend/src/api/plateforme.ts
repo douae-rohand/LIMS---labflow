@@ -84,7 +84,16 @@ export interface DemandeIntegration {
   laboratoireId?: number | null;
   laboratoireCode?: string | null;
   nomSchema?: string | null;
+  nombreDocuments?: number;
+  dossierComplet?: boolean;
+  historique?: HistoriqueDecision[];
   documents?: DocumentIntegrationDto[];
+}
+
+export interface HistoriqueDecision {
+  evenement: string;
+  date: string;
+  detail?: string | null;
 }
 
 export interface SpringPage<T> {
@@ -128,9 +137,11 @@ export async function listerDemandesIntegration(
   statut?: StatutIntegration,
   page = 0,
   size = 20,
+  recherche?: string,
 ): Promise<SpringPage<DemandeIntegration>> {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (statut) params.set("statut", statut);
+  if (recherche) params.set("recherche", recherche);
   const res = await apiClient.get<ApiResponse<SpringPage<DemandeIntegration>>>(
     `/plateforme/demandes?${params.toString()}`,
   );
@@ -140,6 +151,22 @@ export async function listerDemandesIntegration(
 export async function trouverDemandeIntegration(id: number): Promise<DemandeIntegration> {
   const res = await apiClient.get<ApiResponse<DemandeIntegration>>(`/plateforme/demandes/${id}`);
   return res.data;
+}
+
+export async function trouverDemandeDuLaboratoire(
+  laboratoireId: number,
+): Promise<DemandeIntegration | null> {
+  const res = await apiClient.get<ApiResponse<DemandeIntegration | null>>(
+    `/plateforme/laboratoires/${laboratoireId}/demande`,
+  );
+  return res.data ?? null;
+}
+
+export async function contenuDocumentIntegration(
+  id: number,
+  type: TypeDocumentIntegration,
+): Promise<Blob> {
+  return apiClient.getBlob(`/plateforme/demandes/${id}/documents/${type}`);
 }
 
 export async function traiterDemandeIntegration(
@@ -178,4 +205,18 @@ export async function ouvrirDocumentIntegration(
     window.open(url, "_blank", "noopener,noreferrer");
   }
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+export async function ajouterDocumentIntegration(
+  id: number,
+  type: TypeDocumentIntegration,
+  fichier: File,
+): Promise<DemandeIntegration> {
+  const formData = new FormData();
+  formData.append("fichier", fichier);
+  const res = await apiClient.upload<ApiResponse<DemandeIntegration>>(
+    `/plateforme/demandes/${id}/documents?type=${encodeURIComponent(type)}`,
+    formData,
+  );
+  return res.data;
 }

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { User } from "lucide-react";
 import { Badge, Button, Card } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
@@ -6,6 +6,12 @@ import { getSession } from "@/api/session";
 import type { RoleUtilisateur } from "@/api/session";
 
 export const Route = createFileRoute("/app/")({
+  beforeLoad: () => {
+    const session = getSession();
+    if (session?.user.role === "SUPER_ADMINISTRATEUR") {
+      throw redirect({ to: "/app/gestion-laboratoires", search: { onglet: "laboratoires" } });
+    }
+  },
   component: AppHomePage,
 });
 
@@ -44,13 +50,16 @@ function AppHomePage() {
           </p>
         )}
         {user.role === "SUPER_ADMINISTRATEUR" && (
-          <div className="mt-8">
+          <div className="mt-8 flex flex-col gap-2 sm:flex-row">
             <Link to="/app/demandes-integration">
               <Button>Traiter les demandes d'intégration</Button>
             </Link>
+            <Link to="/app/gestion-laboratoires">
+              <Button variant="secondary">Gérer les laboratoires</Button>
+            </Link>
           </div>
         )}
-        {user.role === "SUPER_ADMINISTRATEUR" && (
+        {user.role === "ADMINISTRATEUR" && (
           <div className="mt-4">
             <Link to="/app/utilisateurs">
               <Button variant="secondary">Gérer les utilisateurs</Button>
