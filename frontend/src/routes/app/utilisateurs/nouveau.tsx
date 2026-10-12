@@ -1,4 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { getSession } from "@/api/session";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,6 +11,12 @@ import { ApiError } from "@/api/axios";
 import { useState } from "react";
 
 export const Route = createFileRoute("/app/utilisateurs/nouveau")({
+  beforeLoad: () => {
+    const role = getSession()?.user.role;
+    if (role !== "ADMINISTRATEUR" && role !== "SUPER_ADMINISTRATEUR") {
+      throw redirect({ to: "/app" });
+    }
+  },
   head: () => ({
     meta: [{ title: "Créer un utilisateur — LabFlow LIMS" }],
   }),

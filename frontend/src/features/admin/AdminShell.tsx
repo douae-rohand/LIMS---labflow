@@ -1,9 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { LogOut, Users } from "lucide-react";
+import { Inbox, LogOut, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/lab";
 import { Toaster } from "@/components/ui/sonner";
-import type { SessionUser } from "@/api/session";
+import type { RoleUtilisateur, SessionUser } from "@/api/session";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -28,8 +28,24 @@ const NAV_ITEMS = [
     to: "/app/employes" as const,
     label: "Employés",
     icon: Users,
+    roles: ["ADMINISTRATEUR"] as const,
+  },
+  {
+    to: "/app/demandes-clients" as const,
+    label: "Demandes clients",
+    icon: Inbox,
+    roles: ["ADMINISTRATEUR", "RESPONSABLE"] as const,
   },
 ] as const;
+
+const LIBELLE_ROLE: Partial<Record<RoleUtilisateur, string>> = {
+  ADMINISTRATEUR: "Administrateur",
+  RESPONSABLE: "Responsable laboratoire",
+};
+
+function entreesVisibles(role: RoleUtilisateur) {
+  return NAV_ITEMS.filter((item) => (item.roles as readonly string[]).includes(role));
+}
 
 // ---------------------------------------------------------------------------
 // Composant
@@ -44,7 +60,10 @@ export function AdminShell({
   utilisateur: SessionUser;
   onLogout: () => void;
 }) {
-  const initiales = getInitiales(utilisateur.nomComplet) || "AD";
+  const initiales = getInitiales(utilisateur.nomComplet) || "LF";
+  const navigation = entreesVisibles(utilisateur.role);
+  const accueil = navigation[0]?.to ?? "/app";
+  const libelleRole = LIBELLE_ROLE[utilisateur.role] ?? "Laboratoire";
 
   return (
     <div className="min-h-screen bg-surface-alt flex flex-col">
@@ -60,7 +79,7 @@ export function AdminShell({
           {/* Logo */}
           <div className="flex items-center px-5 py-5 border-b border-brand-900/10">
             <Link
-              to="/app/employes"
+              to={accueil}
               className="flex items-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900 rounded-xl"
               aria-label="LabFlow LIMS — retour à l'accueil"
             >
@@ -71,10 +90,10 @@ export function AdminShell({
           {/* Section nav */}
           <div className="flex-1 overflow-y-auto py-4">
             <p className="px-5 pb-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-              Administration
+              Laboratoire
             </p>
             <nav className="px-3 space-y-0.5">
-              {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+              {navigation.map(({ to, label, icon: Icon }) => (
                 <Link
                   key={to}
                   to={to}
@@ -118,7 +137,7 @@ export function AdminShell({
                   {utilisateur.nomComplet}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
-                  Administrateur
+                  {libelleRole}
                 </p>
               </div>
               {/* Bouton déconnexion (icône seule) */}
@@ -138,7 +157,7 @@ export function AdminShell({
         {/* -------- Topbar mobile -------- */}
         <div className="flex flex-1 flex-col min-w-0">
           <header className="md:hidden flex items-center justify-between gap-4 border-b border-brand-900/10 bg-card px-4 py-3">
-            <Link to="/app/employes" className="flex items-center">
+            <Link to={accueil} className="flex items-center">
               <img src="/nom.png" alt="LabFlow" className="h-7" />
             </Link>
 
@@ -168,7 +187,7 @@ export function AdminShell({
             className="md:hidden flex items-center gap-1 border-b border-brand-900/10 bg-card px-3 py-2 overflow-x-auto no-scrollbar"
             aria-label="Navigation"
           >
-            {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+            {navigation.map(({ to, label, icon: Icon }) => (
               <Link
                 key={to}
                 to={to}

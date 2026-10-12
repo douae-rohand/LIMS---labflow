@@ -11,6 +11,9 @@ export const Route = createFileRoute("/app/")({
     if (session?.user.role === "SUPER_ADMINISTRATEUR") {
       throw redirect({ to: "/app/gestion-laboratoires", search: { onglet: "laboratoires" } });
     }
+    if (session?.user.role === "RESPONSABLE") {
+      throw redirect({ to: "/app/demandes-clients" });
+    }
   },
   component: AppHomePage,
 });
@@ -70,6 +73,13 @@ function AppHomePage() {
           <div className="mt-4">
             <Link to="/app/employes">
               <Button variant="secondary">Gérer les employés</Button>
+            </Link>
+          </div>
+        )}
+        {(user.role === "ADMINISTRATEUR" || user.role === "RESPONSABLE") && (
+          <div className="mt-4">
+            <Link to="/app/demandes-clients">
+              <Button variant="secondary">Traiter les demandes clients</Button>
             </Link>
           </div>
         )}
