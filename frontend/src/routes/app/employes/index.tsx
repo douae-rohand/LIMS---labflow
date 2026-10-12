@@ -1,14 +1,16 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { Users } from "lucide-react";
+import { Users, UserPlus } from "lucide-react";
 import { Container } from "@/components/layout/Container";
+import { Button } from "@/components/lab";
 import { listerEmployes } from "@/api/employes";
 import type { StatutEmploye, RoleEmploye, TriEmploye, DirectionTri } from "@/api/employes";
 import { EmployesFiltres } from "@/components/employes/EmployesFiltres";
 import { EmployesTable } from "@/components/employes/EmployesTable";
 import { EmployesPagination } from "@/components/employes/EmployesPagination";
 import { EmployePanneau } from "@/components/employes/EmployePanneau";
+import { EmployeCreationModal } from "@/components/employes/EmployeCreationModal";
 import type { ColTri } from "@/components/employes/EmployesTable";
 
 // ---------------------------------------------------------------------------
@@ -99,6 +101,27 @@ const Q_MIN_LEN = 2;
 function EmployesPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
+
+  // ---------- Modale d'ajout d'employé (centralisée avec backdrop blur) ----
+  const [modalCreationOuverte, setModalCreationOuverte] = useState(false);
+
+  const handleOuvrirCreation = () => {
+    setModalCreationOuverte(true);
+  };
+
+  const handleSuccessCreated = (nouvelId: number | undefined) => {
+    if (nouvelId) {
+      void navigate({
+        to: "/app/employes",
+        search: (prev: EmployesSearch) => ({
+          ...prev,
+          page: 1,
+          employe: nouvelId,
+        }),
+        replace: true,
+      });
+    }
+  };
 
   // ---------- État local du champ de recherche ----------------------------
   // Initialisé depuis l'URL au montage. Séparé de search.q pour le debounce.
@@ -323,23 +346,34 @@ function EmployesPage() {
   return (
     <Container className="py-8">
       {/* En-tête */}
-      <div className="mb-6 flex items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-900/10 text-brand-900">
-          <Users className="size-5" aria-hidden="true" />
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-900/10 text-brand-900">
+            <Users className="size-5" aria-hidden="true" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-ink-900">Gestion des employés</h1>
+            <p
+              id="employes-compteur"
+              aria-live="polite"
+              aria-atomic="true"
+              className="text-sm text-muted-foreground"
+            >
+              {query.data !== undefined
+                ? `${query.data.totalElements} employé${query.data.totalElements !== 1 ? "s" : ""} au total`
+                : "\u00A0"}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-ink-900">Gestion des employés</h1>
-          <p
-            id="employes-compteur"
-            aria-live="polite"
-            aria-atomic="true"
-            className="text-sm text-muted-foreground"
-          >
-            {query.data !== undefined
-              ? `${query.data.totalElements} employé${query.data.totalElements !== 1 ? "s" : ""} au total`
-              : "\u00A0"}
-          </p>
-        </div>
+
+        <Button
+          variant="primary"
+          icon={<UserPlus className="size-4" aria-hidden="true" />}
+          iconPosition="left"
+          onClick={handleOuvrirCreation}
+        >
+          Ajouter un employé
+        </Button>
       </div>
 
       {/* Filtres */}
@@ -386,6 +420,13 @@ function EmployesPage() {
       <EmployePanneau
         employeId={search.employe}
         onClose={handleFermerPanneau}
+      />
+
+      {/* Modale d'ajout d'employé centralisée avec backdrop flouté (blur) */}
+      <EmployeCreationModal
+        open={modalCreationOuverte}
+        onOpenChange={setModalCreationOuverte}
+        onSuccessCreated={handleSuccessCreated}
       />
     </Container>
   );

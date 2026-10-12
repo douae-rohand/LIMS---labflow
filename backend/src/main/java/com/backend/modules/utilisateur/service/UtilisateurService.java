@@ -55,6 +55,7 @@ public class UtilisateurService {
     private final TenantExecutor tenantExecutor;
     private final MatriculeGeneratorService matriculeGeneratorService;
     private final com.backend.common.audit.JournalAuditService journalAuditService;
+    private final com.backend.integration.sendgrid.EmailService emailService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     /** Rôles que peut créer un ADMINISTRATEUR (les siens exclus). */
@@ -434,6 +435,21 @@ public class UtilisateurService {
 
         auditerStatutEmploye(utilisateur.getId(), "DESACTIVATION_EMPLOYE", "Désactivation du compte", "{\"actif\":true}", "{\"actif\":false}");
         log.info("Utilisateur désactivé : id={}", utilisateur.getId());
+
+        final String emailDest = utilisateur.getEmail();
+        final String nomDest = utilisateur.getNomComplet();
+        final String laboNom = utilisateur.getLaboratoire() != null && org.springframework.util.StringUtils.hasText(utilisateur.getLaboratoire().getRaisonSociale())
+                ? utilisateur.getLaboratoire().getRaisonSociale()
+                : "votre laboratoire";
+
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        emailService.envoyerDesactivationCompte(emailDest, nomDest, laboNom);
+                    }
+                }
+        );
     }
 
     private void reactiverUtilisateurInterne(Utilisateur utilisateur) {

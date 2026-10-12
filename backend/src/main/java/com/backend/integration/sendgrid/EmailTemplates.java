@@ -200,6 +200,21 @@ public final class EmailTemplates {
         );
     }
 
+    public static String desactivationCompte(String nomComplet, String nomLaboratoire) {
+        return page(
+                "Compte désactivé",
+                "Votre compte LabFlow a été désactivé.",
+                """
+                <p>Bonjour %s,</p>
+                <p>Votre compte d'accès pour le laboratoire <strong>%s</strong> a été <strong>désactivé</strong> par un administrateur.</p>
+                <p>Toutes vos sessions actives ont été interrompues et vous ne pouvez plus vous connecter à la plateforme.</p>
+                <p>Si vous pensez qu'il s'agit d'une erreur, veuillez contacter l'administrateur de votre laboratoire.</p>
+                """.formatted(e(nomComplet), e(nomLaboratoire)),
+                null,
+                null
+        );
+    }
+
     public static String testConfiguration(String destinataire) {        return page(
                 "Test SendGrid",
                 "La configuration e-mail LabFlow fonctionne.",

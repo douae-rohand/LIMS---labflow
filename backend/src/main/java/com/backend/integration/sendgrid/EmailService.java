@@ -139,4 +139,15 @@ public class EmailService {
         String sujet = "[LabFlow] Code de vérification";
         envoyerHtml(email, sujet, EmailTemplates.codeOtp(code, ttlMinutes));
     }
+
+    @Async
+    public void envoyerDesactivationCompte(String email, String nomComplet, String nomLaboratoire) {
+        String sujet = "[LabFlow] Désactivation de votre compte - " + nomLaboratoire;
+        String html = EmailTemplates.desactivationCompte(nomComplet, nomLaboratoire);
+        ResultatEnvoiEmail resultat = envoyerHtml(email, sujet, html);
+        if (!resultat.accepte()) {
+            log.warn("Envoi e-mail désactivation non accepté [code={}, temporaire={}]",
+                    resultat.code(), resultat.temporaire());
+        }
+    }
 }

@@ -4,7 +4,7 @@ import { StatutEmployeBadge } from "./StatutEmployeBadge";
 import { messageErreurApi } from "@/api/employes";
 import type { EmployeDto, TriEmploye, DirectionTri } from "@/api/employes";
 
-import { LIBELLE_ROLE, formatDate } from "./dateUtils";
+import { LIBELLE_ROLE, formatDate, formatDerniereConnexion } from "./dateUtils";
 
 export type ColTri = Extract<TriEmploye, "nom" | "matricule" | "dateCreation" | "derniereConnexion">;
 
@@ -185,7 +185,7 @@ export function EmployesTable({
                       <StatutEmployeBadge statut={emp.statut} />
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {formatDate(emp.derniereConnexion)}
+                      {formatDerniereConnexion(emp.derniereConnexion)}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {formatDate(emp.dateCreation)}

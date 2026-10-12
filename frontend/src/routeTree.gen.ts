@@ -28,6 +28,7 @@ import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
 import { Route as AppDemandesIntegrationIndexRouteImport } from './routes/app/demandes-integration/index'
 import { Route as AppDemandesIntegrationIdRouteImport } from './routes/app/demandes-integration/$id'
 import { Route as AppEmployesIndexRouteImport } from './routes/app/employes/index'
+import { Route as AppEmployesNouveauRouteImport } from './routes/app/employes/nouveau'
 import { Route as AppUtilisateursIndexRouteImport } from './routes/app/utilisateurs/index'
 import { Route as AppUtilisateursNouveauRouteImport } from './routes/app/utilisateurs/nouveau'
 
@@ -128,6 +129,11 @@ const AppEmployesIndexRoute = AppEmployesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppEmployesRoute,
 } as any)
+const AppEmployesNouveauRoute = AppEmployesNouveauRouteImport.update({
+  id: '/nouveau',
+  path: '/nouveau',
+  getParentRoute: () => AppEmployesRoute,
+} as any)
 const AppUtilisateursIndexRoute = AppUtilisateursIndexRouteImport.update({
   id: '/utilisateurs/',
   path: '/utilisateurs/',
@@ -157,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
   '/app/demandes-integration/$id': typeof AppDemandesIntegrationIdRoute
+  '/app/employes/nouveau': typeof AppEmployesNouveauRoute
   '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
   '/app/demandes-integration/': typeof AppDemandesIntegrationIndexRoute
   '/app/employes/': typeof AppEmployesIndexRoute
@@ -178,6 +185,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/laboratoires': typeof LaboratoiresIndexRoute
   '/app/demandes-integration/$id': typeof AppDemandesIntegrationIdRoute
+  '/app/employes/nouveau': typeof AppEmployesNouveauRoute
   '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
   '/app/demandes-integration': typeof AppDemandesIntegrationIndexRoute
   '/app/employes': typeof AppEmployesIndexRoute
@@ -202,6 +210,7 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
   '/app/demandes-integration/$id': typeof AppDemandesIntegrationIdRoute
+  '/app/employes/nouveau': typeof AppEmployesNouveauRoute
   '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
   '/app/demandes-integration/': typeof AppDemandesIntegrationIndexRoute
   '/app/employes/': typeof AppEmployesIndexRoute
@@ -227,6 +236,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/laboratoires/'
     | '/app/demandes-integration/$id'
+    | '/app/employes/nouveau'
     | '/app/utilisateurs/nouveau'
     | '/app/demandes-integration/'
     | '/app/employes/'
@@ -248,6 +258,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/laboratoires'
     | '/app/demandes-integration/$id'
+    | '/app/employes/nouveau'
     | '/app/utilisateurs/nouveau'
     | '/app/demandes-integration'
     | '/app/employes'
@@ -271,6 +282,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/laboratoires/'
     | '/app/demandes-integration/$id'
+    | '/app/employes/nouveau'
     | '/app/utilisateurs/nouveau'
     | '/app/demandes-integration/'
     | '/app/employes/'
@@ -429,6 +441,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEmployesIndexRouteImport
       parentRoute: typeof AppEmployesRoute
     }
+    '/app/employes/nouveau': {
+      id: '/app/employes/nouveau'
+      path: '/nouveau'
+      fullPath: '/app/employes/nouveau'
+      preLoaderRoute: typeof AppEmployesNouveauRouteImport
+      parentRoute: typeof AppEmployesRoute
+    }
     '/app/utilisateurs/': {
       id: '/app/utilisateurs/'
       path: '/utilisateurs'
@@ -447,10 +466,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppEmployesRouteChildren {
+  AppEmployesNouveauRoute: typeof AppEmployesNouveauRoute
   AppEmployesIndexRoute: typeof AppEmployesIndexRoute
 }
 
 const AppEmployesRouteChildren: AppEmployesRouteChildren = {
+  AppEmployesNouveauRoute: AppEmployesNouveauRoute,
   AppEmployesIndexRoute: AppEmployesIndexRoute,
 }
 

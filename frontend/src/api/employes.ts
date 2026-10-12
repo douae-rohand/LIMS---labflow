@@ -58,6 +58,14 @@ export interface ModifierEmployePayload {
   email?: string | undefined;
 }
 
+export interface CreerEmployePayload {
+  prenom: string;
+  nom: string;
+  email: string;
+  role: RoleEmploye;
+  telephone?: string | undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Gestion d'erreur normalisée
 // ---------------------------------------------------------------------------
@@ -183,6 +191,20 @@ export async function reactiverEmploye(id: number): Promise<EmployeDetailDto> {
 export async function renvoyerInvitationEmploye(id: number): Promise<EmployeDetailDto> {
   const res = await apiClient.post<ApiResponse<EmployeDetailDto>>(
     `/employes/${id}/renvoyer-invitation`,
+  );
+  return res.data;
+}
+
+/**
+ * Crée un nouvel employé via le flux d'invitation (POST /api/utilisateurs).
+ * Renvoie l'objet utilisateur créé avec son identifiant { id }.
+ */
+export async function creerEmploye(
+  payload: CreerEmployePayload,
+): Promise<{ id: number }> {
+  const res = await apiClient.post<ApiResponse<{ id: number }>>(
+    "/utilisateurs",
+    payload,
   );
   return res.data;
 }
