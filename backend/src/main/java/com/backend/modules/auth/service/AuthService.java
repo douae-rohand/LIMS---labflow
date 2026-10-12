@@ -161,6 +161,11 @@ public class AuthService {
         Utilisateur utilisateur = utilisateurRepository.findByEmailWithRoleAndLaboratoire(email)
                 .orElseThrow(() -> new BusinessRuleException("USER_NOT_FOUND", "Utilisateur introuvable"));
 
+        // Refuser les comptes inactifs ou non confirmés avec le même message que code invalide
+        if (!utilisateur.isActif() || !utilisateur.isCompteConfirme()) {
+            throw new BusinessRuleException("2FA_CODE_INVALID", "Code TOTP incorrect ou expiré");
+        }
+
         // Vérifier le code TOTP
         if (!twoFactorService.verifierTotp(utilisateur.getSecret2fa(), request.getCode())) {
             twoFactorRateLimiter.recordFailure(email);
@@ -251,6 +256,12 @@ public class AuthService {
         UtilisateurPrincipal principal =
                 (UtilisateurPrincipal) userDetailsService.loadUserByUsername(rotation.email());
         refuserSiLaboratoireDesactive(principal);
+
+        // Refuser les comptes inactifs : révocation de tous les tokens et 401 générique
+        if (!principal.isEnabled()) {
+            refreshTokenService.revoquerTousParUtilisateur(principal.getId());
+            throw new BusinessRuleException("REFRESH_TOKEN_INVALID", "Jeton révoqué ou invalide. Veuillez vous reconnecter.");
+        }
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 principal, null, principal.getAuthorities());

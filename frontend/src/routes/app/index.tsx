@@ -49,10 +49,27 @@ function AppHomePage() {
             Laboratoire&nbsp;: <span className="font-medium text-ink-900">{user.tenantId}</span>
           </p>
         )}
-        {(user.role === "ADMINISTRATEUR") && (
+        {user.role === "SUPER_ADMINISTRATEUR" && (
+          <div className="mt-8 flex flex-col gap-2 sm:flex-row">
+            <Link to="/app/demandes-integration">
+              <Button>Traiter les demandes d'intégration</Button>
+            </Link>
+            <Link to="/app/gestion-laboratoires">
+              <Button variant="secondary">Gérer les laboratoires</Button>
+            </Link>
+          </div>
+        )}
+        {user.role === "ADMINISTRATEUR" && (
           <div className="mt-4">
             <Link to="/app/utilisateurs">
               <Button variant="secondary">Gérer les utilisateurs</Button>
+            </Link>
+          </div>
+        )}
+        {user.role === "ADMINISTRATEUR" && (
+          <div className="mt-4">
+            <Link to="/app/employes">
+              <Button variant="secondary">Gérer les employés</Button>
             </Link>
           </div>
         )}

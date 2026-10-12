@@ -238,9 +238,7 @@ export async function changerMotDePasse(body: ChangerMotDePasseBody): Promise<Lo
 }
 
 export async function verifierJetonActivation(token: string): Promise<void> {
-  await apiClient.post<ApiResponse<null>>(
-    `/auth/compte/activer/verifier?token=${encodeURIComponent(token)}`,
-  );
+  await apiClient.post<ApiResponse<null>>('/auth/compte/activer/verifier', { token });
 }
 
 export async function activerCompte(token: string, motDePasse: string): Promise<void> {

@@ -1,10 +1,9 @@
-import { Link, Outlet, createFileRoute, useRouter } from "@tanstack/react-router";
-import { LogOut } from "lucide-react";
-import { Button } from "@/components/lab";
+import { Outlet, createFileRoute, useRouter } from "@tanstack/react-router";
 import { logout } from "@/api/auth";
 import { clearSession, getSession, getStatus } from "@/api/session";
 import type { RoleUtilisateur } from "@/api/session";
 import { SuperAdminShell } from "@/features/super-admin/SuperAdminShell";
+import { AdminShell } from "@/features/admin/AdminShell";
 
 export function cheminTableauDeBord(_role: RoleUtilisateur): "/app" {
   return "/app";
@@ -34,6 +33,7 @@ function AppLayout() {
   const session = getSession();
   const user = session?.user;
   const isSuperAdmin = user?.role === "SUPER_ADMINISTRATEUR";
+  const isAdmin = user?.role === "ADMINISTRATEUR";
 
   const handleLogout = async () => {
     try {
@@ -59,25 +59,17 @@ function AppLayout() {
     );
   }
 
+  if (isAdmin) {
+    return (
+      <AdminShell utilisateur={user} onLogout={() => void handleLogout()}>
+        <Outlet />
+      </AdminShell>
+    );
+  }
+
+  // Autres rôles (RESPONSABLE, TECHNICIEN, ACCUEIL, CLIENT) — layout minimal
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-brand-900/10 bg-card px-6 py-4">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-          <Link to="/app" className="flex items-center">
-            <img src="/nom.png" alt="LabFlow" className="h-10" />
-          </Link>
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<LogOut className="size-4" aria-hidden="true" />}
-            iconPosition="right"
-            onClick={() => void handleLogout()}
-            aria-label="Se déconnecter"
-          >
-            Se déconnecter
-          </Button>
-        </div>
-      </header>
       <Outlet />
     </div>
   );

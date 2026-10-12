@@ -18,6 +18,8 @@ public interface TokenActivationRepository extends JpaRepository<TokenActivation
 
     Optional<TokenActivation> findByTokenHashAndUtiliseFalse(String tokenHash);
 
+    Optional<TokenActivation> findFirstByUtilisateur_IdOrderByCreatedAtDescIdDesc(Long utilisateurId);
+
     List<TokenActivation> findByUtilisateur_IdAndUtiliseFalse(Long utilisateurId);
 
     /**

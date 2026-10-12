@@ -78,10 +78,28 @@ public class ActivationCompteService {
                 utilisateur.getEmail(), nomComplet, nomLaboratoire, lienActivation, dureeHeures);
     }
 
+    public ResultatEnvoiEmail envoyerInvitationEmploye(Utilisateur utilisateur, String lienActivation) {
+        String nomComplet = StringUtils.hasText(utilisateur.getPrenom())
+                ? utilisateur.getPrenom() + " " + utilisateur.getNom()
+                : utilisateur.getNom();
+        String nomLaboratoire = utilisateur.getLaboratoire() != null
+                && StringUtils.hasText(utilisateur.getLaboratoire().getRaisonSociale())
+                ? utilisateur.getLaboratoire().getRaisonSociale()
+                : "votre laboratoire";
+        return emailService.envoyerInvitationEmploye(
+                utilisateur.getEmail(), nomComplet, nomLaboratoire, lienActivation, dureeHeures);
+    }
+
     @Transactional
     public ResultatEnvoiEmail creerEtEnvoyer(Utilisateur utilisateur) {
         String lien = creerJeton(utilisateur);
         return envoyerInvitation(utilisateur, lien);
+    }
+
+    @Transactional
+    public ResultatEnvoiEmail creerEtEnvoyerEmploye(Utilisateur utilisateur) {
+        String lien = creerJeton(utilisateur);
+        return envoyerInvitationEmploye(utilisateur, lien);
     }
 
     @Transactional(readOnly = true)

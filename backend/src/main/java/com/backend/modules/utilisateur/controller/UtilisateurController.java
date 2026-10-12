@@ -31,8 +31,8 @@ public class UtilisateurController {
     private final UtilisateurService utilisateurService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','SUPER_ADMINISTRATEUR')")
-    @Operation(summary = "Lister les utilisateurs avec recherche et pagination")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Lister les utilisateurs avec recherche et pagination (Super-administrateur uniquement)")
     public ResponseEntity<ApiResponse<PageResponse<UtilisateurDto>>> lister(
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
@@ -42,8 +42,8 @@ public class UtilisateurController {
     }
 
     @GetMapping("/role/{role}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','SUPER_ADMINISTRATEUR')")
-    @Operation(summary = "Lister les utilisateurs par rôle")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Lister les utilisateurs par rôle (Super-administrateur uniquement)")
     public ResponseEntity<ApiResponse<PageResponse<UtilisateurDto>>> listerParRole(
             @PathVariable RoleUtilisateur role,
             @RequestParam(defaultValue = "0") int page,
@@ -70,7 +70,7 @@ public class UtilisateurController {
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','SUPER_ADMINISTRATEUR') or #id == authentication.principal.id")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR') or #id == authentication.principal.id")
     @Operation(summary = "Modifier partiellement un utilisateur")
     public ResponseEntity<ApiResponse<UtilisateurDto>> modifier(
             @PathVariable Long id,
@@ -79,7 +79,7 @@ public class UtilisateurController {
     }
 
     @PatchMapping("/{id}/desactiver")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','SUPER_ADMINISTRATEUR')")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
     @Operation(summary = "Désactiver un compte utilisateur")
     public ResponseEntity<ApiResponse<Void>> desactiver(@PathVariable Long id) {
         utilisateurService.desactiver(id);
@@ -87,7 +87,7 @@ public class UtilisateurController {
     }
 
     @PatchMapping("/{id}/activer")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','SUPER_ADMINISTRATEUR')")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
     @Operation(summary = "Réactiver un compte utilisateur")
     public ResponseEntity<ApiResponse<Void>> activer(@PathVariable Long id) {
         utilisateurService.activer(id);
@@ -95,7 +95,7 @@ public class UtilisateurController {
     }
 
     @PostMapping("/{id}/renvoyer-invitation")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','SUPER_ADMINISTRATEUR')")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
     @Operation(summary = "Renvoyer l'email d'invitation à un utilisateur dont le compte n'est pas encore activé")
     public ResponseEntity<ApiResponse<Void>> renvoyerInvitation(@PathVariable Long id) {
         utilisateurService.renvoyerInvitation(id);

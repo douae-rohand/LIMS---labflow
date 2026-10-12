@@ -59,6 +59,18 @@ public class GlobalExceptionHandler {
     }
 
     // -------------------------------------------------------------------------
+    // 429 – Trop de requêtes / Rate limit
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(TropDeRequetesException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTropDeRequetes(
+            TropDeRequetesException ex) {
+        log.warn("Trop de requêtes : {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    // -------------------------------------------------------------------------
     // 400 – En-tête X-Tenant-ID absent sur une route qui l'exige
     // -------------------------------------------------------------------------
 

@@ -105,6 +105,23 @@ public final class EmailTemplates {
         );
     }
 
+    public static String invitationEmploye(String nomComplet, String nomLaboratoire,
+                                           String lienActivation, int ttlHeures) {
+        return page(
+                "Activez votre compte",
+                "Définissez votre mot de passe pour accéder à LabFlow.",
+                """
+                <p>Bonjour %s,</p>
+                <p>Vous avez été invité à rejoindre l'équipe de <strong>%s</strong> sur LabFlow.
+                Cliquez sur le bouton ci-dessous pour activer votre compte et choisir votre mot de passe.</p>
+                <p>Ce lien expire dans <strong>%d heures</strong> et ne peut être utilisé qu'une seule fois.
+                Aucun mot de passe ne vous est envoyé par e-mail.</p>
+                """.formatted(e(nomComplet), e(nomLaboratoire), ttlHeures),
+                lienActivation,
+                "Activer mon compte"
+        );
+    }
+
     public static String codeOtp(String code, int ttlMinutes) {
         return page(
                 "Code de vérification",
@@ -180,6 +197,21 @@ public final class EmailTemplates {
                 """.formatted(e(nomComplet), ttlHeures),
                 lienActivation,
                 "Confirmer mon adresse e-mail"
+        );
+    }
+
+    public static String desactivationCompte(String nomComplet, String nomLaboratoire) {
+        return page(
+                "Compte désactivé",
+                "Votre compte LabFlow a été désactivé.",
+                """
+                <p>Bonjour %s,</p>
+                <p>Votre compte d'accès pour le laboratoire <strong>%s</strong> a été <strong>désactivé</strong> par un administrateur.</p>
+                <p>Toutes vos sessions actives ont été interrompues et vous ne pouvez plus vous connecter à la plateforme.</p>
+                <p>Si vous pensez qu'il s'agit d'une erreur, veuillez contacter l'administrateur de votre laboratoire.</p>
+                """.formatted(e(nomComplet), e(nomLaboratoire)),
+                null,
+                null
         );
     }
 

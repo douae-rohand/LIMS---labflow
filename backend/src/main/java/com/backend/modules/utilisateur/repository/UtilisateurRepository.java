@@ -48,6 +48,39 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
             """)
     Page<Utilisateur> rechercher(@Param("search") String search, Pageable pageable);
 
+    /**
+     * Recherche et filtre les employés d'un laboratoire (utilisé par l'Administrateur du laboratoire).
+     */
+    @Query("""
+            SELECT u FROM Utilisateur u
+            JOIN u.role r
+            WHERE u.laboratoire.id = :laboratoireId
+              AND r.code IN ('RESPONSABLE', 'TECHNICIEN', 'ACCUEIL')
+              AND (:role IS NULL OR r.code = :role)
+              AND (
+                   :statut IS NULL
+                   OR (:statut = 'ACTIF' AND u.actif = true AND u.compteConfirme = true)
+                   OR (:statut = 'DESACTIVE' AND u.actif = false AND u.compteConfirme = true)
+                   OR (:statut = 'EN_ATTENTE' AND u.compteConfirme = false)
+              )
+              AND (
+                   :q IS NULL
+                   OR LOWER(u.matricule) LIKE LOWER(CONCAT('%', :q, '%')) ESCAPE '!'
+                   OR LOWER(u.nom) LIKE LOWER(CONCAT('%', :q, '%')) ESCAPE '!'
+                   OR LOWER(u.prenom) LIKE LOWER(CONCAT('%', :q, '%')) ESCAPE '!'
+                   OR LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%')) ESCAPE '!'
+              )
+            """)
+    Page<Utilisateur> rechercherEmployesLaboratoire(
+            @Param("laboratoireId") Long laboratoireId,
+            @Param("role") String role,
+            @Param("statut") String statut,
+            @Param("q") String q,
+            Pageable pageable);
+
+    /**
+     * Recherche les administrateurs pour une collection de laboratoires (utilisé par le Super Administrateur).
+     */
     @Query("""
             SELECT u FROM Utilisateur u
             JOIN FETCH u.role r
