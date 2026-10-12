@@ -192,7 +192,11 @@ function ChangerMotDePassePage() {
         const user = toSessionUser(response);
         setSession(response.accessToken, user);
         apiClient.setTenant(user.tenantId);
-        await router.navigate({ to: "/app" });
+        if (user.role === "RESPONSABLE") {
+          await router.navigate({ to: "/app/demandes-clients" });
+        } else {
+          await router.navigate({ to: "/app" });
+        }
       }
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {
