@@ -92,10 +92,9 @@ public class PlateformeService {
 
     public List<AnalysePubliqueDto> listerAnalysesPubliques(Long laboratoireId) {
         Laboratoire lab = tenantExecutor.inCentral(() -> exigerLaboratoireActif(laboratoireId));
-        return tenantExecutor.inTenant(lab.getNomSchema(), () ->
-                essaiRepository.findActifsAvecDomaine().stream()
-                        .map(this::toAnalysePubliqueDto)
-                        .toList());
+        return tenantExecutor.inTenant(lab.getNomSchema(), () -> essaiRepository.findActifsAvecDomaine().stream()
+                .map(this::toAnalysePubliqueDto)
+                .toList());
     }
 
     private Laboratoire exigerLaboratoireActif(Long id) {
@@ -109,7 +108,8 @@ public class PlateformeService {
 
     /**
      * Agrégat public de la landing : rôles et laboratoires lus en base centrale,
-     * statuts de demande issus de l'enum métier (même source que le module demande).
+     * statuts de demande issus de l'enum métier (même source que le module
+     * demande).
      */
     @Transactional(readOnly = true)
     public LandingPublicDto obtenirLandingPublic() {
@@ -157,7 +157,7 @@ public class PlateformeService {
 
     @Transactional(readOnly = true)
     public Page<LaboratoireDto> rechercherLaboratoires(String recherche, String statut, String ville,
-                                                       int page, int size, String tri, String ordre) {
+            int page, int size, String tri, String ordre) {
         String statutNormalise = normaliserStatut(statut);
         Page<Laboratoire> resultat = laboratoireRepository.rechercher(
                 echapperLike(texte(recherche)),
