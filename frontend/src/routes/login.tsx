@@ -34,6 +34,9 @@ export const Route = createFileRoute("/login")({
       if (session?.user.mustChangePassword) {
         throw Route.redirect({ to: "/changer-mot-de-passe" });
       }
+      if (session?.user.role === "RESPONSABLE") {
+        throw Route.redirect({ to: "/app/demandes-clients" });
+      }
       throw Route.redirect({ to: "/app" });
     }
   },
@@ -147,6 +150,8 @@ function LoginPage() {
 
         if (user.mustChangePassword) {
           await router.navigate({ to: "/changer-mot-de-passe" });
+        } else if (user.role === "RESPONSABLE") {
+          await router.navigate({ to: "/app/demandes-clients" });
         } else {
           await router.navigate({ to: "/app" });
         }

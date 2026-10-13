@@ -55,7 +55,7 @@ export async function obtenirStatistiquesPlateforme(): Promise<StatistiquesPlate
 
 export interface FiltreLaboratoires {
   recherche?: string | undefined;
-  statut?: "" | "ACTIF" | "INACTIF" | undefined;
+  statut?: "" | "ACTIF" | "SUSPENDU" | "DESACTIVE" | undefined;
   ville?: string | undefined;
   page?: number;
   size?: number;

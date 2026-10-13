@@ -68,6 +68,7 @@ public class Laboratoire {
     @Column(name = "nom_schema", nullable = false, length = 64)
     private String nomSchema;
 
+    /** {@link StatutLabo}, stocké par son nom. */
     @Builder.Default
     @Column(nullable = false, length = 50)
     private String statut = "ACTIF";

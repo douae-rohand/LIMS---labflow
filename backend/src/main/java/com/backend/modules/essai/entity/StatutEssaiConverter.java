@@ -4,7 +4,7 @@ import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 
 /**
- * Persiste {@link StatutEssai} en VARCHAR et accepte les alias déjà présents en base.
+ * Persiste {@link StatutEssai} en VARCHAR et relit les noms déjà écrits en base.
  */
 @Converter
 public class StatutEssaiConverter implements AttributeConverter<StatutEssai, String> {
@@ -20,9 +20,10 @@ public class StatutEssaiConverter implements AttributeConverter<StatutEssai, Str
             return null;
         }
         return switch (dbData) {
-            case "PLANIFIE" -> StatutEssai.PLANIFIEE;
-            case "TERMINEE" -> StatutEssai.TERMINE;
-            case "ANNULEE" -> StatutEssai.ANNULE;
+            case "EN_ATTENTE", "PLANIFIE", "PLANIFIEE", "REPORTEE" -> StatutEssai.ATTENTE_ECHANTILLON;
+            case "A_REFAIRE", "EN_COURS" -> StatutEssai.EN_COURS;
+            case "TERMINE", "TERMINEE" -> StatutEssai.TERMINE;
+            case "ANNULE", "ANNULEE" -> StatutEssai.NON_REALISABLE;
             default -> {
                 try {
                     yield StatutEssai.valueOf(dbData);

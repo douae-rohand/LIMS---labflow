@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { getSession } from "@/api/session";
 import { useState, useEffect, useCallback } from "react";
 import {
   Users,
@@ -24,6 +25,12 @@ import type { RoleUtilisateur } from "@/api/session";
 import { ApiError } from "@/api/axios";
 
 export const Route = createFileRoute("/app/utilisateurs/")({
+  beforeLoad: () => {
+    const role = getSession()?.user.role;
+    if (role !== "ADMINISTRATEUR" && role !== "SUPER_ADMINISTRATEUR") {
+      throw redirect({ to: "/app" });
+    }
+  },
   head: () => ({
     meta: [{ title: "Utilisateurs — LabFlow LIMS" }],
   }),

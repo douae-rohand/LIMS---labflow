@@ -25,29 +25,24 @@ public class Echantillon {
     @Column(nullable = false, length = 50)
     private String reference;
 
-    @Column(length = 100)
+    @Column(nullable = false, length = 100)
     private String nature;
 
-    @Column(name = "date_reception")
+    @Column(name = "date_reception", nullable = false)
     private Instant dateReception;
-
-    @Enumerated(EnumType.STRING)
-    @Builder.Default
-    @Column(nullable = false, length = 30)
-    private StatutEchantillon statut = StatutEchantillon.EN_ATTENTE_RECEPTION;
 
     private Boolean conformite;
 
     @Column(columnDefinition = "TEXT")
     private String motif;
 
-    @Column(name = "conditions_conservation", columnDefinition = "TEXT")
-    private String conditionsConservation;
+    @Column(name = "etat_conservation_constate", columnDefinition = "TEXT")
+    private String etatConservationConstate;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "demande_id", nullable = false)
     private Demande demande;
 
-    @Column(name = "receptionneur_id")
+    @Column(name = "receptionneur_id", nullable = false)
     private Long receptionneurId;
 }

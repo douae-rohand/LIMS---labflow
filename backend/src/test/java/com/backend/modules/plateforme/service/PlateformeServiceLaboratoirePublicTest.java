@@ -65,7 +65,7 @@ class PlateformeServiceLaboratoirePublicTest {
     @Test
     void trouverPublicParIdIgnoreUnLaboratoireInactif() {
         when(laboratoireRepository.findById(2L)).thenReturn(Optional.of(
-                Laboratoire.builder().id(2L).code("inactif").statut("INACTIF").build()
+                Laboratoire.builder().id(2L).code("inactif").statut("DESACTIVE").build()
         ));
 
         assertThrows(ResourceNotFoundException.class, () -> plateformeService.trouverPublicParId(2L));

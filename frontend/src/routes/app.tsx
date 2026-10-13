@@ -36,7 +36,7 @@ function AppLayout() {
   const session = getSession();
   const user = session?.user;
   const isSuperAdmin = user?.role === "SUPER_ADMINISTRATEUR";
-  const isAdmin = user?.role === "ADMINISTRATEUR";
+  const espaceLaboratoire = user?.role === "ADMINISTRATEUR" || user?.role === "RESPONSABLE";
 
   const handleLogout = async () => {
     try {
@@ -62,7 +62,7 @@ function AppLayout() {
     );
   }
 
-  if (isAdmin) {
+  if (espaceLaboratoire) {
     return (
       <AdminShell utilisateur={user} onLogout={() => void handleLogout()}>
         <Outlet />
