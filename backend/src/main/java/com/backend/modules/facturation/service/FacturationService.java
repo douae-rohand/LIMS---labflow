@@ -134,21 +134,10 @@ public class FacturationService {
                 .demandeId(demande == null ? null : demande.getId())
                 .clientId(clientId)
                 .laboratoireCode(laboratoireCode)
-                .statut(enumOuNull(StatutFacture.class, facture.getStatut()))
+                .statut(StatutFacture.depuis(facture.getStatut()))
                 .montantHt(facture.getMontantHt())
                 .dateEmission(facture.getDateFacture())
                 .dateEcheance(facture.getDateEcheance())
                 .build();
-    }
-
-    private static <E extends Enum<E>> E enumOuNull(Class<E> type, String valeur) {
-        if (valeur == null) {
-            return null;
-        }
-        try {
-            return Enum.valueOf(type, valeur);
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
     }
 }

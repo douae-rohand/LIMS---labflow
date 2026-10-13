@@ -170,12 +170,14 @@ public class DemandeService {
     @Transactional(readOnly = true)
     public PageResponse<DemandeResumeDto> listerPourLaboratoire(String q, String statut, int page, int size) {
         String recherche = normaliserRecherche(q);
-        String statutFiltre = normaliserStatutFiltre(statut);
+        StatutDemande statutFiltre = normaliserStatutFiltre(statut);
+        boolean filtrerStatut = statutFiltre != null;
+        List<String> statuts = filtrerStatut ? statutFiltre.aliasesPersistés() : List.of("_");
         int pageSafe = Math.max(page, 0);
         int sizeSafe = size < 1 ? 20 : Math.min(size, PAGE_SIZE_MAX);
         Pageable pageable = PageRequest.of(pageSafe, sizeSafe,
                 Sort.by(Sort.Direction.DESC, "dateSoumission"));
-        Page<DemandeResumeDto> resultat = demandeRepository.rechercher(recherche, statutFiltre, pageable)
+        Page<DemandeResumeDto> resultat = demandeRepository.rechercher(recherche, filtrerStatut, statuts, pageable)
                 .map(this::toResume);
         return PageResponse.from(resultat);
     }
@@ -184,9 +186,9 @@ public class DemandeService {
     public IndicateursDemandesDto indicateursLaboratoire() {
         long total = demandeRepository.count();
         return IndicateursDemandesDto.builder()
-                .enAttente(demandeRepository.countByStatut(StatutDemande.NOUVEAU.name()))
-                .acceptees(demandeRepository.countByStatut(StatutDemande.ACCEPTEE.name()))
-                .refusees(demandeRepository.countByStatut(StatutDemande.REFUSEE.name()))
+                .enAttente(compter(StatutDemande.NOUVEAU))
+                .acceptees(compter(StatutDemande.ACCEPTEE))
+                .refusees(compter(StatutDemande.REFUSEE))
                 .total(total)
                 .build();
     }
@@ -217,7 +219,7 @@ public class DemandeService {
     }
 
     private void exigerNouvelle(Demande demande) {
-        if (!StatutDemande.NOUVEAU.name().equals(demande.getStatut())) {
+        if (!StatutDemande.estNouvelle(demande.getStatut())) {
             throw new BusinessRuleException("DEMANDE_DEJA_TRAITEE",
                     "Cette demande ne peut plus être acceptée ou refusée.");
         }
@@ -260,15 +262,23 @@ public class DemandeService {
         return trimmed;
     }
 
-    private String normaliserStatutFiltre(String statut) {
+    private StatutDemande normaliserStatutFiltre(String statut) {
         if (statut == null || statut.isBlank()) {
-            return "";
+            return null;
         }
-        try {
-            return StatutDemande.valueOf(statut.trim()).name();
-        } catch (IllegalArgumentException ex) {
+        StatutDemande lu = StatutDemande.depuis(statut.trim());
+        if (lu == null) {
             throw new BusinessRuleException("STATUT_INVALIDE", "Statut de demande inconnu.");
         }
+        return lu;
+    }
+
+    private long compter(StatutDemande statut) {
+        long total = 0;
+        for (String alias : statut.aliasesPersistés()) {
+            total += demandeRepository.countByStatut(alias);
+        }
+        return total;
     }
 
     private DemandeResumeDto toResume(Demande demande) {
@@ -276,11 +286,11 @@ public class DemandeService {
                 .id(demande.getId())
                 .reference(demande.getNumero())
                 .objet(demande.getTitre())
-                .statut(enumOuNull(StatutDemande.class, demande.getStatut()))
+                .statut(StatutDemande.depuis(demande.getStatut()))
                 .demandeur(libelleDemandeur(demande))
                 .dateSoumission(demande.getDateSoumission())
                 .dateDecision(demande.getDateDecision())
-                .decisionPossible(StatutDemande.NOUVEAU.name().equals(demande.getStatut()))
+                .decisionPossible(StatutDemande.estNouvelle(demande.getStatut()))
                 .build();
     }
 
@@ -332,13 +342,13 @@ public class DemandeService {
                 .reference(demande.getNumero())
                 .objet(demande.getTitre())
                 .objectif(demande.getObjectif())
-                .statut(enumOuNull(StatutDemande.class, demande.getStatut()))
+                .statut(StatutDemande.depuis(demande.getStatut()))
                 .dateSoumission(demande.getDateSoumission())
                 .dateDecision(demande.getDateDecision())
                 .motif(demande.getMotif())
                 .decideurId(demande.getDecideurId())
                 .decideurNom(decideur == null ? null : nomComplet(decideur.getPrenom(), decideur.getNom()))
-                .decisionPossible(StatutDemande.NOUVEAU.name().equals(demande.getStatut()))
+                .decisionPossible(StatutDemande.estNouvelle(demande.getStatut()))
                 .client(client == null ? null : toClientDto(client, contactClient))
                 .patient(patient == null ? null : toPatientDto(patient))
                 .analyses(lignes.stream().map(this::toAnalyse).toList())
@@ -446,22 +456,11 @@ public class DemandeService {
                 .id(d.getId())
                 .reference(d.getNumero())
                 .objet(d.getTitre())
-                .statut(enumOuNull(StatutDemande.class, d.getStatut()))
+                .statut(StatutDemande.depuis(d.getStatut()))
                 .clientId(clientId)
                 .laboratoireCode(laboratoireCode)
                 .dateSoumission(d.getDateSoumission())
                 .commentaire(d.getObjectif())
                 .build();
-    }
-
-    private static <E extends Enum<E>> E enumOuNull(Class<E> type, String valeur) {
-        if (valeur == null) {
-            return null;
-        }
-        try {
-            return Enum.valueOf(type, valeur);
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
     }
 }

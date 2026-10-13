@@ -3,6 +3,7 @@
 -- dont date_reception est NULL est détachée de ligne_essai puis supprimée.
 -- Le repli ADMINISTRATEUR ne concerne que la démo (lims_nord n'a pas d'ACCUEIL).
 -- Aucun id n'est codé en dur. Si receptionneur_id reste NULL, le MODIFY échoue.
+-- Chaque ALTER est isolé et ignoré si la colonne a déjà le nom cible.
 
 UPDATE ligne_essai le
 JOIN echantillon e ON e.id_echantillon = le.echantillon_id
@@ -35,9 +36,31 @@ SET e.receptionneur_id = (
 )
 WHERE e.receptionneur_id IS NULL;
 
+SET @col := (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'echantillon'
+      AND COLUMN_NAME = 'statut'
+);
+SET @sql := IF(@col > 0, 'ALTER TABLE echantillon DROP COLUMN statut', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col := (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'echantillon'
+      AND COLUMN_NAME = 'conditions_conservation'
+);
+SET @sql := IF(@col > 0,
+    'ALTER TABLE echantillon CHANGE COLUMN conditions_conservation etat_conservation_constate TEXT NULL',
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 ALTER TABLE echantillon
-    DROP COLUMN statut,
-    CHANGE COLUMN conditions_conservation etat_conservation_constate TEXT NULL,
     MODIFY COLUMN nature VARCHAR(100) NOT NULL,
     MODIFY COLUMN date_reception DATETIME NOT NULL,
     MODIFY COLUMN receptionneur_id BIGINT NOT NULL;
