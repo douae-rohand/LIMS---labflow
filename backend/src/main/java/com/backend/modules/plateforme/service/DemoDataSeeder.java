@@ -33,8 +33,8 @@ public class DemoDataSeeder implements ApplicationRunner {
             try {
                 tenantProvisioner.provisionner(laboratoire);
             } catch (Exception ex) {
-                log.warn("Provisionnement du laboratoire '{}' impossible : {}",
-                        laboratoire.getCode(), ex.getMessage());
+                log.error("Provisionnement du laboratoire '{}' impossible",
+                        laboratoire.getCode(), ex);
             }
         }
     }

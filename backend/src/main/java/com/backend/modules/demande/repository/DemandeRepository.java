@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.Optional;
 
 @Repository
@@ -34,7 +35,7 @@ public interface DemandeRepository extends JpaRepository<Demande, Long> {
                     SELECT d FROM Demande d
                     LEFT JOIN d.client c
                     LEFT JOIN d.patient p
-                    WHERE (:statut = '' OR d.statut = :statut)
+                    WHERE (:filtrerStatut = false OR d.statut IN :statuts)
                       AND (
                             :q = ''
                             OR LOWER(d.numero) LIKE LOWER(CONCAT('%', :q, '%'))
@@ -48,7 +49,7 @@ public interface DemandeRepository extends JpaRepository<Demande, Long> {
                     SELECT COUNT(d) FROM Demande d
                     LEFT JOIN d.client c
                     LEFT JOIN d.patient p
-                    WHERE (:statut = '' OR d.statut = :statut)
+                    WHERE (:filtrerStatut = false OR d.statut IN :statuts)
                       AND (
                             :q = ''
                             OR LOWER(d.numero) LIKE LOWER(CONCAT('%', :q, '%'))
@@ -58,5 +59,9 @@ public interface DemandeRepository extends JpaRepository<Demande, Long> {
                             OR (p.prenom IS NOT NULL AND LOWER(p.prenom) LIKE LOWER(CONCAT('%', :q, '%')))
                       )
                     """)
-    Page<Demande> rechercher(@Param("q") String q, @Param("statut") String statut, Pageable pageable);
+    Page<Demande> rechercher(
+            @Param("q") String q,
+            @Param("filtrerStatut") boolean filtrerStatut,
+            @Param("statuts") Collection<String> statuts,
+            Pageable pageable);
 }

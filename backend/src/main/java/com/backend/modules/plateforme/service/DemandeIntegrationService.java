@@ -165,7 +165,7 @@ public class DemandeIntegrationService {
     @Transactional
     public DemandeIntegrationDto traiter(Long id, TraiterDemandeIntegrationRequest request) {
         DemandeIntegration demande = charger(id);
-        StatutIntegration actuel = enumOuNull(StatutIntegration.class, demande.getStatut());
+        StatutIntegration actuel = StatutIntegration.depuis(demande.getStatut());
 
         if (actuel == StatutIntegration.ACCEPTEE || actuel == StatutIntegration.REFUSEE) {
             throw new BusinessRuleException("DEMANDE_DEJA_TRAITEE",
@@ -225,7 +225,7 @@ public class DemandeIntegrationService {
     @Transactional
     public DemandeIntegrationDto ajouterDocument(Long demandeId, TypeDocumentIntegration type, MultipartFile fichier) {
         DemandeIntegration demande = charger(demandeId);
-        StatutIntegration statut = enumOuNull(StatutIntegration.class, demande.getStatut());
+        StatutIntegration statut = StatutIntegration.depuis(demande.getStatut());
         if (statut != StatutIntegration.EN_ATTENTE) {
             throw new BusinessRuleException("DEMANDE_DEJA_TRAITEE",
                     "Les documents ne peuvent être ajoutés que sur une demande encore en attente");
@@ -452,7 +452,7 @@ public class DemandeIntegrationService {
         DemandeIntegrationDto dto = DemandeIntegrationDto.builder()
                 .id(d.getId())
                 .numero(d.getNumero())
-                .statut(enumOuNull(StatutIntegration.class, d.getStatut()))
+                .statut(StatutIntegration.depuis(d.getStatut()))
                 .dateSoumission(d.getDateDemande())
                 .dateTraitement(d.getDateTraitement())
                 .motifRefus(d.getMotifRefus())
@@ -509,11 +509,12 @@ public class DemandeIntegrationService {
                 .detail(null)
                 .build());
         if (demande.getDateTraitement() != null) {
-            String evenement = switch (demande.getStatut()) {
-                case "ACCEPTEE" -> "Demande acceptée";
-                case "REFUSEE" -> "Demande refusée";
-                default -> "Demande traitée";
-            };
+            StatutIntegration decision = StatutIntegration.depuis(demande.getStatut());
+            String evenement = decision == StatutIntegration.ACCEPTEE
+                    ? "Demande acceptée"
+                    : decision == StatutIntegration.REFUSEE
+                    ? "Demande refusée"
+                    : "Demande traitée";
             evenements.add(HistoriqueDecisionDto.builder()
                     .evenement(evenement)
                     .date(demande.getDateTraitement())
@@ -605,16 +606,5 @@ public class DemandeIntegrationService {
             return d.getContactPrenom() + " " + d.getContactNom();
         }
         return d.getContactNom();
-    }
-
-    private static <E extends Enum<E>> E enumOuNull(Class<E> type, String valeur) {
-        if (valeur == null) {
-            return null;
-        }
-        try {
-            return Enum.valueOf(type, valeur);
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
     }
 }

@@ -1,4 +1,4 @@
-CREATE TABLE exigence_echantillon (
+CREATE TABLE IF NOT EXISTS exigence_echantillon (
     id_exigence BIGINT NOT NULL AUTO_INCREMENT,
     essai_id BIGINT NOT NULL,
     nature VARCHAR(100) NOT NULL,
