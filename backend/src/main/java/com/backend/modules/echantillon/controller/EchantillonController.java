@@ -2,7 +2,6 @@ package com.backend.modules.echantillon.controller;
 
 import com.backend.common.dto.ApiResponse;
 import com.backend.modules.echantillon.dto.EchantillonDto;
-import com.backend.modules.echantillon.entity.StatutEchantillon;
 import com.backend.modules.echantillon.service.EchantillonService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -35,25 +34,9 @@ public class EchantillonController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ACCUEIL','TECHNICIEN','RESPONSABLE')")
+    @PreAuthorize("hasRole('ACCUEIL')")
     public ResponseEntity<ApiResponse<EchantillonDto>> enregistrer(@RequestBody EchantillonDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Échantillon enregistré", echantillonService.enregistrer(dto)));
-    }
-
-    @PatchMapping("/{id}/receptionner")
-    @PreAuthorize("hasRole('ACCUEIL')")
-    public ResponseEntity<ApiResponse<EchantillonDto>> receptionner(
-            @PathVariable Long id, @RequestParam Long receptionnaireId) {
-        return ResponseEntity.ok(ApiResponse.success("Réceptionné",
-                echantillonService.receptionner(id, receptionnaireId)));
-    }
-
-    @PatchMapping("/{id}/statut")
-    @PreAuthorize("hasAnyRole('TECHNICIEN','RESPONSABLE','ADMINISTRATEUR')")
-    public ResponseEntity<ApiResponse<EchantillonDto>> changerStatut(
-            @PathVariable Long id, @RequestParam StatutEchantillon statut) {
-        return ResponseEntity.ok(ApiResponse.success("Statut mis à jour",
-                echantillonService.changerStatut(id, statut)));
     }
 }

@@ -2,7 +2,7 @@ package com.backend.modules.notification.dto;
 
 import com.backend.modules.notification.entity.CanalNotification;
 import com.backend.modules.notification.entity.EvenementMetier;
-import com.backend.modules.notification.entity.StatutNotification;
+import com.backend.modules.notification.entity.StatutEnvoi;
 import lombok.*;
 
 import java.time.Instant;
@@ -20,7 +20,7 @@ public class NotificationDto {
     private String payloadJson;
     private String entiteSource;
     private Long idEntiteSource;
-    private StatutNotification statut;
+    private StatutEnvoi statut;
     private Instant dateCreation;
     private Instant dateEnvoi;
 

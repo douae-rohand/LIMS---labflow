@@ -12,15 +12,13 @@ import { PanneauDemande } from "./PanneauDemande";
 
 const LIBELLES: Record<StatutIntegration, string> = {
   EN_ATTENTE: "En attente",
-  EN_COURS_VALIDATION: "En cours de validation",
-  APPROUVEE: "Acceptée",
-  REJETEE: "Refusée",
-  SUSPENDUE: "Suspendue",
+  ACCEPTEE: "Acceptée",
+  REFUSEE: "Refusée",
 };
 
 function variante(statut: StatutIntegration) {
-  if (statut === "APPROUVEE") return "lime" as const;
-  if (statut === "REJETEE") return "outline" as const;
+  if (statut === "ACCEPTEE") return "lime" as const;
+  if (statut === "REFUSEE") return "outline" as const;
   return "mint" as const;
 }
 
@@ -77,10 +75,8 @@ export function ListeDemandes({ demandeInitiale }: { demandeInitiale?: number | 
           >
             <option value="">Tous les statuts</option>
             <option value="EN_ATTENTE">En attente</option>
-            <option value="EN_COURS_VALIDATION">En cours de validation</option>
-            <option value="APPROUVEE">Acceptées</option>
-            <option value="REJETEE">Refusées</option>
-            <option value="SUSPENDUE">Suspendues</option>
+            <option value="ACCEPTEE">Acceptées</option>
+            <option value="REFUSEE">Refusées</option>
           </Select>
           <div className="flex gap-2">
             {filtresActifs && (

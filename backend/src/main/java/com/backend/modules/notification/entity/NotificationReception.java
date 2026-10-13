@@ -31,7 +31,7 @@ public class NotificationReception {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "statut_envoi", length = 30)
-    private StatutNotification statutEnvoi;
+    private StatutEnvoi statutEnvoi;
 
     @Builder.Default
     @Column(nullable = false)

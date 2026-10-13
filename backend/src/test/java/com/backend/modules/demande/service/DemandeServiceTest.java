@@ -93,7 +93,7 @@ class DemandeServiceTest {
         TenantContext.setCurrentTenant("lims_labo_a");
         Client autre = Client.builder().id(5L).utilisateurId(99L).raisonSociale("Autre").code("X").build();
         when(demandeRepository.findById(8L)).thenReturn(Optional.of(
-                Demande.builder().id(8L).numero("DEM-1").titre("x").statut("BROUILLON").client(autre).build()));
+                Demande.builder().id(8L).numero("DEM-1").titre("x").statut("NOUVEAU").client(autre).build()));
 
         assertThrows(UnauthorizedTenantException.class, () -> demandeService.trouverParId(8L));
     }
@@ -165,7 +165,7 @@ class DemandeServiceTest {
 
         DemandeLaboratoireDto resultat = demandeService.refuser(9L, "  Hors périmètre du laboratoire  ");
 
-        assertEquals(StatutDemande.REJETEE, resultat.getStatut());
+        assertEquals(StatutDemande.REFUSEE, resultat.getStatut());
         assertEquals("Hors périmètre du laboratoire", resultat.getMotif());
         assertEquals(7L, demande.getDecideurId());
         assertNotNull(demande.getDateDecision());
@@ -198,7 +198,7 @@ class DemandeServiceTest {
     void leChangementDeStatutNePermetPasUnRefusSansMotif() {
         authentifier(7L, RoleUtilisateur.RESPONSABLE);
         assertThrows(BusinessRuleException.class,
-                () -> demandeService.changerStatut(3L, StatutDemande.REJETEE));
+                () -> demandeService.changerStatut(3L, StatutDemande.REFUSEE));
         verify(demandeRepository, never()).findById(org.mockito.ArgumentMatchers.anyLong());
     }
 
@@ -214,7 +214,7 @@ class DemandeServiceTest {
                 .id(id)
                 .numero("DEM-" + id)
                 .titre("Contrôle")
-                .statut(StatutDemande.SOUMISE.name())
+                .statut(StatutDemande.NOUVEAU.name())
                 .dateSoumission(Instant.parse("2026-10-01T10:00:00Z"))
                 .build();
     }

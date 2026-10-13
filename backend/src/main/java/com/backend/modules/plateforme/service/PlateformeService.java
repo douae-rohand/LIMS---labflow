@@ -39,8 +39,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class PlateformeService {
 
-    private static final String STATUT_ACTIF = "ACTIF";
-    private static final String STATUT_INACTIF = "INACTIF";
+    private static final String STATUT_ACTIF = StatutLabo.ACTIF.name();
+    private static final String STATUT_DESACTIVE = StatutLabo.DESACTIVE.name();
     private static final Set<String> TRIS_AUTORISES = Set.of(
             "raisonSociale", "code", "ville", "email", "telephone", "dateCreation", "statut");
 
@@ -190,12 +190,11 @@ public class PlateformeService {
 
     @Transactional(readOnly = true)
     public StatistiquesPlateformeDto statistiques() {
-        long enAttente = demandeIntegrationRepository.countByStatut(StatutIntegration.EN_ATTENTE.name())
-                + demandeIntegrationRepository.countByStatut(StatutIntegration.EN_COURS_VALIDATION.name());
+        long enAttente = demandeIntegrationRepository.countByStatut(StatutIntegration.EN_ATTENTE.name());
         return StatistiquesPlateformeDto.builder()
                 .totalLaboratoires(laboratoireRepository.count())
                 .laboratoiresActifs(laboratoireRepository.countByStatut(STATUT_ACTIF))
-                .laboratoiresDesactives(laboratoireRepository.countByStatut(STATUT_INACTIF))
+                .laboratoiresDesactives(laboratoireRepository.countByStatut(STATUT_DESACTIVE))
                 .demandesEnAttente(enAttente)
                 .totalDemandes(demandeIntegrationRepository.count())
                 .build();
@@ -276,7 +275,7 @@ public class PlateformeService {
      */
     @Transactional
     public LaboratoireDto desactiverLaboratoire(Long id) {
-        return changerStatut(id, STATUT_INACTIF);
+        return changerStatut(id, STATUT_DESACTIVE);
     }
 
     @Transactional
@@ -312,7 +311,9 @@ public class PlateformeService {
             return null;
         }
         String normalise = valeur.toUpperCase(Locale.ROOT);
-        if (!STATUT_ACTIF.equals(normalise) && !STATUT_INACTIF.equals(normalise)) {
+        try {
+            StatutLabo.valueOf(normalise);
+        } catch (IllegalArgumentException ex) {
             throw new BusinessRuleException("STATUT_LABORATOIRE_INVALIDE",
                     "Le statut du laboratoire est invalide");
         }

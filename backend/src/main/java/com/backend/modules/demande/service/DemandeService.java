@@ -137,7 +137,7 @@ public class DemandeService {
                     .titre(dto.getObjet())
                     .objectif(dto.getCommentaire())
                     .dateSoumission(Instant.now())
-                    .statut(StatutDemande.BROUILLON.name())
+                    .statut(StatutDemande.NOUVEAU.name())
                     .client(client)
                     .build();
             return toDto(demandeRepository.save(demande), nomSchema);
@@ -148,7 +148,7 @@ public class DemandeService {
     public DemandeDto soumettre(Long id) {
         Demande demande = charger(id);
         verifierProprieteClient(demande);
-        demande.setStatut(StatutDemande.SOUMISE.name());
+        demande.setStatut(StatutDemande.NOUVEAU.name());
         demande.setDateSoumission(Instant.now());
         return toDto(demandeRepository.save(demande), TenantContext.getCurrentTenant());
     }
@@ -158,7 +158,7 @@ public class DemandeService {
         if (statut == StatutDemande.ACCEPTEE) {
             return toDto(enregistrerAcceptation(id), TenantContext.getCurrentTenant());
         }
-        if (statut == StatutDemande.REJETEE) {
+        if (statut == StatutDemande.REFUSEE) {
             throw new BusinessRuleException("MOTIF_OBLIGATOIRE",
                     "Le refus d'une demande exige un motif.");
         }
@@ -184,9 +184,9 @@ public class DemandeService {
     public IndicateursDemandesDto indicateursLaboratoire() {
         long total = demandeRepository.count();
         return IndicateursDemandesDto.builder()
-                .enAttente(demandeRepository.countByStatut(StatutDemande.SOUMISE.name()))
+                .enAttente(demandeRepository.countByStatut(StatutDemande.NOUVEAU.name()))
                 .acceptees(demandeRepository.countByStatut(StatutDemande.ACCEPTEE.name()))
-                .refusees(demandeRepository.countByStatut(StatutDemande.REJETEE.name()))
+                .refusees(demandeRepository.countByStatut(StatutDemande.REFUSEE.name()))
                 .total(total)
                 .build();
     }
@@ -204,20 +204,20 @@ public class DemandeService {
     @Transactional
     public DemandeLaboratoireDto refuser(Long id, String motif) {
         Demande demande = charger(id);
-        exigerSoumise(demande);
-        appliquerDecision(demande, StatutDemande.REJETEE, validerMotif(motif));
+        exigerNouvelle(demande);
+        appliquerDecision(demande, StatutDemande.REFUSEE, validerMotif(motif));
         return construireDetail(demandeRepository.save(demande));
     }
 
     private Demande enregistrerAcceptation(Long id) {
         Demande demande = charger(id);
-        exigerSoumise(demande);
+        exigerNouvelle(demande);
         appliquerDecision(demande, StatutDemande.ACCEPTEE, null);
         return demandeRepository.save(demande);
     }
 
-    private void exigerSoumise(Demande demande) {
-        if (!StatutDemande.SOUMISE.name().equals(demande.getStatut())) {
+    private void exigerNouvelle(Demande demande) {
+        if (!StatutDemande.NOUVEAU.name().equals(demande.getStatut())) {
             throw new BusinessRuleException("DEMANDE_DEJA_TRAITEE",
                     "Cette demande ne peut plus être acceptée ou refusée.");
         }
@@ -280,7 +280,7 @@ public class DemandeService {
                 .demandeur(libelleDemandeur(demande))
                 .dateSoumission(demande.getDateSoumission())
                 .dateDecision(demande.getDateDecision())
-                .decisionPossible(StatutDemande.SOUMISE.name().equals(demande.getStatut()))
+                .decisionPossible(StatutDemande.NOUVEAU.name().equals(demande.getStatut()))
                 .build();
     }
 
@@ -338,7 +338,7 @@ public class DemandeService {
                 .motif(demande.getMotif())
                 .decideurId(demande.getDecideurId())
                 .decideurNom(decideur == null ? null : nomComplet(decideur.getPrenom(), decideur.getNom()))
-                .decisionPossible(StatutDemande.SOUMISE.name().equals(demande.getStatut()))
+                .decisionPossible(StatutDemande.NOUVEAU.name().equals(demande.getStatut()))
                 .client(client == null ? null : toClientDto(client, contactClient))
                 .patient(patient == null ? null : toPatientDto(patient))
                 .analyses(lignes.stream().map(this::toAnalyse).toList())
@@ -401,7 +401,6 @@ public class DemandeService {
                 .id(echantillon.getId())
                 .reference(echantillon.getReference())
                 .nature(echantillon.getNature())
-                .statut(echantillon.getStatut() == null ? null : echantillon.getStatut().name())
                 .dateReception(echantillon.getDateReception())
                 .conformite(echantillon.getConformite())
                 .build();

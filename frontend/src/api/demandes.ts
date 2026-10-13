@@ -3,32 +3,32 @@ import type { ApiResponse } from "./auth";
 import type { PageResponse } from "./utilisateurs";
 
 export type StatutDemande =
-  | "BROUILLON"
-  | "SOUMISE"
+  | "NOUVEAU"
   | "ACCEPTEE"
   | "EN_COURS"
+  | "EN_VALIDATION"
   | "TERMINEE"
   | "ANNULEE"
-  | "REJETEE";
+  | "REFUSEE";
 
 export const STATUTS_DEMANDE: StatutDemande[] = [
-  "BROUILLON",
-  "SOUMISE",
+  "NOUVEAU",
   "ACCEPTEE",
   "EN_COURS",
+  "EN_VALIDATION",
   "TERMINEE",
   "ANNULEE",
-  "REJETEE",
+  "REFUSEE",
 ];
 
 export const LIBELLE_STATUT_DEMANDE: Record<StatutDemande, string> = {
-  BROUILLON: "Brouillon",
-  SOUMISE: "En attente",
+  NOUVEAU: "Nouvelle",
   ACCEPTEE: "Acceptée",
   EN_COURS: "En cours",
+  EN_VALIDATION: "En validation",
   TERMINEE: "Terminée",
   ANNULEE: "Annulée",
-  REJETEE: "Refusée",
+  REFUSEE: "Refusée",
 };
 
 export interface DemandeResume {
@@ -84,7 +84,6 @@ export interface EchantillonDemande {
   id: number;
   reference: string;
   nature: string | null;
-  statut: string | null;
   dateReception: string | null;
   conformite: boolean | null;
 }

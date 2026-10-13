@@ -48,7 +48,7 @@ export function TableauLaboratoires() {
   const exportRef = useRef<HTMLDivElement>(null);
   const [recherche, setRecherche] = useState("");
   const [rechercheDifferee, setRechercheDifferee] = useState("");
-  const [statut, setStatut] = useState<"" | "ACTIF" | "INACTIF">("");
+  const [statut, setStatut] = useState<"" | "ACTIF" | "SUSPENDU" | "DESACTIVE">("");
   const [ville, setVille] = useState("");
   const [page, setPage] = useState(0);
   const [taille, setTaille] = useState<TaillePage>(10);
@@ -163,11 +163,12 @@ export function TableauLaboratoires() {
               value={statut}
               aria-label="Filtrer par statut"
               className="xl:w-44"
-              onChange={(event) => setStatut(event.target.value as "" | "ACTIF" | "INACTIF")}
+              onChange={(event) => setStatut(event.target.value as "" | "ACTIF" | "SUSPENDU" | "DESACTIVE")}
             >
               <option value="">Tous les statuts</option>
               <option value="ACTIF">Actif</option>
-              <option value="INACTIF">Désactivé</option>
+              <option value="SUSPENDU">Suspendu</option>
+              <option value="DESACTIVE">Désactivé</option>
             </Select>
             <Select
               value={ville}
@@ -239,7 +240,10 @@ export function TableauLaboratoires() {
               <FiltreActif libelle={`Recherche : ${rechercheDifferee}`} onRetirer={() => setRecherche("")} />
             )}
             {statut && (
-              <FiltreActif libelle={statut === "ACTIF" ? "Actif" : "Désactivé"} onRetirer={() => setStatut("")} />
+              <FiltreActif
+                libelle={statut === "ACTIF" ? "Actif" : statut === "SUSPENDU" ? "Suspendu" : "Désactivé"}
+                onRetirer={() => setStatut("")}
+              />
             )}
             {ville && <FiltreActif libelle={ville} onRetirer={() => setVille("")} />}
           </div>

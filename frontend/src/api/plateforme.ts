@@ -2,12 +2,7 @@ import apiClient from "./axios";
 import type { ApiResponse } from "./auth";
 import type { TypeDocumentIntegration } from "@/components/integration/constants";
 
-export type StatutIntegration =
-  | "EN_ATTENTE"
-  | "EN_COURS_VALIDATION"
-  | "APPROUVEE"
-  | "REJETEE"
-  | "SUSPENDUE";
+export type StatutIntegration = "EN_ATTENTE" | "ACCEPTEE" | "REFUSEE";
 
 export interface TypeDocumentIntegrationDto {
   code: TypeDocumentIntegration;
@@ -171,7 +166,7 @@ export async function contenuDocumentIntegration(
 
 export async function traiterDemandeIntegration(
   id: number,
-  decision: "APPROUVEE" | "REJETEE",
+  decision: "ACCEPTEE" | "REFUSEE",
   motifRefus?: string,
 ): Promise<DemandeIntegration> {
   const res = await apiClient.post<ApiResponse<DemandeIntegration>>(

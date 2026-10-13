@@ -45,7 +45,7 @@ public class EssaiService {
 
         LigneEssai ligne = LigneEssai.builder()
                 .code("LIG-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-                .statut(StatutEssai.EN_ATTENTE)
+                .statut(StatutEssai.ATTENTE_ECHANTILLON)
                 .montant(BigDecimal.ZERO)
                 .demande(echantillon.getDemande())
                 .essai(essai)

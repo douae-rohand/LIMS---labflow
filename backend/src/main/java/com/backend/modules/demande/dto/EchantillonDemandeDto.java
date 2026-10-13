@@ -15,7 +15,6 @@ public class EchantillonDemandeDto {
     private Long id;
     private String reference;
     private String nature;
-    private String statut;
     private Instant dateReception;
     private Boolean conformite;
 }

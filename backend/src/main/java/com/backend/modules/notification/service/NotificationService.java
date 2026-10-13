@@ -5,7 +5,7 @@ import com.backend.modules.notification.dto.NotificationDto;
 import com.backend.modules.notification.entity.CanalNotification;
 import com.backend.modules.notification.entity.Notification;
 import com.backend.modules.notification.entity.NotificationReception;
-import com.backend.modules.notification.entity.StatutNotification;
+import com.backend.modules.notification.entity.StatutEnvoi;
 import com.backend.modules.notification.entity.NotificationReceptionId;
 import com.backend.modules.notification.repository.NotificationReceptionRepository;
 import com.backend.modules.notification.repository.NotificationRepository;
@@ -55,7 +55,7 @@ public class NotificationService {
                         .notification(notification)
                         .utilisateur(utilisateur)
                         .canal(canal)
-                        .statutEnvoi(StatutNotification.ENVOYEE)
+                        .statutEnvoi(StatutEnvoi.ENVOYE)
                         .lue(false)
                         .build();
                 receptionRepository.save(reception);
@@ -114,7 +114,7 @@ public class NotificationService {
                 .payloadJson(source == null ? null : source.getPayloadJson())
                 .entiteSource(source == null ? null : source.getEntiteSource())
                 .idEntiteSource(source == null ? null : source.getIdEntiteSource())
-                .statut(StatutNotification.ENVOYEE)
+                .statut(StatutEnvoi.ENVOYE)
                 .build();
     }
 }
