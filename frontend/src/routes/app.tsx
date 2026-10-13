@@ -4,6 +4,9 @@ import { clearSession, getSession, getStatus } from "@/api/session";
 import type { RoleUtilisateur } from "@/api/session";
 import { SuperAdminShell } from "@/features/super-admin/SuperAdminShell";
 import { AdminShell } from "@/features/admin/AdminShell";
+import { LogOut, User } from "lucide-react";
+import { Button, Card } from "@/components/lab";
+import { Container } from "@/components/layout/Container";
 
 export function cheminTableauDeBord(_role: RoleUtilisateur): "/app" {
   return "/app";
@@ -67,9 +70,31 @@ function AppLayout() {
     );
   }
 
-  // Autres rôles (RESPONSABLE, TECHNICIEN, ACCUEIL, CLIENT) — layout minimal
+  // Autres rôles (RESPONSABLE, TECHNICIEN, ACCUEIL, CLIENT) — layout minimal avec logout
   return (
     <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-background/50 backdrop-blur-md">
+        <Container className="flex items-center justify-between py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-full bg-brand-900/10">
+              <User className="size-5 text-brand-900" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-ink-900">{user.nomComplet}</p>
+              <p className="text-xs text-muted-foreground">{user.email}</p>
+            </div>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void handleLogout()}
+            icon={<LogOut className="size-4" />}
+            iconPosition="left"
+          >
+            Déconnexion
+          </Button>
+        </Container>
+      </header>
       <Outlet />
     </div>
   );
