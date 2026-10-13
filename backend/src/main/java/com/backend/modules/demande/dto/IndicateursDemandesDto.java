@@ -8,9 +8,9 @@ import lombok.NoArgsConstructor;
 /**
  * Compteurs du laboratoire courant, alignés sur {@code StatutDemande}.
  * <ul>
- *   <li>{@code enAttente} : {@code SOUMISE}</li>
+ *   <li>{@code enAttente} : {@code NOUVEAU}</li>
  *   <li>{@code acceptees} : {@code ACCEPTEE}</li>
- *   <li>{@code refusees} : {@code REJETEE}</li>
+ *   <li>{@code refusees} : {@code REFUSEE}</li>
  * </ul>
  */
 @Data

@@ -31,7 +31,7 @@ public class LaboratoireDto {
     private Double latitude;
     private Double longitude;
     private String numeroAccreditation;
-    /** ACTIF ou INACTIF. Distinct du statut d'une demande d'intégration. */
+    /** {@code ACTIF}, {@code SUSPENDU} ou {@code DESACTIVE}. Distinct du statut d'une demande d'intégration. */
     private String statut;
     private boolean actif;
     private Instant dateCreation;

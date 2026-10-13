@@ -44,7 +44,8 @@ const LIBELLE_STATUT_LIGNE: Record<string, string> = {
   ANNULEE: "Annulée",
   A_REFAIRE: "À refaire",
   REPORTEE: "Reportée",
-  EN_ATTENTE_RECEPTION: "En attente de réception",
+  ATTENTE_ECHANTILLON: "En attente d'échantillon",
+  NON_REALISABLE: "Non réalisable",
   RECEPTIONNE: "Réceptionné",
   EN_ANALYSE: "En analyse",
   ANALYSE_TERMINEE: "Analyse terminée",
@@ -72,11 +73,11 @@ function formatTaille(octets: number | null): string {
 
 function messageStatut(statut: StatutDemande): string | null {
   switch (statut) {
-    case "SOUMISE":
+    case "NOUVEAU":
       return null;
-    case "BROUILLON":
-      return "Cette demande est encore un brouillon. Elle ne peut pas être acceptée ou refusée.";
-    case "REJETEE":
+    case "EN_VALIDATION":
+      return "Cette demande est en validation.";
+    case "REFUSEE":
       return "Cette demande a été refusée.";
     case "ACCEPTEE":
       return "Cette demande a été acceptée.";
@@ -292,7 +293,7 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
                         <li key={echantillon.id} className="rounded-2xl border border-brand-900/10 px-4 py-3 text-sm">
                           <p className="font-semibold text-ink-900">{echantillon.reference}</p>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {[echantillon.nature, libelleStatut(echantillon.statut)].filter(Boolean).join(" · ")}
+                            {echantillon.nature ?? "—"}
                           </p>
                         </li>
                       ))}

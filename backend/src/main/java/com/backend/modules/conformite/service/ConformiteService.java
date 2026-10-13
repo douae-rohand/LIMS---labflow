@@ -1,10 +1,10 @@
 package com.backend.modules.conformite.service;
 
+import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.modules.conformite.dto.NonConformiteDto;
 import com.backend.modules.conformite.entity.StatutNonConformite;
 import com.backend.modules.echantillon.entity.Echantillon;
-import com.backend.modules.echantillon.entity.StatutEchantillon;
 import com.backend.modules.echantillon.repository.EchantillonRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -34,18 +34,17 @@ public class ConformiteService {
         }
         Echantillon echantillon = echantillonRepository.findById(dto.getIdEntiteSource())
                 .orElseThrow(() -> new ResourceNotFoundException("Echantillon", "id", dto.getIdEntiteSource()));
+        String motif = dto.getDescription() != null ? dto.getDescription() : dto.getTitre();
         echantillon.setConformite(false);
-        echantillon.setStatut(StatutEchantillon.NON_CONFORME);
-        echantillon.setMotif(dto.getDescription() != null ? dto.getDescription() : dto.getTitre());
+        echantillon.setMotif(exigerMotif(motif));
         return toDto(echantillonRepository.save(echantillon), StatutNonConformite.OUVERTE);
     }
 
     @Transactional
     public NonConformiteDto traiter(Long id, String actionCorrective, Long responsableId) {
         Echantillon echantillon = charger(id);
-        echantillon.setMotif(actionCorrective);
         echantillon.setConformite(false);
-        echantillon.setStatut(StatutEchantillon.NON_CONFORME);
+        echantillon.setMotif(exigerMotif(actionCorrective));
         return toDto(echantillonRepository.save(echantillon), StatutNonConformite.EN_TRAITEMENT);
     }
 
@@ -53,12 +52,15 @@ public class ConformiteService {
     public NonConformiteDto cloturer(Long id) {
         Echantillon echantillon = charger(id);
         echantillon.setConformite(true);
-        if (echantillon.getStatut() == null || echantillon.getStatut() == StatutEchantillon.NON_CONFORME) {
-            echantillon.setStatut(echantillon.getDateReception() != null
-                    ? StatutEchantillon.RECEPTIONNE
-                    : StatutEchantillon.EN_ATTENTE_RECEPTION);
-        }
         return toDto(echantillonRepository.save(echantillon), StatutNonConformite.CLOTUREE);
+    }
+
+    private static String exigerMotif(String motif) {
+        if (motif == null || motif.isBlank()) {
+            throw new BusinessRuleException("MOTIF_OBLIGATOIRE",
+                    "Un échantillon non conforme exige un motif.");
+        }
+        return motif;
     }
 
     private Echantillon charger(Long id) {

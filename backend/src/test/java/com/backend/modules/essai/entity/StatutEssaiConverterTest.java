@@ -11,17 +11,20 @@ class StatutEssaiConverterTest {
 
     @Test
     void relitLesAliasHistoriquesVersLeStatutCanonique() {
-        assertEquals(StatutEssai.PLANIFIEE, converter.convertToEntityAttribute("PLANIFIE"));
+        assertEquals(StatutEssai.ATTENTE_ECHANTILLON, converter.convertToEntityAttribute("PLANIFIE"));
+        assertEquals(StatutEssai.ATTENTE_ECHANTILLON, converter.convertToEntityAttribute("EN_ATTENTE"));
+        assertEquals(StatutEssai.ATTENTE_ECHANTILLON, converter.convertToEntityAttribute("REPORTEE"));
+        assertEquals(StatutEssai.EN_COURS, converter.convertToEntityAttribute("A_REFAIRE"));
         assertEquals(StatutEssai.TERMINE, converter.convertToEntityAttribute("TERMINEE"));
-        assertEquals(StatutEssai.ANNULE, converter.convertToEntityAttribute("ANNULEE"));
+        assertEquals(StatutEssai.NON_REALISABLE, converter.convertToEntityAttribute("ANNULEE"));
         assertEquals(StatutEssai.EN_COURS, converter.convertToEntityAttribute("EN_COURS"));
     }
 
     @Test
     void ecritToujoursLeNomCanonique() {
-        assertEquals("PLANIFIEE", converter.convertToDatabaseColumn(StatutEssai.PLANIFIEE));
+        assertEquals("ATTENTE_ECHANTILLON", converter.convertToDatabaseColumn(StatutEssai.ATTENTE_ECHANTILLON));
         assertEquals("TERMINE", converter.convertToDatabaseColumn(StatutEssai.TERMINE));
-        assertEquals("ANNULE", converter.convertToDatabaseColumn(StatutEssai.ANNULE));
+        assertEquals("NON_REALISABLE", converter.convertToDatabaseColumn(StatutEssai.NON_REALISABLE));
         assertNull(converter.convertToDatabaseColumn(null));
     }
 

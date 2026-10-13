@@ -39,7 +39,7 @@ public class NotificationDestinataire {
     @Enumerated(EnumType.STRING)
     @Column(name = "statut_livraison", nullable = false, length = 20)
     @Builder.Default
-    private StatutLivraison statutLivraison = StatutLivraison.EN_ATTENTE;
+    private StatutEnvoi statutLivraison = StatutEnvoi.EN_ATTENTE;
 
     /** Lu par l'utilisateur (uniquement pertinent pour IN_APP). */
     @Column(name = "est_lu")
@@ -58,8 +58,4 @@ public class NotificationDestinataire {
     @Column(name = "date_creation", nullable = false, updatable = false)
     @Builder.Default
     private Instant dateCreation = Instant.now();
-
-    public enum StatutLivraison {
-        EN_ATTENTE, LIVRE, ECHEC
-    }
 }

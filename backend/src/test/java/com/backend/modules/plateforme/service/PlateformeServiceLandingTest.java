@@ -69,7 +69,7 @@ class PlateformeServiceLandingTest {
         assertEquals("Casablanca", dto.getLaboratoires().getFirst().getVille());
         assertEquals(33.5892, dto.getLaboratoires().getFirst().getLatitude());
         assertEquals(-7.6186, dto.getLaboratoires().getFirst().getLongitude());
-        assertTrue(dto.getStatutsDemande().contains("SOUMISE"));
+        assertTrue(dto.getStatutsDemande().contains("NOUVEAU"));
         assertTrue(dto.getStatutsDemande().contains("ACCEPTEE"));
     }
 

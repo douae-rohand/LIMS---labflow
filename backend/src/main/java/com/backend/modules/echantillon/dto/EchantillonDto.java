@@ -1,6 +1,6 @@
 package com.backend.modules.echantillon.dto;
 
-import com.backend.modules.echantillon.entity.StatutEchantillon;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 import java.time.Instant;
@@ -13,12 +13,15 @@ public class EchantillonDto {
     private String designation;
     private String nature;
     private Long demandeId;
-    private Long receptionnaireId;
-    private StatutEchantillon statut;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Long receptionneurId;
+
     private Instant dateReception;
     private LocalDate datePeremption;
     private Double quantite;
     private String unite;
-    private String conditionsConservation;
+    private String etatConservationConstate;
+    private Boolean conformite;
     private String observations;
 }

@@ -13,9 +13,9 @@ const CARTES: {
   libelle: string;
   icon: typeof Clock3;
 }[] = [
-  { cle: "enAttente", statut: "SOUMISE", libelle: "En attente", icon: Clock3 },
+  { cle: "enAttente", statut: "NOUVEAU", libelle: "Nouvelles", icon: Clock3 },
   { cle: "acceptees", statut: "ACCEPTEE", libelle: "Acceptées", icon: CheckCircle2 },
-  { cle: "refusees", statut: "REJETEE", libelle: "Refusées", icon: XCircle },
+  { cle: "refusees", statut: "REFUSEE", libelle: "Refusées", icon: XCircle },
 ];
 
 export function IndicateursDemandesCartes({

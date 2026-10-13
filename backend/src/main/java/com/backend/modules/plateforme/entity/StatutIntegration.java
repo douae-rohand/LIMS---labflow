@@ -5,8 +5,6 @@ package com.backend.modules.plateforme.entity;
  */
 public enum StatutIntegration {
     EN_ATTENTE,
-    EN_COURS_VALIDATION,
-    APPROUVEE,
-    REJETEE,
-    SUSPENDUE
+    ACCEPTEE,
+    REFUSEE
 }

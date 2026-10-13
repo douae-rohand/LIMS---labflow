@@ -1,11 +1,12 @@
 package com.backend.modules.echantillon.service;
 
+import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
+import com.backend.common.security.SecurityUtils;
 import com.backend.modules.demande.entity.Demande;
 import com.backend.modules.demande.repository.DemandeRepository;
 import com.backend.modules.echantillon.dto.EchantillonDto;
 import com.backend.modules.echantillon.entity.Echantillon;
-import com.backend.modules.echantillon.entity.StatutEchantillon;
 import com.backend.modules.echantillon.repository.EchantillonRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -35,43 +36,29 @@ public class EchantillonService {
 
     @Transactional
     public EchantillonDto enregistrer(EchantillonDto dto) {
+        if (dto.getNature() == null || dto.getNature().isBlank()) {
+            throw new BusinessRuleException("NATURE_OBLIGATOIRE",
+                    "La nature de l'échantillon reçu est obligatoire.");
+        }
+        boolean conforme = dto.getConformite() == null || Boolean.TRUE.equals(dto.getConformite());
+        String motif = dto.getObservations();
+        if (!conforme && (motif == null || motif.isBlank())) {
+            throw new BusinessRuleException("MOTIF_OBLIGATOIRE",
+                    "Un échantillon non conforme exige un motif.");
+        }
         Demande demande = demandeRepository.findById(dto.getDemandeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", dto.getDemandeId()));
         Echantillon echantillon = Echantillon.builder()
                 .reference(dto.getCodeBarre() != null ? dto.getCodeBarre()
                         : "ECH-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-                .nature(dto.getNature())
+                .nature(dto.getNature().trim())
+                .dateReception(Instant.now())
+                .conformite(conforme)
+                .motif(motif)
+                .etatConservationConstate(dto.getEtatConservationConstate())
                 .demande(demande)
-                .receptionneurId(dto.getReceptionnaireId())
-                .conditionsConservation(dto.getConditionsConservation())
-                .motif(dto.getObservations())
-                .statut(StatutEchantillon.EN_ATTENTE_RECEPTION)
+                .receptionneurId(SecurityUtils.principalCourant().getId())
                 .build();
-        return toDto(echantillonRepository.save(echantillon));
-    }
-
-    @Transactional
-    public EchantillonDto receptionner(Long id, Long receptionnaireId) {
-        Echantillon echantillon = charger(id);
-        echantillon.setReceptionneurId(receptionnaireId);
-        echantillon.setDateReception(Instant.now());
-        echantillon.setConformite(true);
-        echantillon.setStatut(StatutEchantillon.RECEPTIONNE);
-        return toDto(echantillonRepository.save(echantillon));
-    }
-
-    @Transactional
-    public EchantillonDto changerStatut(Long id, StatutEchantillon statut) {
-        Echantillon echantillon = charger(id);
-        echantillon.setStatut(statut);
-        if (statut == StatutEchantillon.NON_CONFORME) {
-            echantillon.setConformite(false);
-        } else if (statut == StatutEchantillon.RECEPTIONNE) {
-            echantillon.setConformite(true);
-            if (echantillon.getDateReception() == null) {
-                echantillon.setDateReception(Instant.now());
-            }
-        }
         return toDto(echantillonRepository.save(echantillon));
     }
 
@@ -86,10 +73,10 @@ public class EchantillonService {
                 .codeBarre(e.getReference())
                 .nature(e.getNature())
                 .demandeId(e.getDemande() == null ? null : e.getDemande().getId())
-                .receptionnaireId(e.getReceptionneurId())
-                .statut(e.getStatut())
+                .receptionneurId(e.getReceptionneurId())
                 .dateReception(e.getDateReception())
-                .conditionsConservation(e.getConditionsConservation())
+                .etatConservationConstate(e.getEtatConservationConstate())
+                .conformite(e.getConformite())
                 .observations(e.getMotif())
                 .build();
     }
