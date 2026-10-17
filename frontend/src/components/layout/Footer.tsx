@@ -35,7 +35,6 @@ export function Footer() {
         </div>
         <div className="mt-10 flex flex-col gap-2 border-t border-brand-900/10 pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>LabFlow LIMS — conformité ISO/IEC 17025 et loi 09-08 (CNDP).</p>
-          <p>Projet académique - Génie Informatique 2026-2027</p>
         </div>
       </Container>
     </footer>

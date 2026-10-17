@@ -4,12 +4,16 @@ import { Badge, Button, Card } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import { getSession } from "@/api/session";
 import type { RoleUtilisateur } from "@/api/session";
+import { TableauBordClient } from "@/components/demandes/client/TableauBordClient";
 
 export const Route = createFileRoute("/app/")({
   beforeLoad: () => {
     const session = getSession();
     if (session?.user.role === "SUPER_ADMINISTRATEUR") {
       throw redirect({ to: "/app/gestion-laboratoires", search: { onglet: "laboratoires" } });
+    }
+    if (session?.user.role === "ADMINISTRATEUR") {
+      throw redirect({ to: "/app/employes", search: { page: 1, tri: "nom", direction: "asc" } });
     }
     if (session?.user.role === "RESPONSABLE") {
       throw redirect({ to: "/app/demandes-clients" });
@@ -31,6 +35,10 @@ function AppHomePage() {
   const session = getSession();
   const user = session?.user;
   if (!user) return null;
+
+  if (user.role === "CLIENT") {
+    return <TableauBordClient />;
+  }
 
   return (
     <Container className="py-12">

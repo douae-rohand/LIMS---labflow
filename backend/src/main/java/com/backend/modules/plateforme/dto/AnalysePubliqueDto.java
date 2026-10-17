@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 @Builder
@@ -16,11 +17,10 @@ public class AnalysePubliqueDto {
     private String code;
     private String designation;
     private String description;
-    private String methode;
     private String domaineCode;
     private String domaineLibelle;
     private BigDecimal tarif;
+    /** Durée estimée en minutes. */
     private Integer dureeEstimee;
-    private String unite;
-    private Boolean actif;
+    private List<ExigencePubliqueDto> exigences;
 }

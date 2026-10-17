@@ -1,6 +1,6 @@
-import { Clock, FlaskConical } from "lucide-react";
-import type { AnalysePublique } from "@/api/laboratoires";
-import { Badge, Card, IconBox } from "@/components/lab";
+import { Clock, FlaskConical, TestTube, Thermometer, Coins } from "lucide-react";
+import type { AnalysePublique, ExigencePublique } from "@/api/laboratoires";
+import { Badge, Button, Card, IconBox } from "@/components/lab";
 
 function formatTarif(value: AnalysePublique["tarif"]): string | null {
   if (value == null || value === "") return null;
@@ -19,12 +19,42 @@ function formatDuree(minutes: number | null | undefined): string | null {
   return `${minutes} min`;
 }
 
-export function AnalyseCard({ analyse }: { analyse: AnalysePublique }) {
+function detailExigence(exigence: ExigencePublique): string | null {
+  const morceaux: string[] = [];
+  if (exigence.quantiteMinimale != null && exigence.quantiteMinimale !== "") {
+    const quantite =
+      typeof exigence.quantiteMinimale === "number"
+        ? exigence.quantiteMinimale
+        : Number(exigence.quantiteMinimale);
+    if (!Number.isNaN(quantite)) {
+      morceaux.push(exigence.unite ? `${quantite} ${exigence.unite}` : `${quantite}`);
+    }
+  } else if (exigence.unite?.trim()) {
+    morceaux.push(exigence.unite);
+  }
+  if (exigence.etatConservation?.trim()) {
+    morceaux.push(exigence.etatConservation);
+  }
+  return morceaux.length > 0 ? morceaux.join(" · ") : null;
+}
+
+export function AnalyseCard({
+  analyse,
+  dejaDansPanier = false,
+  enAjout = false,
+  onAjouter,
+}: {
+  analyse: AnalysePublique;
+  dejaDansPanier?: boolean;
+  enAjout?: boolean;
+  onAjouter?: (() => void) | undefined;
+}) {
   const tarif = formatTarif(analyse.tarif);
   const duree = formatDuree(analyse.dureeEstimee);
+  const exigences = analyse.exigences ?? [];
 
   return (
-    <Card variant="glossy" className="h-full">
+    <Card variant="glossy" className="flex h-full flex-col">
       <div className="flex items-start justify-between gap-3">
         <IconBox icon={FlaskConical} variant="mint" />
         {analyse.domaineLibelle?.trim() ? (
@@ -40,38 +70,76 @@ export function AnalyseCard({ analyse }: { analyse: AnalysePublique }) {
       {analyse.description?.trim() ? (
         <p className="mt-3 text-sm text-muted-foreground">{analyse.description}</p>
       ) : null}
-      {analyse.methode?.trim() ? (
-        <p className="mt-2 text-sm text-muted-foreground">Méthode : {analyse.methode}</p>
-      ) : null}
-      <dl className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+      <dl className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
         {tarif ? (
-          <div>
-            <dt className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Tarif
-            </dt>
-            <dd className="font-bold text-ink-900">{tarif}</dd>
+          <div className="flex items-center gap-2">
+            <Coins className="size-4 text-brand-600" aria-hidden="true" />
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground">
+                Prix de l'analyse
+              </dt>
+              <dd className="font-bold text-ink-900">{tarif}</dd>
+            </div>
           </div>
         ) : null}
         {duree ? (
-          <div>
-            <dt className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Délai
-            </dt>
-            <dd className="inline-flex items-center gap-1 font-semibold text-ink-900">
-              <Clock className="size-3.5 text-brand-600" aria-hidden="true" />
-              {duree}
-            </dd>
-          </div>
-        ) : null}
-        {analyse.unite?.trim() ? (
-          <div>
-            <dt className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Unité
-            </dt>
-            <dd className="font-semibold text-ink-900">{analyse.unite}</dd>
+          <div className="flex items-center gap-2">
+            <Clock className="size-4 text-brand-600" aria-hidden="true" />
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground">
+                Délai estimé
+              </dt>
+              <dd className="font-semibold text-ink-900">{duree}</dd>
+            </div>
           </div>
         ) : null}
       </dl>
+      {exigences.length > 0 ? (
+        <div className="mt-4 rounded-xl bg-mint-200/30 px-4 py-3">
+          <div className="flex items-center gap-2 mb-2">
+            <TestTube className="size-4 text-brand-600" aria-hidden="true" />
+            <p className="text-xs font-semibold text-brand-900">
+              Échantillon à fournir
+            </p>
+          </div>
+          <ul className="flex flex-col gap-2 text-sm">
+            {exigences.map((exigence, index) => {
+              const detail = detailExigence(exigence);
+              return (
+                <li key={`${exigence.nature ?? "exigence"}-${index}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-semibold text-ink-900">
+                      {exigence.nature ?? "Échantillon"}
+                    </span>
+                    {exigence.etatConservation?.trim() && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Thermometer className="size-3" aria-hidden="true" />
+                        <span>{exigence.etatConservation}</span>
+                      </div>
+                    )}
+                  </div>
+                  {detail && !exigence.etatConservation?.trim() && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+      {onAjouter ? (
+        <div className="mt-5 flex justify-end">
+          <Button
+            size="sm"
+            variant={dejaDansPanier ? "secondary" : "primary"}
+            disabled={dejaDansPanier || enAjout}
+            loading={enAjout}
+            onClick={onAjouter}
+          >
+            {dejaDansPanier ? "Dans le panier" : "Ajouter"}
+          </Button>
+        </div>
+      ) : null}
     </Card>
   );
 }

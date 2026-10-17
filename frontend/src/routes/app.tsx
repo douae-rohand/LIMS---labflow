@@ -1,9 +1,13 @@
-import { Outlet, createFileRoute, useRouter } from "@tanstack/react-router";
+import { Outlet, createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { logout } from "@/api/auth";
 import { clearSession, getSession, getStatus } from "@/api/session";
 import type { RoleUtilisateur } from "@/api/session";
 import { SuperAdminShell } from "@/features/super-admin/SuperAdminShell";
 import { AdminShell } from "@/features/admin/AdminShell";
+import { ClientShell } from "@/features/client/ClientShell";
+import { LogOut, User } from "lucide-react";
+import { Button, Card } from "@/components/lab";
+import { Container } from "@/components/layout/Container";
 
 export function cheminTableauDeBord(_role: RoleUtilisateur): "/app" {
   return "/app";
@@ -13,15 +17,15 @@ export const Route = createFileRoute("/app")({
   head: () => ({
     meta: [{ title: "Espace LabFlow — LabFlow LIMS" }],
   }),
-  beforeLoad: () => {
+  beforeLoad: ({ location }) => {
     const status = getStatus();
     if (status === "anonyme") {
-      throw Route.redirect({ to: "/login" });
+      throw redirect({ to: "/login", search: { redirect: location.href } });
     }
     if (status === "connecté") {
       const session = getSession();
       if (session?.user.mustChangePassword) {
-        throw Route.redirect({ to: "/changer-mot-de-passe" });
+        throw redirect({ to: "/changer-mot-de-passe" });
       }
     }
   },
@@ -67,9 +71,41 @@ function AppLayout() {
     );
   }
 
-  // Autres rôles (TECHNICIEN, ACCUEIL, CLIENT) — layout minimal
+  if (user.role === "CLIENT") {
+    return (
+      <ClientShell utilisateur={user} onLogout={() => void handleLogout()}>
+        <Outlet />
+      </ClientShell>
+    );
+  }
+
+  // Autres rôles (TECHNICIEN, ACCUEIL) — layout minimal avec logout
   return (
     <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-background/50 backdrop-blur-md">
+        <Container className="flex items-center justify-between py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-full bg-brand-900/10">
+              <User className="size-5 text-brand-900" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-ink-900">{user.nomComplet}</p>
+              <p className="text-xs text-muted-foreground">{user.email}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void handleLogout()}
+              icon={<LogOut className="size-4" />}
+              iconPosition="left"
+            >
+              Déconnexion
+            </Button>
+          </div>
+        </Container>
+      </header>
       <Outlet />
     </div>
   );

@@ -44,3 +44,6 @@ logs/
 *.temp
 *.swp
 *~
+
+# Trae
+.trae/

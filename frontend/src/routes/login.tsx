@@ -13,6 +13,7 @@ import { login, toSessionUser } from "@/api/auth";
 import { setSession, getSession, getStatus } from "@/api/session";
 import { apiClient, ApiError } from "@/api/axios";
 import { cn } from "@/lib/utils";
+import { cibleApresConnexion, sanitizeRedirect } from "@/lib/redirect";
 import { RenvoyerLienActivation } from "@/components/auth/RenvoyerLienActivation";
 
 // ---------------------------------------------------------------------------
@@ -27,12 +28,21 @@ export const Route = createFileRoute("/login")({
       { name: "description", content: "Accédez à votre espace laboratoire LabFlow." },
     ],
   }),
-  beforeLoad: () => {
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
+    const redirect = sanitizeRedirect(search["redirect"]);
+    return redirect === null ? {} : { redirect };
+  },
+  beforeLoad: ({ search }) => {
     const status = getStatus();
     if (status === "connecté") {
       const session = getSession();
       if (session?.user.mustChangePassword) {
         throw Route.redirect({ to: "/changer-mot-de-passe" });
+      }
+      if (search.redirect !== undefined) {
+        throw Route.redirect({
+          href: cibleApresConnexion(session?.user.role, search.redirect),
+        });
       }
       if (session?.user.role === "RESPONSABLE") {
         throw Route.redirect({ to: "/app/demandes-clients" });
@@ -105,6 +115,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 function LoginPage() {
   const router = useRouter();
+  const search = Route.useSearch();
 
   const {
     register,
@@ -148,13 +159,11 @@ function LoginPage() {
         setSession(response.accessToken, user);
         apiClient.setTenant(user.tenantId);
 
-        if (user.mustChangePassword) {
-          await router.navigate({ to: "/changer-mot-de-passe" });
-        } else if (user.role === "RESPONSABLE") {
-          await router.navigate({ to: "/app/demandes-clients" });
-        } else {
-          await router.navigate({ to: "/app" });
-        }
+        const defaut = user.role === "RESPONSABLE" ? "/app/demandes-clients" : "/app";
+        const cible = user.mustChangePassword
+          ? "/changer-mot-de-passe"
+          : cibleApresConnexion(user.role, search.redirect, defaut);
+        router.history.push(cible);
       }
     } catch (err) {
       if (err instanceof ApiError) {
@@ -265,6 +274,7 @@ function LoginPage() {
             Vous n'avez pas encore de compte ?{" "}
             <Link
               to="/inscription"
+              search={search.redirect !== undefined ? { redirect: search.redirect } : {}}
               className="font-semibold text-brand-900 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 rounded"
             >
               S'inscrire

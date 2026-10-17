@@ -11,6 +11,7 @@ import { inscrire, type InscriptionBody } from "@/api/auth";
 import { getStatus } from "@/api/session";
 import { ApiError } from "@/api/axios";
 import { cn } from "@/lib/utils";
+import { sanitizeRedirect } from "@/lib/redirect";
 
 // ---------------------------------------------------------------------------
 // Garde
@@ -23,8 +24,15 @@ export const Route = createFileRoute("/inscription")({
       { name: "description", content: "Créez votre compte client LabFlow LIMS." },
     ],
   }),
-  beforeLoad: () => {
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
+    const redirect = sanitizeRedirect(search["redirect"]);
+    return redirect === null ? {} : { redirect };
+  },
+  beforeLoad: ({ search }) => {
     if (getStatus() === "connecté") {
+      if (search.redirect !== undefined) {
+        throw Route.redirect({ href: search.redirect });
+      }
       throw Route.redirect({ to: "/app" });
     }
   },
@@ -333,6 +341,7 @@ const STEP_FIELDS: (keyof FormValues)[][] = [
 // ---------------------------------------------------------------------------
 
 function InscriptionPage() {
+  const search = Route.useSearch();
   const [succes, setSucces] = useState(false);
   const [step, setStep] = useState(0);
 
@@ -735,6 +744,7 @@ function InscriptionPage() {
             Déjà un compte ?{" "}
             <Link
               to="/login"
+              search={search.redirect !== undefined ? { redirect: search.redirect } : {}}
               className="font-semibold text-brand-900 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 rounded"
             >
               Se connecter
