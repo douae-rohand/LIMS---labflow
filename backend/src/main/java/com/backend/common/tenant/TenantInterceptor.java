@@ -55,13 +55,22 @@ public class TenantInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 3. Client : sans X-Tenant-ID -> contexte central (profil, liste labos) ou 400 (demandes, factures)
+        // 3. Client
         if (principal.isClient()) {
+            String uri = request.getRequestURI();
+
+            // Routes client dont le laboratoire est dans le chemin : l'en-tête X-Tenant-ID
+            // est volontairement ignoré (contexte central).
+            if (uri.startsWith("/api/client/demandes") || uri.startsWith("/api/client/paniers")) {
+                TenantContext.clear();
+                return true;
+            }
+
+            // Sans en-tête : central (profil, liste labos) ou 400 (factures)
             if (!StringUtils.hasText(header)) {
-                String uri = request.getRequestURI();
-                if (uri.startsWith("/api/client/demandes") || uri.startsWith("/api/client/factures")) {
+                if (uri.startsWith("/api/client/factures")) {
                     throw new TenantHeaderRequiredException(
-                            "L'en-tête X-Tenant-ID est obligatoire pour accéder aux demandes et factures du laboratoire.");
+                            "L'en-tête X-Tenant-ID est obligatoire pour accéder aux factures du laboratoire.");
                 }
                 TenantContext.clear();
                 return true;

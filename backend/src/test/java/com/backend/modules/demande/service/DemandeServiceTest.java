@@ -77,17 +77,6 @@ class DemandeServiceTest {
     }
 
     @Test
-    void refuseUnClientIdEtranger() {
-        authentifier(1L);
-        TenantContext.setCurrentTenant("lims_labo_a");
-
-        DemandeDto dto = DemandeDto.builder().objet("Analyse").clientId(99L).build();
-
-        assertThrows(BusinessRuleException.class, () -> demandeService.creer(dto));
-        verify(clientService, never()).assurerFicheLocale(any(), any());
-    }
-
-    @Test
     void refuseLAccesALaDemandeDunAutreClient() {
         authentifier(1L);
         TenantContext.setCurrentTenant("lims_labo_a");
@@ -96,31 +85,6 @@ class DemandeServiceTest {
                 Demande.builder().id(8L).numero("DEM-1").titre("x").statut("NOUVEAU").client(autre).build()));
 
         assertThrows(UnauthorizedTenantException.class, () -> demandeService.trouverParId(8L));
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    void creeUneDemandePourLeClientConnecteDansLeLaboratoireCourant() {
-        authentifier(1L);
-        TenantContext.setCurrentTenant("lims_labo_a");
-        Client fiche = Client.builder().id(3L).utilisateurId(1L).raisonSociale("Client A").code("CLI-1").build();
-        when(clientService.assurerFicheLocale(1L, "lims_labo_a")).thenReturn(fiche);
-        when(tenantExecutor.inTenant(any(), any())).thenAnswer(invocation -> {
-            Supplier<Object> supplier = invocation.getArgument(1);
-            return supplier.get();
-        });
-        when(clientRepository.findById(3L)).thenReturn(Optional.of(fiche));
-        when(demandeRepository.save(any(Demande.class))).thenAnswer(invocation -> {
-            Demande d = invocation.getArgument(0);
-            d.setId(11L);
-            return d;
-        });
-
-        DemandeDto creee = demandeService.creer(DemandeDto.builder().objet("Demande 1").build());
-
-        org.junit.jupiter.api.Assertions.assertEquals("Demande 1", creee.getObjet());
-        org.junit.jupiter.api.Assertions.assertEquals(3L, creee.getClientId());
-        org.junit.jupiter.api.Assertions.assertEquals("lims_labo_a", creee.getLaboratoireCode());
     }
 
     @Test

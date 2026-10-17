@@ -4,6 +4,7 @@ import { Badge, Button, Card } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import { getSession } from "@/api/session";
 import type { RoleUtilisateur } from "@/api/session";
+import { TableauBordClient } from "@/components/demandes/client/TableauBordClient";
 
 export const Route = createFileRoute("/app/")({
   beforeLoad: () => {
@@ -34,6 +35,10 @@ function AppHomePage() {
   const session = getSession();
   const user = session?.user;
   if (!user) return null;
+
+  if (user.role === "CLIENT") {
+    return <TableauBordClient />;
+  }
 
   return (
     <Container className="py-12">

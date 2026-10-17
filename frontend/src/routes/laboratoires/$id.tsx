@@ -1,15 +1,31 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, Mail, MapPin, Phone } from "lucide-react";
-import type { ReactNode } from "react";
+import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
+import { ArrowLeft } from "lucide-react";
+import { useCallback, useEffect, useMemo } from "react";
+import { toast } from "sonner";
+import { messageErreurPanier } from "@/api/paniers";
+import { getSession } from "@/api/session";
 import { AnalyseCard } from "@/components/laboratoires/AnalyseCard";
+import { InfosLaboratoire } from "@/components/laboratoires/InfosLaboratoire";
 import { CardsSkeleton, LandingState } from "@/components/landing/LandingState";
 import { LabMap } from "@/components/map/LabMap";
 import { Badge, Button, Card, SectionHeader } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
+import { useAjouterAuPanier, usePanier } from "@/hooks/usePanier";
 import { useAnalysesLaboratoire, useLaboratoirePublic } from "@/hooks/useLaboratoiresPublic";
 import { PublicLayout } from "@/layouts/PublicLayout";
 
+/**
+ * Garde anti double ajout. React StrictMode exécute les effets deux fois :
+ * la clé est posée avant l'appel réseau puis retirée dès que la requête est
+ * terminée (succès comme échec).
+ */
+const _ajoutsEnCours = new Set<string>();
+
 export const Route = createFileRoute("/laboratoires/$id")({
+  validateSearch: (search: Record<string, unknown>): { ajouter?: number } => {
+    const valeur = Number(search["ajouter"]);
+    return Number.isInteger(valeur) && valeur > 0 ? { ajouter: valeur } : {};
+  },
   head: ({ params }) => ({
     meta: [
       { title: `Laboratoire ${params.id} — LabFlow LIMS` },
@@ -24,12 +40,90 @@ export const Route = createFileRoute("/laboratoires/$id")({
 
 function LaboratoireDetailPage() {
   const { id } = Route.useParams();
+  const router = useRouter();
+  const search = Route.useSearch();
   const laboratoireId = Number(id);
+
+  const session = getSession();
+  const estAnonyme = session === null;
+  const estClient = session?.user.role === "CLIENT";
+  const boutonVisible = estClient || estAnonyme;
+
   const labQuery = useLaboratoirePublic(laboratoireId);
   const analysesQuery = useAnalysesLaboratoire(laboratoireId);
+  const panierQuery = usePanier(estClient ? laboratoireId : undefined);
+  const ajoutMutation = useAjouterAuPanier(laboratoireId);
+  const ajouterEssai = ajoutMutation.mutate;
+
   const lab = labQuery.data;
   const analyses = analysesQuery.data ?? [];
   const hasCoords = lab?.latitude != null && lab.longitude != null;
+
+  const essaisDansPanier = useMemo(
+    () => new Set((panierQuery.data?.lignes ?? []).map((ligne) => ligne.essaiId)),
+    [panierQuery.data],
+  );
+
+  const retirerParamAjouter = useCallback(() => {
+    void router.navigate({
+      to: "/laboratoires/$id",
+      params: { id },
+      search: {},
+      replace: true,
+    });
+  }, [router, id]);
+
+  const ajouterAuPanier = useCallback(
+    (analyseId: number) => {
+      const cle = `${laboratoireId}:${analyseId}`;
+      if (_ajoutsEnCours.has(cle)) return;
+      _ajoutsEnCours.add(cle);
+      ajouterEssai(analyseId, {
+        onSuccess: () => {
+          toast.success("Essai ajouté au panier.");
+        },
+        onError: (error) => {
+          toast.error(messageErreurPanier(error));
+        },
+        onSettled: () => {
+          _ajoutsEnCours.delete(cle);
+        },
+      });
+    },
+    [ajouterEssai, laboratoireId],
+  );
+
+  const demanderConnexion = useCallback(
+    (analyseId: number) => {
+      const cible = `/laboratoires/${id}?ajouter=${analyseId}`;
+      router.history.push(`/login?redirect=${encodeURIComponent(cible)}`);
+    },
+    [router, id],
+  );
+
+  // Retour d'une connexion : /laboratoires/{id}?ajouter={essaiId}
+  useEffect(() => {
+    const aAjouter = search.ajouter;
+    if (aAjouter === undefined) return;
+    if (estClient) {
+      ajouterAuPanier(aAjouter);
+      retirerParamAjouter();
+      return;
+    }
+    if (estAnonyme) {
+      demanderConnexion(aAjouter);
+      return;
+    }
+    // Rôle sans panier : le paramètre est simplement retiré de l'URL.
+    retirerParamAjouter();
+  }, [
+    search.ajouter,
+    estClient,
+    estAnonyme,
+    ajouterAuPanier,
+    demanderConnexion,
+    retirerParamAjouter,
+  ]);
 
   return (
     <PublicLayout>
@@ -68,33 +162,7 @@ function LaboratoireDetailPage() {
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-                  <Card variant="glossy">
-                    <h2 className="text-lg font-extrabold text-ink-900">Informations générales</h2>
-                    <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-                      <InfoItem label="Raison sociale" value={lab.raisonSociale} />
-                      <InfoItem label="Code" value={lab.code} />
-                      <InfoItem label="Ville" value={lab.ville} />
-                      <InfoItem label="Adresse" value={lab.adresse} />
-                      <InfoItem
-                        label="Téléphone"
-                        value={lab.telephone}
-                        icon={<Phone className="size-3.5 text-brand-600" aria-hidden="true" />}
-                      />
-                      <InfoItem
-                        label="E-mail"
-                        value={lab.email}
-                        icon={<Mail className="size-3.5 text-brand-600" aria-hidden="true" />}
-                      />
-                      <InfoItem label="ICE" value={lab.ice} />
-                      {hasCoords ? (
-                        <InfoItem
-                          label="Coordonnées GPS"
-                          value={`${lab.latitude}, ${lab.longitude}`}
-                          icon={<MapPin className="size-3.5 text-brand-600" aria-hidden="true" />}
-                        />
-                      ) : null}
-                    </dl>
-                  </Card>
+                  <InfosLaboratoire laboratoire={lab} />
 
                   {hasCoords ? (
                     <LabMap laboratoires={[lab]} variant="embed" className="max-w-none" />
@@ -127,7 +195,25 @@ function LaboratoireDetailPage() {
                     >
                       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {analyses.map((analyse) => (
-                          <AnalyseCard key={analyse.id} analyse={analyse} />
+                          <AnalyseCard
+                            key={analyse.id}
+                            analyse={analyse}
+                            dejaDansPanier={essaisDansPanier.has(analyse.id)}
+                            enAjout={
+                              ajoutMutation.isPending && ajoutMutation.variables === analyse.id
+                            }
+                            onAjouter={
+                              boutonVisible
+                                ? () => {
+                                    if (estClient) {
+                                      ajouterAuPanier(analyse.id);
+                                    } else {
+                                      demanderConnexion(analyse.id);
+                                    }
+                                  }
+                                : undefined
+                            }
+                          />
                         ))}
                       </div>
                     </LandingState>
@@ -139,26 +225,5 @@ function LaboratoireDetailPage() {
         </div>
       </Container>
     </PublicLayout>
-  );
-}
-
-function InfoItem({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value?: string | null | undefined;
-  icon?: ReactNode | undefined;
-}) {
-  const text = value?.trim();
-  return (
-    <div>
-      <dt className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{label}</dt>
-      <dd className="mt-1 flex items-start gap-2 text-sm font-semibold text-ink-900">
-        {icon}
-        {text || "Non renseigné"}
-      </dd>
-    </div>
   );
 }
