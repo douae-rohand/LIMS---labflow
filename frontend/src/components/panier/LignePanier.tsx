@@ -17,22 +17,20 @@ export function LignePanier({
   onRetirer: () => void;
 }) {
   const boutonRetirer = (
-    <Button
-      size="sm"
-      variant="secondary"
+    <button
+      type="button"
       onClick={onRetirer}
-      loading={enRetrait}
       disabled={enRetrait}
-      icon={<Trash2 className="size-4" aria-hidden="true" />}
-      iconPosition="left"
+      className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
     >
-      Retirer
-    </Button>
+      <Trash2 className="size-3.5" aria-hidden="true" />
+      <span className="sr-only">Retirer</span>
+    </button>
   );
 
   if (!ligne.disponible) {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-amber-900">Essai indisponible</p>
           <p className="text-xs text-amber-800">
@@ -47,12 +45,12 @@ export function LignePanier({
   const duree = formatDuree(ligne.dureeEstimee);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand-900/10 bg-card px-4 py-3">
-      <div className="min-w-0">
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-brand-900/10 bg-card px-4 py-3">
+      <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-bold text-ink-900">{ligne.designation ?? "Essai"}</p>
+          <p className="text-sm font-semibold text-ink-900">{ligne.designation ?? "Essai"}</p>
           {ligne.code ? (
-            <span className="text-xs font-semibold tracking-wide text-brand-600 uppercase">
+            <span className="text-xs font-medium text-brand-600">
               {ligne.code}
             </span>
           ) : null}

@@ -1,4 +1,4 @@
-import { Clock, FlaskConical } from "lucide-react";
+import { Clock, FlaskConical, TestTube, Thermometer, Coins } from "lucide-react";
 import type { AnalysePublique, ExigencePublique } from "@/api/laboratoires";
 import { Badge, Button, Card, IconBox } from "@/components/lab";
 
@@ -70,39 +70,57 @@ export function AnalyseCard({
       {analyse.description?.trim() ? (
         <p className="mt-3 text-sm text-muted-foreground">{analyse.description}</p>
       ) : null}
-      <dl className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+      <dl className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
         {tarif ? (
-          <div>
-            <dt className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Tarif
-            </dt>
-            <dd className="font-bold text-ink-900">{tarif}</dd>
+          <div className="flex items-center gap-2">
+            <Coins className="size-4 text-brand-600" aria-hidden="true" />
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground">
+                Prix de l'analyse
+              </dt>
+              <dd className="font-bold text-ink-900">{tarif}</dd>
+            </div>
           </div>
         ) : null}
         {duree ? (
-          <div>
-            <dt className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Délai
-            </dt>
-            <dd className="inline-flex items-center gap-1 font-semibold text-ink-900">
-              <Clock className="size-3.5 text-brand-600" aria-hidden="true" />
-              {duree}
-            </dd>
+          <div className="flex items-center gap-2">
+            <Clock className="size-4 text-brand-600" aria-hidden="true" />
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground">
+                Délai estimé
+              </dt>
+              <dd className="font-semibold text-ink-900">{duree}</dd>
+            </div>
           </div>
         ) : null}
       </dl>
       {exigences.length > 0 ? (
-        <div className="mt-4 rounded-2xl bg-mint-200/40 px-4 py-3">
-          <p className="text-xs font-semibold tracking-wide text-brand-900 uppercase">
-            Échantillon requis
-          </p>
-          <ul className="mt-2 flex flex-col gap-1.5 text-sm text-ink-900">
+        <div className="mt-4 rounded-xl bg-mint-200/30 px-4 py-3">
+          <div className="flex items-center gap-2 mb-2">
+            <TestTube className="size-4 text-brand-600" aria-hidden="true" />
+            <p className="text-xs font-semibold text-brand-900">
+              Échantillon à fournir
+            </p>
+          </div>
+          <ul className="flex flex-col gap-2 text-sm">
             {exigences.map((exigence, index) => {
               const detail = detailExigence(exigence);
               return (
                 <li key={`${exigence.nature ?? "exigence"}-${index}`}>
-                  <span className="font-semibold">{exigence.nature ?? "Échantillon"}</span>
-                  {detail ? ` — ${detail}` : ""}
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-semibold text-ink-900">
+                      {exigence.nature ?? "Échantillon"}
+                    </span>
+                    {exigence.etatConservation?.trim() && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Thermometer className="size-3" aria-hidden="true" />
+                        <span>{exigence.etatConservation}</span>
+                      </div>
+                    )}
+                  </div>
+                  {detail && !exigence.etatConservation?.trim() && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>
+                  )}
                 </li>
               );
             })}

@@ -65,7 +65,7 @@ export function FormulaireCommande({
   return (
     <form
       onSubmit={handleSubmit((values) => mutation.mutate(values))}
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-3"
       noValidate
     >
       <div className="flex flex-col gap-1.5">
@@ -76,7 +76,7 @@ export function FormulaireCommande({
           onChange={titreField.field.onChange}
           onBlur={titreField.field.onBlur}
           disabled={mutation.isPending}
-          placeholder="Ex : Analyses eau potable — lot 12"
+          placeholder="Ex : Analyses d'eau potable - lot 12"
           aria-invalid={!!errors.titre}
           aria-describedby={errors.titre ? "commande-titre-error" : undefined}
         />
@@ -95,7 +95,7 @@ export function FormulaireCommande({
           onChange={objectifField.field.onChange}
           onBlur={objectifField.field.onBlur}
           disabled={mutation.isPending}
-          placeholder="Contexte, résultats attendus"
+          placeholder="Contexte et résultats attendus"
           aria-invalid={!!errors.objectif}
           aria-describedby={errors.objectif ? "commande-objectif-error" : undefined}
         />
@@ -106,8 +106,8 @@ export function FormulaireCommande({
         ) : null}
       </div>
 
-      <Button type="submit" disabled={mutation.isPending} loading={mutation.isPending}>
-        {mutation.isPending ? "Envoi…" : "Valider la commande"}
+      <Button type="submit" disabled={mutation.isPending} loading={mutation.isPending} className="mt-2">
+        {mutation.isPending ? "Envoi…" : "Finaliser la demande"}
       </Button>
     </form>
   );

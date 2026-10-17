@@ -13,7 +13,7 @@ import { login, toSessionUser } from "@/api/auth";
 import { setSession, getSession, getStatus } from "@/api/session";
 import { apiClient, ApiError } from "@/api/axios";
 import { cn } from "@/lib/utils";
-import { sanitizeRedirect } from "@/lib/redirect";
+import { cibleApresConnexion, sanitizeRedirect } from "@/lib/redirect";
 import { RenvoyerLienActivation } from "@/components/auth/RenvoyerLienActivation";
 
 // ---------------------------------------------------------------------------
@@ -40,7 +40,9 @@ export const Route = createFileRoute("/login")({
         throw Route.redirect({ to: "/changer-mot-de-passe" });
       }
       if (search.redirect !== undefined) {
-        throw Route.redirect({ href: search.redirect });
+        throw Route.redirect({
+          href: cibleApresConnexion(session?.user.role, search.redirect),
+        });
       }
       if (session?.user.role === "RESPONSABLE") {
         throw Route.redirect({ to: "/app/demandes-clients" });
@@ -157,10 +159,10 @@ function LoginPage() {
         setSession(response.accessToken, user);
         apiClient.setTenant(user.tenantId);
 
+        const defaut = user.role === "RESPONSABLE" ? "/app/demandes-clients" : "/app";
         const cible = user.mustChangePassword
           ? "/changer-mot-de-passe"
-          : (search.redirect ??
-            (user.role === "RESPONSABLE" ? "/app/demandes-clients" : "/app"));
+          : cibleApresConnexion(user.role, search.redirect, defaut);
         router.history.push(cible);
       }
     } catch (err) {

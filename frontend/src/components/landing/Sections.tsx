@@ -227,61 +227,23 @@ export function Features() {
 }
 
 export function WorkflowSection() {
-  const { data, isPending, error, refetch } = useLandingPublic();
-  const statuts = data?.statutsDemande ?? [];
-
   return (
     <Section id="workflow" tone="alt">
       <SectionHeader
         eyebrow="Workflow"
         title="De la demande à la clôture"
-        description="Parcours métier du laboratoire. Les statuts ci-dessous sont ceux réellement utilisés par le backend."
+        description="Parcours métier du laboratoire, de la soumission de l'échantillon à la validation finale du rapport."
       />
       <Stepper steps={workflowSteps} className="mt-14" />
-      <Reveal className="mt-14">
-        <Card variant="glass" className="flex flex-col gap-4">
-          <p className="text-sm font-bold text-ink-900">Statuts d'une demande</p>
-          <LandingState
-            loading={isPending}
-            error={error}
-            onRetry={() => {
-              void refetch();
-            }}
-            empty={statuts.length === 0}
-            emptyMessage="Aucun statut de demande n'est défini."
-            skeleton={<SkeletonPills />}
-          >
-            <div className="flex flex-wrap gap-2">
-              {statuts.map((statut, i) => (
-                <Badge
-                  key={statut}
-                  size="sm"
-                  variant={i < statuts.length - 2 ? (i === statuts.length - 3 ? "lime" : "mint") : "outline"}
-                >
-                  {statut}
-                </Badge>
-              ))}
-            </div>
-          </LandingState>
-        </Card>
-      </Reveal>
     </Section>
-  );
-}
-
-function SkeletonPills() {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {Array.from({ length: 7 }, (_, i) => (
-        <span key={i} className="block h-7 w-24 animate-pulse rounded-full bg-surface-card" />
-      ))}
-    </div>
   );
 }
 
 export function Roles() {
   const { data, isPending, error, refetch } = useLandingPublic();
-  const roles = data?.roles ?? [];
+  const allRoles = data?.roles ?? [];
+  const roles = allRoles.filter((r) => r.code !== "SUPER_ADMINISTRATEUR");
+
   const titre =
     roles.length > 0
       ? `${roles.length} rôle${roles.length > 1 ? "s" : ""} enregistré${roles.length > 1 ? "s" : ""}`

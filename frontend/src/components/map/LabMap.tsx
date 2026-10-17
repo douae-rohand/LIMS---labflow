@@ -12,6 +12,7 @@ import {
   type MapPoint,
 } from "@/lib/map/geocode";
 import { fetchDrivingRoute, type RouteSummary } from "@/lib/map/routing";
+import type { BaseCatalogue } from "@/lib/redirect";
 import { cn } from "@/lib/utils";
 import { LabMapDirections, type DirectionSuggestion } from "./LabMapDirections";
 
@@ -69,12 +70,15 @@ type LabMapProps = {
   laboratoires: LaboratoirePublic[];
   variant?: "full" | "embed";
   className?: string;
+  /** Base du lien « Voir la fiche » : public ou espace client. */
+  base?: BaseCatalogue | undefined;
 };
 
 export function LabMap({
   laboratoires,
   variant = "full",
   className,
+  base = "/laboratoires",
 }: LabMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -510,7 +514,7 @@ export function LabMap({
                 {selectedLab.adresse?.trim() ? ` — ${selectedLab.adresse}` : ""}
               </p>
               <Link
-                to="/laboratoires/$id"
+                to={base === "/app/laboratoires" ? "/app/laboratoires/$id" : "/laboratoires/$id"}
                 params={{ id: String(selectedLab.id) }}
                 className="mt-3 inline-flex text-sm font-semibold text-brand-900 hover:underline"
               >

@@ -42,7 +42,7 @@ function PanierIndexPage() {
 
       {paniers.length === 0 ? (
         <div className="mt-6">
-          <Link to="/laboratoires">
+          <Link to="/app/laboratoires">
             <Button variant="secondary">Parcourir les laboratoires</Button>
           </Link>
         </div>

@@ -23,8 +23,8 @@ export function DemandesClientFiltres({
   onReinitialiser,
 }: DemandesClientFiltresProps) {
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="relative min-w-56 flex-1">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-3">
+      <div className="relative min-w-[280px] flex-1">
         <Label htmlFor="mes-demandes-recherche" className="sr-only">
           Rechercher une demande
         </Label>
@@ -54,39 +54,42 @@ export function DemandesClientFiltres({
         )}
       </div>
 
-      <div className="relative min-w-44">
-        <Label htmlFor="mes-demandes-statut" className="sr-only">
-          Filtrer par statut
-        </Label>
-        <Select
-          id="mes-demandes-statut"
-          value={statut ?? ""}
-          onChange={(e) => {
-            const value = e.target.value;
-            onStatutChange(value === "" ? undefined : (value as StatutDemande));
-          }}
-        >
-          <option value="">Tous les statuts</option>
-          {STATUTS_DEMANDE.map((valeur) => (
-            <option key={valeur} value={valeur}>
-              {LIBELLE_STATUT_DEMANDE[valeur]}
-            </option>
-          ))}
-        </Select>
-      </div>
+      <div className="flex items-center gap-3 sm:w-auto">
+        <div className="relative min-w-[200px] flex-1 sm:flex-initial">
+          <Label htmlFor="mes-demandes-statut" className="sr-only">
+            Filtrer par statut
+          </Label>
+          <Select
+            id="mes-demandes-statut"
+            value={statut ?? ""}
+            onChange={(e) => {
+              const value = e.target.value;
+              onStatutChange(value === "" ? undefined : (value as StatutDemande));
+            }}
+          >
+            <option value="">Tous les statuts</option>
+            {STATUTS_DEMANDE.map((valeur) => (
+              <option key={valeur} value={valeur}>
+                {LIBELLE_STATUT_DEMANDE[valeur]}
+              </option>
+            ))}
+          </Select>
+        </div>
 
-      {filtresActifs && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          icon={<RotateCcw className="size-4" aria-hidden="true" />}
-          iconPosition="left"
-          onClick={onReinitialiser}
-        >
-          Réinitialiser
-        </Button>
-      )}
+        {filtresActifs && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            icon={<RotateCcw className="size-4" aria-hidden="true" />}
+            iconPosition="left"
+            onClick={onReinitialiser}
+            className="shrink-0"
+          >
+            Réinitialiser
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

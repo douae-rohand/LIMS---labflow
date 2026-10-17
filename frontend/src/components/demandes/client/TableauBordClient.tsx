@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Card } from "@/components/lab";
+import { Button, Card } from "@/components/lab";
 import { StatutDemandeBadge } from "@/components/demandes/StatutDemandeBadge";
 import { Container } from "@/components/layout/Container";
 import { CardsSkeleton, LandingState } from "@/components/landing/LandingState";
@@ -36,19 +36,11 @@ export function TableauBordClient() {
 
   return (
     <Container className="py-10">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-ink-900">Tableau de bord</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Suivez l&apos;avancement de vos demandes d&apos;analyses.
-          </p>
-        </div>
-        <Link
-          to="/app/demandes"
-          className="text-sm font-semibold text-brand-900 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900"
-        >
-          Voir toutes mes demandes
-        </Link>
+      <div>
+        <h1 className="text-2xl font-extrabold text-ink-900">Tableau de bord</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Suivez l&apos;avancement de vos demandes d&apos;analyses.
+        </p>
       </div>
 
       <div className="mt-8">
