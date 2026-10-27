@@ -19,6 +19,47 @@ public interface EssaiRepository extends JpaRepository<Essai, Long> {
 
     boolean existsByCode(String code);
 
+    boolean existsByCodeIgnoreCase(String code);
+
+    boolean existsByCodeIgnoreCaseAndIdNot(String code, Long id);
+
+    /**
+     * Recherche dans le catalogue du schéma courant.
+     * {@code filtrerActif} à false ignore {@code actif} et renvoie tout le catalogue du laboratoire.
+     */
+    @Query(
+            value = """
+                    SELECT e FROM Essai e
+                    LEFT JOIN e.domaine d
+                    WHERE (:filtrerActif = false OR e.actif = :actif)
+                      AND (
+                        :q = ''
+                        OR LOWER(e.code) LIKE LOWER(CONCAT('%', :q, '%'))
+                        OR LOWER(e.designation) LIKE LOWER(CONCAT('%', :q, '%'))
+                        OR LOWER(COALESCE(e.methode, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+                        OR LOWER(COALESCE(d.libelle, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+                        OR LOWER(COALESCE(d.code, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+                      )
+                    """,
+            countQuery = """
+                    SELECT COUNT(e) FROM Essai e
+                    LEFT JOIN e.domaine d
+                    WHERE (:filtrerActif = false OR e.actif = :actif)
+                      AND (
+                        :q = ''
+                        OR LOWER(e.code) LIKE LOWER(CONCAT('%', :q, '%'))
+                        OR LOWER(e.designation) LIKE LOWER(CONCAT('%', :q, '%'))
+                        OR LOWER(COALESCE(e.methode, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+                        OR LOWER(COALESCE(d.libelle, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+                        OR LOWER(COALESCE(d.code, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+                      )
+                    """)
+    Page<Essai> rechercher(
+            @Param("q") String q,
+            @Param("filtrerActif") boolean filtrerActif,
+            @Param("actif") boolean actif,
+            Pageable pageable);
+
     Page<Essai> findByActif(Boolean actif, Pageable pageable);
 
     Optional<Essai> findFirstByActifTrue();
