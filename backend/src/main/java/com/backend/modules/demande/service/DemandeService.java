@@ -816,7 +816,8 @@ public class DemandeService {
     private JournalAudit construireEntreeAudit(String action, String nomSchema, Long demandeId,
                                                String statutAvant, String statutApres, String motif) {
         UtilisateurPrincipal principal = SecurityUtils.principalCourant();
-        Utilisateur auteur = utilisateurRepository.findByEmail(principal.getEmail()).orElse(null);
+        Utilisateur auteur = tenantExecutor.inCentral(() ->
+                utilisateurRepository.findByEmail(principal.getEmail()).orElse(null));
         if (auteur == null) {
             log.warn("Audit {} ignoré : utilisateur introuvable pour {}", action, principal.getEmail());
             return null;
