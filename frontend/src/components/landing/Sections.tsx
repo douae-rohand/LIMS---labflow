@@ -205,8 +205,8 @@ export function Features() {
       <div className="mt-14 grid items-stretch gap-6 lg:grid-cols-[1fr_2fr]">
         <Reveal className="hidden lg:block">
           <Photo
-            src={photos.scientistLab.src}
-            alt={photos.scientistLab.alt}
+            src={photos.featureLab.src}
+            alt={photos.featureLab.alt}
             className="h-full min-h-96"
           />
         </Reveal>
@@ -309,8 +309,8 @@ export function Validation() {
         </Reveal>
         <Reveal variants={slideInRight} className="relative">
           <Photo
-            src={validation.photo.src}
-            alt={validation.photo.alt}
+            src={photos.validationMicroscope.src}
+            alt={photos.validationMicroscope.alt}
             className="aspect-[4/3] w-full"
           />
           <motion.div {...levitate(6, 5)} className="absolute -bottom-10 -right-2 w-[75%] sm:-right-8 sm:w-[60%]">
@@ -363,7 +363,7 @@ export function AiSection() {
           </Reveal>
         </div>
         <Reveal variants={slideInRight} className="relative">
-          <Photo src={photos.cells.src} alt={photos.cells.alt} className="aspect-square w-full" />
+          <Photo src={photos.aiLab.src} alt={photos.aiLab.alt} className="aspect-square w-full" />
           <motion.div {...levitate(7, 6)} className="absolute inset-x-6 bottom-6 sm:inset-x-auto sm:right-6 sm:w-[70%]">
             <AiMockup />
           </motion.div>
@@ -410,7 +410,7 @@ export function Security() {
       <SectionHeader eyebrow={security.eyebrow} title={security.title} description={security.description} />
       <div className="mt-14 grid gap-6 lg:grid-cols-[1fr_1.6fr]">
         <Reveal>
-          <Photo src={security.photo.src} alt={security.photo.alt} className="h-full min-h-72" />
+          <Photo src={photos.multiTenant.src} alt={photos.multiTenant.alt} className="h-full min-h-72" />
         </Reveal>
         <motion.div {...grid("grid gap-4 sm:grid-cols-2")}>
           {security.cards.map((c) => (
@@ -477,7 +477,7 @@ export function Faq() {
         <div className="flex flex-col gap-6">
           <SectionHeader align="left" eyebrow="FAQ" title="Questions fréquentes" />
           <Reveal className="hidden lg:block">
-            <Photo src={photos.microscopes.src} alt={photos.microscopes.alt} className="aspect-[4/3]" />
+            <Photo src={photos.faqLab.src} alt={photos.faqLab.alt} className="aspect-[4/3]" />
           </Reveal>
         </div>
         <FaqItems />
