@@ -161,12 +161,13 @@ public class DemandeService {
         Client fiche = clientService.assurerFicheLocale(utilisateurId, nomSchema);
 
         String prefixe = LocalDate.now().format(FORMAT_PREFIXE) + "-";
+        String suffixeAleatoire = "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
         Demande demande = null;
         for (int tentative = 0; tentative < MAX_ESSAIS_NUMERO; tentative++) {
             try {
                 demande = tenantExecutor.inTenant(nomSchema, () -> {
                     long maxSeq = demandeRepository.findMaxSequenceForPrefix(prefixe);
-                    String numero = prefixe + String.format("%03d", maxSeq + 1);
+                    String numero = prefixe + String.format("%03d", maxSeq + 1) + suffixeAleatoire;
                     Client client = clientRepository.findById(fiche.getId())
                             .orElseThrow(() -> new ResourceNotFoundException("Client", "id", fiche.getId()));
                     Demande d = Demande.builder()
