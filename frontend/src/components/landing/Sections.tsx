@@ -205,8 +205,8 @@ export function Features() {
       <div className="mt-14 grid items-stretch gap-6 lg:grid-cols-[1fr_2fr]">
         <Reveal className="hidden lg:block">
           <Photo
-            src={photos.scientistLab.src}
-            alt={photos.scientistLab.alt}
+            src={photos.featureLab.src}
+            alt={photos.featureLab.alt}
             className="h-full min-h-96"
           />
         </Reveal>
@@ -227,61 +227,23 @@ export function Features() {
 }
 
 export function WorkflowSection() {
-  const { data, isPending, error, refetch } = useLandingPublic();
-  const statuts = data?.statutsDemande ?? [];
-
   return (
     <Section id="workflow" tone="alt">
       <SectionHeader
         eyebrow="Workflow"
         title="De la demande à la clôture"
-        description="Parcours métier du laboratoire. Les statuts ci-dessous sont ceux réellement utilisés par le backend."
+        description="Parcours métier du laboratoire, de la soumission de l'échantillon à la validation finale du rapport."
       />
       <Stepper steps={workflowSteps} className="mt-14" />
-      <Reveal className="mt-14">
-        <Card variant="glass" className="flex flex-col gap-4">
-          <p className="text-sm font-bold text-ink-900">Statuts d'une demande</p>
-          <LandingState
-            loading={isPending}
-            error={error}
-            onRetry={() => {
-              void refetch();
-            }}
-            empty={statuts.length === 0}
-            emptyMessage="Aucun statut de demande n'est défini."
-            skeleton={<SkeletonPills />}
-          >
-            <div className="flex flex-wrap gap-2">
-              {statuts.map((statut, i) => (
-                <Badge
-                  key={statut}
-                  size="sm"
-                  variant={i < statuts.length - 2 ? (i === statuts.length - 3 ? "lime" : "mint") : "outline"}
-                >
-                  {statut}
-                </Badge>
-              ))}
-            </div>
-          </LandingState>
-        </Card>
-      </Reveal>
     </Section>
-  );
-}
-
-function SkeletonPills() {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {Array.from({ length: 7 }, (_, i) => (
-        <span key={i} className="block h-7 w-24 animate-pulse rounded-full bg-surface-card" />
-      ))}
-    </div>
   );
 }
 
 export function Roles() {
   const { data, isPending, error, refetch } = useLandingPublic();
-  const roles = data?.roles ?? [];
+  const allRoles = data?.roles ?? [];
+  const roles = allRoles.filter((r) => r.code !== "SUPER_ADMINISTRATEUR");
+
   const titre =
     roles.length > 0
       ? `${roles.length} rôle${roles.length > 1 ? "s" : ""} enregistré${roles.length > 1 ? "s" : ""}`
@@ -347,8 +309,8 @@ export function Validation() {
         </Reveal>
         <Reveal variants={slideInRight} className="relative">
           <Photo
-            src={validation.photo.src}
-            alt={validation.photo.alt}
+            src={photos.validationMicroscope.src}
+            alt={photos.validationMicroscope.alt}
             className="aspect-[4/3] w-full"
           />
           <motion.div {...levitate(6, 5)} className="absolute -bottom-10 -right-2 w-[75%] sm:-right-8 sm:w-[60%]">
@@ -401,7 +363,7 @@ export function AiSection() {
           </Reveal>
         </div>
         <Reveal variants={slideInRight} className="relative">
-          <Photo src={photos.cells.src} alt={photos.cells.alt} className="aspect-square w-full" />
+          <Photo src={photos.aiLab.src} alt={photos.aiLab.alt} className="aspect-square w-full" />
           <motion.div {...levitate(7, 6)} className="absolute inset-x-6 bottom-6 sm:inset-x-auto sm:right-6 sm:w-[70%]">
             <AiMockup />
           </motion.div>
@@ -448,7 +410,7 @@ export function Security() {
       <SectionHeader eyebrow={security.eyebrow} title={security.title} description={security.description} />
       <div className="mt-14 grid gap-6 lg:grid-cols-[1fr_1.6fr]">
         <Reveal>
-          <Photo src={security.photo.src} alt={security.photo.alt} className="h-full min-h-72" />
+          <Photo src={photos.multiTenant.src} alt={photos.multiTenant.alt} className="h-full min-h-72" />
         </Reveal>
         <motion.div {...grid("grid gap-4 sm:grid-cols-2")}>
           {security.cards.map((c) => (
@@ -515,7 +477,7 @@ export function Faq() {
         <div className="flex flex-col gap-6">
           <SectionHeader align="left" eyebrow="FAQ" title="Questions fréquentes" />
           <Reveal className="hidden lg:block">
-            <Photo src={photos.microscopes.src} alt={photos.microscopes.alt} className="aspect-[4/3]" />
+            <Photo src={photos.faqLab.src} alt={photos.faqLab.alt} className="aspect-[4/3]" />
           </Reveal>
         </div>
         <FaqItems />

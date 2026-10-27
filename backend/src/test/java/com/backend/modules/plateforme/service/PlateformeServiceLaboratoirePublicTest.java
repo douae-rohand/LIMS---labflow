@@ -5,8 +5,11 @@ import com.backend.common.tenant.TenantExecutor;
 import com.backend.common.tenant.TenantProvisioner;
 import com.backend.modules.domaine.entity.Domaine;
 import com.backend.modules.essai.entity.Essai;
+import com.backend.modules.essai.entity.ExigenceEchantillon;
 import com.backend.modules.essai.repository.EssaiRepository;
+import com.backend.modules.essai.repository.ExigenceEchantillonRepository;
 import com.backend.modules.plateforme.dto.AnalysePubliqueDto;
+import com.backend.modules.plateforme.dto.ExigencePubliqueDto;
 import com.backend.modules.plateforme.dto.LaboratoirePublicDto;
 import com.backend.modules.plateforme.entity.Laboratoire;
 import com.backend.modules.plateforme.repository.LaboratoireRepository;
@@ -24,6 +27,7 @@ import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -43,6 +47,8 @@ class PlateformeServiceLaboratoirePublicTest {
     private TenantExecutor tenantExecutor;
     @Mock
     private EssaiRepository essaiRepository;
+    @Mock
+    private ExigenceEchantillonRepository exigenceEchantillonRepository;
     @Mock
     private com.backend.modules.utilisateur.repository.UtilisateurRepository utilisateurRepository;
 
@@ -65,7 +71,7 @@ class PlateformeServiceLaboratoirePublicTest {
     @Test
     void trouverPublicParIdIgnoreUnLaboratoireInactif() {
         when(laboratoireRepository.findById(2L)).thenReturn(Optional.of(
-                Laboratoire.builder().id(2L).code("inactif").statut("INACTIF").build()
+                Laboratoire.builder().id(2L).code("inactif").statut("DESACTIVE").build()
         ));
 
         assertThrows(ResourceNotFoundException.class, () -> plateformeService.trouverPublicParId(2L));
@@ -94,16 +100,47 @@ class PlateformeServiceLaboratoirePublicTest {
                         .unite("g/L")
                         .actif(true)
                         .domaine(Domaine.builder().code("BIOCHIMIE").libelle("Biochimie").build())
+                        .build(),
+                Essai.builder()
+                        .id(11L)
+                        .code("NFS")
+                        .designation("Numération formule sanguine")
+                        .tarif(new BigDecimal("80.00"))
+                        .dureeEstimee(120)
+                        .actif(true)
+                        .domaine(Domaine.builder().code("HEMATOLOGIE").libelle("Hématologie").build())
+                        .build()
+        ));
+        when(exigenceEchantillonRepository.findByEssai_IdIn(any())).thenReturn(List.of(
+                ExigenceEchantillon.builder()
+                        .id(100L)
+                        .essai(Essai.builder().id(10L).build())
+                        .nature("Sang total")
+                        .etatConservation("Réfrigéré 2-8°C")
+                        .quantiteMinimale(new BigDecimal("5.00"))
+                        .unite("mL")
                         .build()
         ));
 
         List<AnalysePubliqueDto> analyses = plateformeService.listerAnalysesPubliques(1L);
 
-        assertEquals(1, analyses.size());
-        assertEquals("GLY", analyses.getFirst().getCode());
-        assertEquals("Biochimie", analyses.getFirst().getDomaineLibelle());
-        assertEquals(new BigDecimal("45.00"), analyses.getFirst().getTarif());
-        assertEquals(60, analyses.getFirst().getDureeEstimee());
+        assertEquals(2, analyses.size());
+
+        AnalysePubliqueDto glycemie = analyses.getFirst();
+        assertEquals("GLY", glycemie.getCode());
+        assertEquals("Biochimie", glycemie.getDomaineLibelle());
+        assertEquals(new BigDecimal("45.00"), glycemie.getTarif());
+        assertEquals(60, glycemie.getDureeEstimee());
+        assertEquals(1, glycemie.getExigences().size());
+        ExigencePubliqueDto exigence = glycemie.getExigences().getFirst();
+        assertEquals("Sang total", exigence.getNature());
+        assertEquals("Réfrigéré 2-8°C", exigence.getEtatConservation());
+        assertEquals(new BigDecimal("5.00"), exigence.getQuantiteMinimale());
+        assertEquals("mL", exigence.getUnite());
+
+        AnalysePubliqueDto nfs = analyses.get(1);
+        assertEquals("NFS", nfs.getCode());
+        assertTrue(nfs.getExigences().isEmpty());
     }
 
     private static Laboratoire laboratoireActif() {

@@ -19,6 +19,8 @@ public interface LaboratoireRepository extends JpaRepository<Laboratoire, Long> 
 
     Optional<Laboratoire> findByNomSchema(String nomSchema);
 
+    Optional<Laboratoire> findByIdAndStatut(Long id, String statut);
+
     boolean existsByCode(String code);
 
     boolean existsByIce(String ice);

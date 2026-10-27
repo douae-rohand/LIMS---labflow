@@ -25,13 +25,13 @@ public class NotificationReception {
     @JoinColumn(name = "utilisateur_id", nullable = false)
     private Utilisateur utilisateur;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = CanalNotificationConverter.class)
     @Column(length = 30)
     private CanalNotification canal;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = StatutEnvoiConverter.class)
     @Column(name = "statut_envoi", length = 30)
-    private StatutNotification statutEnvoi;
+    private StatutEnvoi statutEnvoi;
 
     @Builder.Default
     @Column(nullable = false)

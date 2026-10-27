@@ -45,7 +45,33 @@ export function Select({
   className,
   ...props
 }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select className={cn(field, className)} {...props} />;
+  return (
+    <div className="relative w-full">
+      <select
+        className={cn(
+          field,
+          "appearance-none pr-10", // pr-10 pour laisser de la place à l'icône
+          className
+        )}
+        {...props}
+      />
+      <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+        <svg
+          className="size-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
+      </div>
+    </div>
+  );
 }
 
 export function Checkbox({

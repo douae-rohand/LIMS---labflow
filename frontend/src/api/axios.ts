@@ -307,7 +307,7 @@ export class ApiClient {
         if (token !== null) {
           config.headers.set('Authorization', `Bearer ${token}`);
         }
-        if (this.currentTenant !== null) {
+        if (this.currentTenant !== null && this.currentTenant !== '') {
           config.headers.set('X-Tenant-ID', this.currentTenant);
         }
         return config;

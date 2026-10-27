@@ -269,7 +269,7 @@ export const domains = [
     title: "Médical",
     icon: Activity,
     examples: ["Hématologie", "Biochimie", "Sérologie"],
-    photo: photos.sampling,
+    photo: photos.domainMedical,
   },
   {
     number: "02",
@@ -283,14 +283,14 @@ export const domains = [
     title: "Environnemental",
     icon: FlaskConical,
     examples: ["Eaux", "Sols", "Air ambiant"],
-    photo: photos.microscopes,
+    photo: photos.domainEnvironmental,
   },
   {
     number: "04",
     title: "Pharmaceutique et cosmétique",
     icon: BookOpen,
     examples: ["Stabilité", "Microbiologie", "Dosage d'actifs"],
-    photo: photos.cells,
+    photo: photos.domainCosmetic,
   },
 ];
 

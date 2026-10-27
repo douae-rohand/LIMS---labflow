@@ -4,8 +4,9 @@ import com.backend.modules.essai.entity.StatutEssai;
 import com.backend.modules.planification.entity.StatutPlanification;
 
 /**
- * Traduit le vocabulaire de planification vers le statut canonique de {@code ligne_essai}.
+ * Traduit le vocabulaire de planification vers le statut de {@code ligne_essai}.
  * Les noms de {@link StatutPlanification} restent ceux exposés par l'API.
+ * Plusieurs statuts de planification partagent {@link StatutEssai#ATTENTE_ECHANTILLON}.
  */
 public final class CorrespondanceStatutLigne {
 
@@ -14,14 +15,13 @@ public final class CorrespondanceStatutLigne {
 
     public static StatutEssai versLigne(StatutPlanification statut) {
         if (statut == null) {
-            return StatutEssai.PLANIFIEE;
+            return StatutEssai.ATTENTE_ECHANTILLON;
         }
         return switch (statut) {
-            case PLANIFIEE -> StatutEssai.PLANIFIEE;
+            case PLANIFIEE, REPORTEE -> StatutEssai.ATTENTE_ECHANTILLON;
             case EN_COURS -> StatutEssai.EN_COURS;
             case TERMINEE -> StatutEssai.TERMINE;
-            case ANNULEE -> StatutEssai.ANNULE;
-            case REPORTEE -> StatutEssai.REPORTEE;
+            case ANNULEE -> StatutEssai.NON_REALISABLE;
         };
     }
 
@@ -30,12 +30,10 @@ public final class CorrespondanceStatutLigne {
             return null;
         }
         return switch (statut) {
-            case PLANIFIEE -> StatutPlanification.PLANIFIEE;
+            case ATTENTE_ECHANTILLON -> StatutPlanification.PLANIFIEE;
             case EN_COURS -> StatutPlanification.EN_COURS;
             case TERMINE -> StatutPlanification.TERMINEE;
-            case ANNULE -> StatutPlanification.ANNULEE;
-            case REPORTEE -> StatutPlanification.REPORTEE;
-            case EN_ATTENTE, A_REFAIRE -> null;
+            case NON_REALISABLE -> StatutPlanification.ANNULEE;
         };
     }
 }

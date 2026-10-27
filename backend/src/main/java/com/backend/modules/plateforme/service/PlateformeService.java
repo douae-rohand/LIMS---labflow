@@ -7,7 +7,9 @@ import com.backend.common.tenant.TenantExecutor;
 import com.backend.common.tenant.TenantProvisioner;
 import com.backend.modules.demande.entity.StatutDemande;
 import com.backend.modules.essai.entity.Essai;
+import com.backend.modules.essai.entity.ExigenceEchantillon;
 import com.backend.modules.essai.repository.EssaiRepository;
+import com.backend.modules.essai.repository.ExigenceEchantillonRepository;
 import com.backend.modules.plateforme.dto.*;
 import com.backend.modules.plateforme.entity.*;
 import com.backend.modules.plateforme.repository.DemandeIntegrationRepository;
@@ -33,14 +35,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PlateformeService {
 
-    private static final String STATUT_ACTIF = "ACTIF";
-    private static final String STATUT_INACTIF = "INACTIF";
+    private static final String STATUT_ACTIF = StatutLabo.ACTIF.name();
+    private static final String STATUT_DESACTIVE = StatutLabo.DESACTIVE.name();
     private static final Set<String> TRIS_AUTORISES = Set.of(
             "raisonSociale", "code", "ville", "email", "telephone", "dateCreation", "statut");
 
@@ -50,6 +53,7 @@ public class PlateformeService {
     private final TenantProvisioner tenantProvisioner;
     private final TenantExecutor tenantExecutor;
     private final EssaiRepository essaiRepository;
+    private final ExigenceEchantillonRepository exigenceEchantillonRepository;
     private final UtilisateurRepository utilisateurRepository;
 
     @Transactional
@@ -92,10 +96,20 @@ public class PlateformeService {
 
     public List<AnalysePubliqueDto> listerAnalysesPubliques(Long laboratoireId) {
         Laboratoire lab = tenantExecutor.inCentral(() -> exigerLaboratoireActif(laboratoireId));
-        return tenantExecutor.inTenant(lab.getNomSchema(), () ->
-                essaiRepository.findActifsAvecDomaine().stream()
-                        .map(this::toAnalysePubliqueDto)
-                        .toList());
+        return tenantExecutor.inTenant(lab.getNomSchema(), () -> {
+            List<Essai> essais = essaiRepository.findActifsAvecDomaine();
+            if (essais.isEmpty()) {
+                return List.<AnalysePubliqueDto>of();
+            }
+            List<Long> essaiIds = essais.stream().map(Essai::getId).toList();
+            Map<Long, List<ExigenceEchantillon>> exigencesParEssai =
+                    exigenceEchantillonRepository.findByEssai_IdIn(essaiIds).stream()
+                            .collect(Collectors.groupingBy(x -> x.getEssai().getId()));
+            return essais.stream()
+                    .map(essai -> toAnalysePubliqueDto(
+                            essai, exigencesParEssai.getOrDefault(essai.getId(), List.of())))
+                    .toList();
+        });
     }
 
     private Laboratoire exigerLaboratoireActif(Long id) {
@@ -109,7 +123,8 @@ public class PlateformeService {
 
     /**
      * Agrégat public de la landing : rôles et laboratoires lus en base centrale,
-     * statuts de demande issus de l'enum métier (même source que le module demande).
+     * statuts de demande issus de l'enum métier (même source que le module
+     * demande).
      */
     @Transactional(readOnly = true)
     public LandingPublicDto obtenirLandingPublic() {
@@ -157,7 +172,7 @@ public class PlateformeService {
 
     @Transactional(readOnly = true)
     public Page<LaboratoireDto> rechercherLaboratoires(String recherche, String statut, String ville,
-                                                       int page, int size, String tri, String ordre) {
+            int page, int size, String tri, String ordre) {
         String statutNormalise = normaliserStatut(statut);
         Page<Laboratoire> resultat = laboratoireRepository.rechercher(
                 echapperLike(texte(recherche)),
@@ -190,12 +205,11 @@ public class PlateformeService {
 
     @Transactional(readOnly = true)
     public StatistiquesPlateformeDto statistiques() {
-        long enAttente = demandeIntegrationRepository.countByStatut(StatutIntegration.EN_ATTENTE.name())
-                + demandeIntegrationRepository.countByStatut(StatutIntegration.EN_COURS_VALIDATION.name());
+        long enAttente = demandeIntegrationRepository.countByStatut(StatutIntegration.EN_ATTENTE.name());
         return StatistiquesPlateformeDto.builder()
                 .totalLaboratoires(laboratoireRepository.count())
                 .laboratoiresActifs(laboratoireRepository.countByStatut(STATUT_ACTIF))
-                .laboratoiresDesactives(laboratoireRepository.countByStatut(STATUT_INACTIF))
+                .laboratoiresDesactives(laboratoireRepository.countByStatut(STATUT_DESACTIVE))
                 .demandesEnAttente(enAttente)
                 .totalDemandes(demandeIntegrationRepository.count())
                 .build();
@@ -276,7 +290,7 @@ public class PlateformeService {
      */
     @Transactional
     public LaboratoireDto desactiverLaboratoire(Long id) {
-        return changerStatut(id, STATUT_INACTIF);
+        return changerStatut(id, STATUT_DESACTIVE);
     }
 
     @Transactional
@@ -312,7 +326,9 @@ public class PlateformeService {
             return null;
         }
         String normalise = valeur.toUpperCase(Locale.ROOT);
-        if (!STATUT_ACTIF.equals(normalise) && !STATUT_INACTIF.equals(normalise)) {
+        try {
+            StatutLabo.valueOf(normalise);
+        } catch (IllegalArgumentException ex) {
             throw new BusinessRuleException("STATUT_LABORATOIRE_INVALIDE",
                     "Le statut du laboratoire est invalide");
         }
@@ -371,19 +387,24 @@ public class PlateformeService {
                 .build();
     }
 
-    private AnalysePubliqueDto toAnalysePubliqueDto(Essai essai) {
+    private AnalysePubliqueDto toAnalysePubliqueDto(Essai essai, List<ExigenceEchantillon> exigences) {
         return AnalysePubliqueDto.builder()
                 .id(essai.getId())
                 .code(essai.getCode())
                 .designation(essai.getDesignation())
                 .description(essai.getDescription())
-                .methode(essai.getMethode())
                 .domaineCode(essai.getDomaine() != null ? essai.getDomaine().getCode() : null)
                 .domaineLibelle(essai.getDomaine() != null ? essai.getDomaine().getLibelle() : null)
                 .tarif(essai.getTarif())
                 .dureeEstimee(essai.getDureeEstimee())
-                .unite(essai.getUnite())
-                .actif(essai.getActif())
+                .exigences(exigences.stream()
+                        .map(ex -> ExigencePubliqueDto.builder()
+                                .nature(ex.getNature())
+                                .etatConservation(ex.getEtatConservation())
+                                .quantiteMinimale(ex.getQuantiteMinimale())
+                                .unite(ex.getUnite())
+                                .build())
+                        .toList())
                 .build();
     }
 

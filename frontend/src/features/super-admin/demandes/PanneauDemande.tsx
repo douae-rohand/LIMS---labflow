@@ -20,10 +20,8 @@ const ETAPES = ["Laboratoire", "Localisation", "Administrateur", "Documents"] as
 
 const LIBELLES: Record<StatutIntegration, string> = {
   EN_ATTENTE: "En attente",
-  EN_COURS_VALIDATION: "En cours de validation",
-  APPROUVEE: "Acceptée",
-  REJETEE: "Refusée",
-  SUSPENDUE: "Suspendue",
+  ACCEPTEE: "Acceptée",
+  REFUSEE: "Refusée",
 };
 
 export function PanneauDemande({
@@ -60,11 +58,11 @@ export function PanneauDemande({
   };
 
   const traitement = useMutation({
-    mutationFn: (decision: "APPROUVEE" | "REJETEE") =>
-      traiterDemandeIntegration(demandeId as number, decision, decision === "REJETEE" ? motif : undefined),
+    mutationFn: (decision: "ACCEPTEE" | "REFUSEE") =>
+      traiterDemandeIntegration(demandeId as number, decision, decision === "REFUSEE" ? motif : undefined),
     onSuccess: async (_data, decision) => {
       toast.success(
-        decision === "APPROUVEE"
+        decision === "ACCEPTEE"
           ? "La demande est acceptée. L'espace du laboratoire et le compte administrateur ont été créés."
           : "La demande a été refusée.",
       );
@@ -92,7 +90,7 @@ export function PanneauDemande({
   });
 
   const dossier = demande.data;
-  const enAttente = dossier?.statut === "EN_ATTENTE" || dossier?.statut === "EN_COURS_VALIDATION";
+  const enAttente = dossier?.statut === "EN_ATTENTE";
   const aDesCoordonnees = dossier?.latitude != null && dossier?.longitude != null;
 
   return (
@@ -162,7 +160,7 @@ export function PanneauDemande({
                   <Lecture libelle="Fonction" valeur={texte(dossier.adminFonction)} />
                   <Lecture libelle="CIN" valeur={texte(dossier.adminCin)} />
                 </dl>
-                {dossier.statut === "APPROUVEE" && (
+                {dossier.statut === "ACCEPTEE" && (
                   <Button variant="secondary" loading={invitation.isPending} onClick={() => invitation.mutate()}>
                     Renvoyer le lien d'activation
                   </Button>
@@ -260,7 +258,7 @@ export function PanneauDemande({
                 toast.error("Le motif du refus est obligatoire.");
                 return;
               }
-              traitement.mutate(confirmation === "accepter" ? "APPROUVEE" : "REJETEE");
+              traitement.mutate(confirmation === "accepter" ? "ACCEPTEE" : "REFUSEE");
             }}
           >
             Confirmer

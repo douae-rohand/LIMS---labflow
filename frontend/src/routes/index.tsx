@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Hero } from "@/components/landing/Hero";
 import {
   AiSection,
@@ -16,6 +16,7 @@ import {
 } from "@/components/landing/Sections";
 import { photos } from "@/data/images";
 import { PublicLayout } from "@/layouts/PublicLayout";
+import { redirectionClientConnecte } from "@/lib/redirect";
 
 const title = "LabFlow LIMS — Gestion de laboratoire multi-tenant";
 const description =
@@ -34,6 +35,10 @@ export const Route = createFileRoute("/")({
       { name: "twitter:image", content: photos.teamLab.src },
     ],
   }),
+  beforeLoad: ({ location }) => {
+    const cible = redirectionClientConnecte(location.href);
+    if (cible !== null) throw redirect({ href: cible });
+  },
   component: Home,
 });
 

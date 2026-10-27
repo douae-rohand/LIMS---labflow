@@ -4,7 +4,7 @@ import com.backend.modules.notification.dto.NotificationDto;
 import com.backend.modules.notification.entity.CanalNotification;
 import com.backend.modules.notification.entity.Notification;
 import com.backend.modules.notification.entity.NotificationReception;
-import com.backend.modules.notification.entity.StatutNotification;
+import com.backend.modules.notification.entity.StatutEnvoi;
 import com.backend.modules.notification.repository.NotificationReceptionRepository;
 import com.backend.modules.notification.repository.NotificationRepository;
 import com.backend.modules.utilisateur.entity.Utilisateur;
@@ -62,8 +62,8 @@ class NotificationServiceStatutTest {
 
         ArgumentCaptor<NotificationReception> captor = ArgumentCaptor.forClass(NotificationReception.class);
         verify(receptionRepository).save(captor.capture());
-        assertEquals(StatutNotification.ENVOYEE, captor.getValue().getStatutEnvoi());
+        assertEquals(StatutEnvoi.ENVOYE, captor.getValue().getStatutEnvoi());
         assertEquals(CanalNotification.IN_APP, captor.getValue().getCanal());
-        assertEquals(StatutNotification.ENVOYEE, reponse.getStatut());
+        assertEquals(StatutEnvoi.ENVOYE, reponse.getStatut());
     }
 }

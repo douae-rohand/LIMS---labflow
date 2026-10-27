@@ -1,10 +1,11 @@
 package com.backend.modules.produit.entity;
 
 /**
- * Disponibilité d'un lot. {@code DISPONIBLE} est la valeur déjà enregistrée par le seed.
- * {@code EPUISE} est posé lorsque la quantité atteint zéro.
+ * Disponibilité d'un lot. Le diagramme écrit {@code PÉRIMÉ} ; le code persiste
+ * {@code PERIME}, comme les autres statuts, sans accent.
  */
 public enum StatutLot {
     DISPONIBLE,
+    PERIME,
     EPUISE
 }

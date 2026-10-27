@@ -18,7 +18,6 @@ import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -36,20 +35,19 @@ class CorrespondanceStatutLigneTest {
 
     @Test
     void traduitLeVocabulairePlanificationVersLaLigne() {
-        assertEquals(StatutEssai.PLANIFIEE, CorrespondanceStatutLigne.versLigne(StatutPlanification.PLANIFIEE));
+        assertEquals(StatutEssai.ATTENTE_ECHANTILLON, CorrespondanceStatutLigne.versLigne(StatutPlanification.PLANIFIEE));
         assertEquals(StatutEssai.EN_COURS, CorrespondanceStatutLigne.versLigne(StatutPlanification.EN_COURS));
         assertEquals(StatutEssai.TERMINE, CorrespondanceStatutLigne.versLigne(StatutPlanification.TERMINEE));
-        assertEquals(StatutEssai.ANNULE, CorrespondanceStatutLigne.versLigne(StatutPlanification.ANNULEE));
-        assertEquals(StatutEssai.REPORTEE, CorrespondanceStatutLigne.versLigne(StatutPlanification.REPORTEE));
-        assertEquals(StatutEssai.PLANIFIEE, CorrespondanceStatutLigne.versLigne(null));
+        assertEquals(StatutEssai.NON_REALISABLE, CorrespondanceStatutLigne.versLigne(StatutPlanification.ANNULEE));
+        assertEquals(StatutEssai.ATTENTE_ECHANTILLON, CorrespondanceStatutLigne.versLigne(StatutPlanification.REPORTEE));
+        assertEquals(StatutEssai.ATTENTE_ECHANTILLON, CorrespondanceStatutLigne.versLigne(null));
     }
 
     @Test
     void relitLeStatutCanoniqueDansLeVocabulairePlanification() {
+        assertEquals(StatutPlanification.PLANIFIEE, CorrespondanceStatutLigne.versPlanification(StatutEssai.ATTENTE_ECHANTILLON));
         assertEquals(StatutPlanification.TERMINEE, CorrespondanceStatutLigne.versPlanification(StatutEssai.TERMINE));
-        assertEquals(StatutPlanification.ANNULEE, CorrespondanceStatutLigne.versPlanification(StatutEssai.ANNULE));
-        assertNull(CorrespondanceStatutLigne.versPlanification(StatutEssai.EN_ATTENTE));
-        assertNull(CorrespondanceStatutLigne.versPlanification(StatutEssai.A_REFAIRE));
+        assertEquals(StatutPlanification.ANNULEE, CorrespondanceStatutLigne.versPlanification(StatutEssai.NON_REALISABLE));
     }
 
     @Test
@@ -57,7 +55,7 @@ class CorrespondanceStatutLigneTest {
         LigneEssai ligne = LigneEssai.builder()
                 .id(3L)
                 .code("PLN-1")
-                .statut(StatutEssai.PLANIFIEE)
+                .statut(StatutEssai.ATTENTE_ECHANTILLON)
                 .montant(BigDecimal.ZERO)
                 .demande(Demande.builder().id(9L).numero("DEM-1").titre("Bilan").statut("SOUMISE").build())
                 .build();

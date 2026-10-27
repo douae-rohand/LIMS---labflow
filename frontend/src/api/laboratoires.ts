@@ -5,18 +5,24 @@ import {
   type LaboratoirePublic,
 } from "./landing";
 
+export type ExigencePublique = {
+  nature?: string | null;
+  etatConservation?: string | null;
+  quantiteMinimale?: number | string | null;
+  unite?: string | null;
+};
+
 export type AnalysePublique = {
   id: number;
   code: string;
   designation: string;
   description?: string | null;
-  methode?: string | null;
   domaineCode?: string | null;
   domaineLibelle?: string | null;
   tarif?: number | string | null;
+  /** Durée estimée en minutes. */
   dureeEstimee?: number | null;
-  unite?: string | null;
-  actif?: boolean | null;
+  exigences?: ExigencePublique[] | null;
 };
 
 export async function fetchLaboratoiresPublics(): Promise<LaboratoirePublic[]> {

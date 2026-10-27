@@ -56,7 +56,7 @@ class PlateformeServiceStatutTest {
 
         var dto = plateformeService.desactiverLaboratoire(4L);
 
-        assertEquals("INACTIF", laboratoire.getStatut());
+        assertEquals("DESACTIVE", laboratoire.getStatut());
         assertEquals("lims_atlas", laboratoire.getNomSchema());
         assertEquals(false, dto.isActif());
         verify(tenantProvisioner, never()).provisionner(any());
@@ -69,7 +69,7 @@ class PlateformeServiceStatutTest {
                 .code("atlas")
                 .raisonSociale("Laboratoire Atlas")
                 .nomSchema("lims_atlas")
-                .statut("INACTIF")
+                .statut("DESACTIVE")
                 .build();
         when(laboratoireRepository.findById(4L)).thenReturn(Optional.of(laboratoire));
         when(laboratoireRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -86,9 +86,8 @@ class PlateformeServiceStatutTest {
     void statistiquesDistinguentLaboratoiresEtDemandesOuvertes() {
         when(laboratoireRepository.count()).thenReturn(8L);
         when(laboratoireRepository.countByStatut("ACTIF")).thenReturn(6L);
-        when(laboratoireRepository.countByStatut("INACTIF")).thenReturn(2L);
+        when(laboratoireRepository.countByStatut("DESACTIVE")).thenReturn(2L);
         when(demandeIntegrationRepository.countByStatut("EN_ATTENTE")).thenReturn(3L);
-        when(demandeIntegrationRepository.countByStatut("EN_COURS_VALIDATION")).thenReturn(1L);
         when(demandeIntegrationRepository.count()).thenReturn(12L);
 
         var stats = plateformeService.statistiques();
@@ -96,7 +95,7 @@ class PlateformeServiceStatutTest {
         assertEquals(8L, stats.getTotalLaboratoires());
         assertEquals(6L, stats.getLaboratoiresActifs());
         assertEquals(2L, stats.getLaboratoiresDesactives());
-        assertEquals(4L, stats.getDemandesEnAttente());
+        assertEquals(3L, stats.getDemandesEnAttente());
         assertEquals(12L, stats.getTotalDemandes());
     }
 }

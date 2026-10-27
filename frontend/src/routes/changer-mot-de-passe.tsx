@@ -11,6 +11,7 @@ import { changerMotDePasse, logout, toSessionUser } from "@/api/auth";
 import { setSession, clearSession, getStatus, getSession } from "@/api/session";
 import { apiClient, ApiError } from "@/api/axios";
 import { cn } from "@/lib/utils";
+import { sanitizeRedirect } from "@/lib/redirect";
 
 // ---------------------------------------------------------------------------
 // Politique du nouveau mot de passe — miroir exact de la politique backend
@@ -145,8 +146,17 @@ export const Route = createFileRoute("/changer-mot-de-passe")({
   head: () => ({
     meta: [{ title: "Changement de mot de passe — LabFlow LIMS" }],
   }),
-  beforeLoad: () => {
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
+    const redirect = sanitizeRedirect(search["redirect"]);
+    return redirect === null ? {} : { redirect };
+  },
+  beforeLoad: ({ search }) => {
     if (getStatus() === "anonyme") {
+      if (search.redirect !== undefined) {
+        throw Route.redirect({
+          href: `/login?redirect=${encodeURIComponent(search.redirect)}`,
+        });
+      }
       throw Route.redirect({ to: "/login" });
     }
   },
@@ -159,6 +169,7 @@ export const Route = createFileRoute("/changer-mot-de-passe")({
 
 function ChangerMotDePassePage() {
   const router = useRouter();
+  const search = Route.useSearch();
   const session = getSession();
 
   const {
@@ -192,7 +203,10 @@ function ChangerMotDePassePage() {
         const user = toSessionUser(response);
         setSession(response.accessToken, user);
         apiClient.setTenant(user.tenantId);
-        await router.navigate({ to: "/app" });
+        const cible =
+          search.redirect ??
+          (user.role === "RESPONSABLE" ? "/app/demandes-clients" : "/app");
+        router.history.push(cible);
       }
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {

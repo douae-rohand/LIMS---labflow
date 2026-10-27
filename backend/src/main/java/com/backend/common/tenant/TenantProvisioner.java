@@ -32,6 +32,7 @@ public class TenantProvisioner {
                 .baselineOnMigrate(true)
                 .validateOnMigrate(true)
                 .outOfOrder(true)
+                .ignoreMigrationPatterns("*:missing")
                 .load()
                 .migrate();
         log.info("Tenant provisionné : schema={}", nomSchema);
