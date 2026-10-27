@@ -23,6 +23,7 @@ import { Route as ReinitialiserMotDePasseRouteImport } from './routes/reinitiali
 import { Route as UiKitRouteImport } from './routes/ui-kit'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppCarteRouteImport } from './routes/app/carte'
+import { Route as AppCatalogueRouteImport } from './routes/app/catalogue'
 import { Route as AppDemandesRouteImport } from './routes/app/demandes'
 import { Route as AppDemandesClientsRouteImport } from './routes/app/demandes-clients'
 import { Route as AppEmployesRouteImport } from './routes/app/employes'
@@ -31,6 +32,7 @@ import { Route as AppLaboratoiresRouteImport } from './routes/app/laboratoires'
 import { Route as AppPanierRouteImport } from './routes/app/panier'
 import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/index'
 import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
+import { Route as AppCatalogueIndexRouteImport } from './routes/app/catalogue/index'
 import { Route as AppDemandesClientsIndexRouteImport } from './routes/app/demandes-clients/index'
 import { Route as AppDemandesIntegrationIndexRouteImport } from './routes/app/demandes-integration/index'
 import { Route as AppDemandesIntegrationIdRouteImport } from './routes/app/demandes-integration/$id'
@@ -115,6 +117,11 @@ const AppCarteRoute = AppCarteRouteImport.update({
   path: '/carte',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCatalogueRoute = AppCatalogueRouteImport.update({
+  id: '/catalogue',
+  path: '/catalogue',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDemandesRoute = AppDemandesRouteImport.update({
   id: '/demandes',
   path: '/demandes',
@@ -154,6 +161,11 @@ const LaboratoiresIdRoute = LaboratoiresIdRouteImport.update({
   id: '/laboratoires/$id',
   path: '/laboratoires/$id',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppCatalogueIndexRoute = AppCatalogueIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppCatalogueRoute,
 } as any)
 const AppDemandesClientsIndexRoute = AppDemandesClientsIndexRouteImport.update({
   id: '/',
@@ -238,6 +250,7 @@ export interface FileRoutesByFullPath {
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
   '/app/carte': typeof AppCarteRoute
+  '/app/catalogue': typeof AppCatalogueRouteWithChildren
   '/app/demandes': typeof AppDemandesRouteWithChildren
   '/app/demandes-clients': typeof AppDemandesClientsRouteWithChildren
   '/app/employes': typeof AppEmployesRouteWithChildren
@@ -252,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/app/laboratoires/$id': typeof AppLaboratoiresIdRoute
   '/app/panier/$laboratoireId': typeof AppPanierLaboratoireIdRoute
   '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
+  '/app/catalogue/': typeof AppCatalogueIndexRoute
   '/app/demandes-clients/': typeof AppDemandesClientsIndexRoute
   '/app/demandes-integration/': typeof AppDemandesIntegrationIndexRoute
   '/app/demandes/': typeof AppDemandesIndexRoute
@@ -283,6 +297,7 @@ export interface FileRoutesByTo {
   '/app/laboratoires/$id': typeof AppLaboratoiresIdRoute
   '/app/panier/$laboratoireId': typeof AppPanierLaboratoireIdRoute
   '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
+  '/app/catalogue': typeof AppCatalogueIndexRoute
   '/app/demandes-clients': typeof AppDemandesClientsIndexRoute
   '/app/demandes-integration': typeof AppDemandesIntegrationIndexRoute
   '/app/demandes': typeof AppDemandesIndexRoute
@@ -307,6 +322,7 @@ export interface FileRoutesById {
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
   '/app/carte': typeof AppCarteRoute
+  '/app/catalogue': typeof AppCatalogueRouteWithChildren
   '/app/demandes': typeof AppDemandesRouteWithChildren
   '/app/demandes-clients': typeof AppDemandesClientsRouteWithChildren
   '/app/employes': typeof AppEmployesRouteWithChildren
@@ -321,6 +337,7 @@ export interface FileRoutesById {
   '/app/laboratoires/$id': typeof AppLaboratoiresIdRoute
   '/app/panier/$laboratoireId': typeof AppPanierLaboratoireIdRoute
   '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
+  '/app/catalogue/': typeof AppCatalogueIndexRoute
   '/app/demandes-clients/': typeof AppDemandesClientsIndexRoute
   '/app/demandes-integration/': typeof AppDemandesIntegrationIndexRoute
   '/app/demandes/': typeof AppDemandesIndexRoute
@@ -346,6 +363,7 @@ export interface FileRouteTypes {
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
     | '/app/carte'
+    | '/app/catalogue'
     | '/app/demandes'
     | '/app/demandes-clients'
     | '/app/employes'
@@ -360,6 +378,7 @@ export interface FileRouteTypes {
     | '/app/laboratoires/$id'
     | '/app/panier/$laboratoireId'
     | '/app/utilisateurs/nouveau'
+    | '/app/catalogue/'
     | '/app/demandes-clients/'
     | '/app/demandes-integration/'
     | '/app/demandes/'
@@ -391,6 +410,7 @@ export interface FileRouteTypes {
     | '/app/laboratoires/$id'
     | '/app/panier/$laboratoireId'
     | '/app/utilisateurs/nouveau'
+    | '/app/catalogue'
     | '/app/demandes-clients'
     | '/app/demandes-integration'
     | '/app/demandes'
@@ -414,6 +434,7 @@ export interface FileRouteTypes {
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
     | '/app/carte'
+    | '/app/catalogue'
     | '/app/demandes'
     | '/app/demandes-clients'
     | '/app/employes'
@@ -428,6 +449,7 @@ export interface FileRouteTypes {
     | '/app/laboratoires/$id'
     | '/app/panier/$laboratoireId'
     | '/app/utilisateurs/nouveau'
+    | '/app/catalogue/'
     | '/app/demandes-clients/'
     | '/app/demandes-integration/'
     | '/app/demandes/'
@@ -555,6 +577,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCarteRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/catalogue': {
+      id: '/app/catalogue'
+      path: '/catalogue'
+      fullPath: '/app/catalogue'
+      preLoaderRoute: typeof AppCatalogueRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/demandes': {
       id: '/app/demandes'
       path: '/demandes'
@@ -610,6 +639,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/laboratoires/$id'
       preLoaderRoute: typeof LaboratoiresIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/app/catalogue/': {
+      id: '/app/catalogue/'
+      path: '/'
+      fullPath: '/app/catalogue/'
+      preLoaderRoute: typeof AppCatalogueIndexRouteImport
+      parentRoute: typeof AppCatalogueRoute
     }
     '/app/demandes-clients/': {
       id: '/app/demandes-clients/'
@@ -705,6 +741,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppCatalogueRouteChildren {
+  AppCatalogueIndexRoute: typeof AppCatalogueIndexRoute
+}
+
+const AppCatalogueRouteChildren: AppCatalogueRouteChildren = {
+  AppCatalogueIndexRoute: AppCatalogueIndexRoute,
+}
+
+const AppCatalogueRouteWithChildren = AppCatalogueRoute._addFileChildren(
+  AppCatalogueRouteChildren,
+)
+
 interface AppDemandesRouteChildren {
   AppDemandesIndexRoute: typeof AppDemandesIndexRoute
   AppDemandesLaboratoireIdDemandeIdRoute: typeof AppDemandesLaboratoireIdDemandeIdRoute
@@ -775,6 +823,7 @@ const AppPanierRouteWithChildren = AppPanierRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppCarteRoute: typeof AppCarteRoute
+  AppCatalogueRoute: typeof AppCatalogueRouteWithChildren
   AppDemandesRoute: typeof AppDemandesRouteWithChildren
   AppDemandesClientsRoute: typeof AppDemandesClientsRouteWithChildren
   AppEmployesRoute: typeof AppEmployesRouteWithChildren
@@ -790,6 +839,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppCarteRoute: AppCarteRoute,
+  AppCatalogueRoute: AppCatalogueRouteWithChildren,
   AppDemandesRoute: AppDemandesRouteWithChildren,
   AppDemandesClientsRoute: AppDemandesClientsRouteWithChildren,
   AppEmployesRoute: AppEmployesRouteWithChildren,
