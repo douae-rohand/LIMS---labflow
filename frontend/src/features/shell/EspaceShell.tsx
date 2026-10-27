@@ -28,6 +28,7 @@ function getInitiales(nomComplet: string): string {
 export type CheminEspace =
   | "/app"
   | "/app/demandes"
+  | "/app/catalogue"
   | "/app/demandes-clients"
   | "/app/employes"
   | "/app/panier"

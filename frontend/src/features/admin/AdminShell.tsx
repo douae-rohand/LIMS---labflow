@@ -1,4 +1,4 @@
-import { Inbox, Users } from "lucide-react";
+import { FlaskConical, Inbox, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import type { RoleUtilisateur, SessionUser } from "@/api/session";
 import { EspaceShell, type EntreeNavigation } from "@/features/shell/EspaceShell";
@@ -18,6 +18,12 @@ const NAV_ITEMS = [
     to: "/app/demandes-clients" as const,
     label: "Demandes clients",
     icon: Inbox,
+    roles: ["ADMINISTRATEUR", "RESPONSABLE"] as const,
+  },
+  {
+    to: "/app/catalogue" as const,
+    label: "Catalogue",
+    icon: FlaskConical,
     roles: ["ADMINISTRATEUR", "RESPONSABLE"] as const,
   },
 ] as const;
