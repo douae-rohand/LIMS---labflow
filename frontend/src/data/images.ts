@@ -36,4 +36,38 @@ export const photos = {
     src: src("photo-1579154204601-01588f351e67", 1200),
     alt: "Technicien de laboratoire manipulant des éprouvettes sous une hotte",
   },
+  // Images personnalisées pour la landing page
+  featureLab: {
+    src: "/assets/feature-lab.jpg",
+    alt: "Laboratoire moderne avec plusieurs techniciens",
+  },
+  validationMicroscope: {
+    src: "/assets/validation-microscope.jpg",
+    alt: "Technicien observant un échantillon au microscope",
+  },
+  aiLab: {
+    src: "/assets/ai-lab.jpg",
+    alt: "Laboratoire moderne avec équipement d'analyse",
+  },
+  multiTenant: {
+    src: "/assets/multi-tenant.jpg",
+    alt: "Technicien au microscope dans un laboratoire",
+  },
+  faqLab: {
+    src: "/assets/faq-lab.jpg",
+    alt: "Laboratoire moderne avec étagères et équipement",
+  },
+  // Images des domaines
+  domainMedical: {
+    src: "/assets/domain-medical.jpg",
+    alt: "Test tube sanguin en laboratoire médical",
+  },
+  domainEnvironmental: {
+    src: "/assets/domain-environmental.jpg",
+    alt: "Boîte de pétri avec plantules pour analyse environnementale",
+  },
+  domainCosmetic: {
+    src: "/assets/domain-cosmetic.jpg",
+    alt: "Laboratoire cosmétique avec flacons et équipement",
+  },
 };
