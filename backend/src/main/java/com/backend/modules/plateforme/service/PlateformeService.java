@@ -9,7 +9,6 @@ import com.backend.common.tenant.TenantProvisioner;
 import com.backend.modules.plateforme.entity.HistoriqueStatutLaboratoire;
 import com.backend.modules.plateforme.repository.HistoriqueStatutLaboratoireRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
 import com.backend.modules.demande.entity.StatutDemande;
 import com.backend.modules.essai.entity.Essai;
 import com.backend.modules.essai.entity.ExigenceEchantillon;
@@ -34,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -62,10 +62,10 @@ public class PlateformeService {
     private final UtilisateurRepository utilisateurRepository;
     private final HistoriqueStatutLaboratoireRepository historiqueStatutRepository;
     private final JournalAuditService journalAuditService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     @Transactional
-    public LaboratoireDto creerLaboratoire(CreerLaboratoireRequest request) {
+    public LaboratoireDto creerLaboratoire(CreerLaboratoireRequest request, String acteurEmail) {
         if (laboratoireRepository.existsByCode(request.getCode())) {
             throw new BusinessRuleException("CODE_LABORATOIRE_EXISTANT",
                     "Le code laboratoire '" + request.getCode() + "' est déjà utilisé");
@@ -84,7 +84,15 @@ public class PlateformeService {
                 .build();
 
         labo = laboratoireRepository.save(labo);
-        tenantProvisioner.provisionner(labo);
+        tenantProvisioner.provisionner(labo, acteurEmail);
+        journalAuditService.enregistrer(
+                "CREER_LABORATOIRE",
+                "Laboratoire",
+                labo.getId(),
+                acteurEmail,
+                null,
+                snapshotLaboratoire(labo),
+                null);
         log.info("Laboratoire créé : code={}, schema={}", labo.getCode(), labo.getNomSchema());
 
         return toDto(labo);
@@ -242,7 +250,7 @@ public class PlateformeService {
         }
 
         // Capture valeur avant pour audit
-        String valeurAvant = mapperToAuditJson(labo);
+        String valeurAvant = snapshotLaboratoire(labo);
 
         labo.setRaisonSociale(request.getNom().trim());
         labo.setIce(ice);
@@ -260,7 +268,7 @@ public class PlateformeService {
         labo = laboratoireRepository.save(labo);
         
         // Audit
-        String valeurApres = mapperToAuditJson(labo);
+        String valeurApres = snapshotLaboratoire(labo);
         journalAuditService.enregistrer(
                 "MODIFIER_LABORATOIRE",
                 "Laboratoire",
@@ -290,7 +298,7 @@ public class PlateformeService {
                     "Seul le compte administrateur du laboratoire peut être modifié ici");
         }
 
-        String valeurAvant = mapperToAuditJson(admin);
+        String valeurAvant = snapshotAdministrateur(admin);
 
         String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
         if (!email.equalsIgnoreCase(admin.getEmail()) && utilisateurRepository.existsByEmail(email)) {
@@ -306,7 +314,7 @@ public class PlateformeService {
         admin.setCin(texte(request.getCin()));
         utilisateurRepository.save(admin);
         
-        String valeurApres = mapperToAuditJson(admin);
+        String valeurApres = snapshotAdministrateur(admin);
         journalAuditService.enregistrer(
                 "MODIFIER_ADMINISTRATE_LABORATOIRE",
                 "Utilisateur",
@@ -356,29 +364,38 @@ public class PlateformeService {
     }
 
     private LaboratoireDto changerStatutAvecMotif(Long id, String nouveauStatut, String motif, String acteurEmail) {
+        if (!STATUT_ACTIF.equals(nouveauStatut) && !StringUtils.hasText(motif)) {
+            throw new BusinessRuleException("MOTIF_OBLIGATOIRE",
+                    "Le motif est obligatoire pour suspendre ou désactiver un laboratoire");
+        }
         Laboratoire labo = chargerLaboratoire(id);
         String ancienStatut = labo.getStatut();
+        String motifNormalise = StringUtils.hasText(motif) ? motif.trim() : null;
         
         // Enregistrer l'historique
         HistoriqueStatutLaboratoire historique = HistoriqueStatutLaboratoire.builder()
                 .laboratoire(labo)
                 .ancienStatut(ancienStatut)
                 .nouveauStatut(nouveauStatut)
-                .motif(motif)
+                .motif(motifNormalise)
                 .acteurEmail(acteurEmail)
                 .dateChangement(Instant.now())
                 .build();
         historiqueStatutRepository.save(historique);
-        
-        // Audit journal
+
+        String action = STATUT_ACTIF.equals(nouveauStatut)
+                ? "ACTIVER_LABORATOIRE"
+                : (StatutLabo.SUSPENDU.name().equals(nouveauStatut)
+                ? "SUSPENDRE_LABORATOIRE"
+                : "DESACTIVER_LABORATOIRE");
         journalAuditService.enregistrer(
-                "CHANGER_STATUT_LABORATOIRE",
+                action,
                 "Laboratoire",
                 id,
                 acteurEmail,
-                ancienStatut,
-                nouveauStatut,
-                motif
+                "{\"statut\":\"" + ancienStatut + "\"}",
+                "{\"statut\":\"" + nouveauStatut + "\"}",
+                motifNormalise
         );
         
         // Changer le statut
@@ -552,6 +569,33 @@ public class PlateformeService {
         return Arrays.stream(brut.split("\\s*,\\s*"))
                 .filter(StringUtils::hasText)
                 .toList();
+    }
+
+    private String snapshotLaboratoire(Laboratoire labo) {
+        Map<String, Object> valeurs = new HashMap<>();
+        valeurs.put("id", labo.getId());
+        valeurs.put("code", labo.getCode());
+        valeurs.put("nom", labo.getRaisonSociale());
+        valeurs.put("ice", labo.getIce());
+        valeurs.put("ville", labo.getVille());
+        valeurs.put("email", labo.getEmail());
+        valeurs.put("telephone", labo.getTelephone());
+        valeurs.put("statut", labo.getStatut());
+        valeurs.put("schema", labo.getNomSchema());
+        return mapperToAuditJson(valeurs);
+    }
+
+    private String snapshotAdministrateur(Utilisateur admin) {
+        Map<String, Object> valeurs = new HashMap<>();
+        valeurs.put("id", admin.getId());
+        valeurs.put("nom", admin.getNom());
+        valeurs.put("prenom", admin.getPrenom());
+        valeurs.put("email", admin.getEmail());
+        valeurs.put("telephone", admin.getTelephone());
+        valeurs.put("fonction", admin.getFonction());
+        valeurs.put("cin", admin.getCin());
+        valeurs.put("actif", admin.isActif());
+        return mapperToAuditJson(valeurs);
     }
 
     private String mapperToAuditJson(Object obj) {

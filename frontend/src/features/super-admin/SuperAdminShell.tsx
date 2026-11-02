@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Building2, LogOut } from "lucide-react";
+import { Building2, LogOut, ScrollText, UserRound } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/lab";
 import { Toaster } from "@/components/ui/sonner";
@@ -73,6 +73,28 @@ export function SuperAdminShell({
             >
               <Building2 className="size-4 shrink-0" aria-hidden="true" />
               Gestion des laboratoires
+            </Link>
+            <Link
+              to="/app/journal-audit"
+              className="mt-1 flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold text-ink-900/70 hover:bg-surface-alt focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900"
+              activeProps={{
+                className:
+                  "mt-1 flex items-center gap-3 rounded-2xl bg-brand-900 px-3 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-brand-900",
+              }}
+            >
+              <ScrollText className="size-4 shrink-0" aria-hidden="true" />
+              Journal d'audit
+            </Link>
+            <Link
+              to="/app/mon-compte"
+              className="mt-1 flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold text-ink-900/70 hover:bg-surface-alt focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900"
+              activeProps={{
+                className:
+                  "mt-1 flex items-center gap-3 rounded-2xl bg-brand-900 px-3 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-brand-900",
+              }}
+            >
+              <UserRound className="size-4 shrink-0" aria-hidden="true" />
+              Mon compte
             </Link>
           </nav>
         </aside>

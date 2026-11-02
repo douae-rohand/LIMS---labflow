@@ -26,7 +26,7 @@
  *
  *  POST /api/auth/2fa/setup
  *    En-tête : Authorization: Bearer <twoFactorToken>  (type=2fa)
- *    Réponse : { qrCodeUri: string; secret: string }
+ *    Réponse : { otpAuthUrl: string }
  *
  *  POST /api/auth/2fa/activer
  *    En-tête : Authorization: Bearer <twoFactorToken>  (type=2fa)
@@ -88,8 +88,7 @@ export interface TwoFactorCompleteResponse {
 
 /** Réponse de POST /api/auth/2fa/setup. */
 export interface TwoFactorSetupResponse {
-  qrCodeUri: string;
-  secret: string;
+  otpAuthUrl: string;
 }
 
 /** Réponse de POST /api/auth/refresh. */

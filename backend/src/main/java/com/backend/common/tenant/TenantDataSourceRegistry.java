@@ -62,23 +62,31 @@ public class TenantDataSourceRegistry {
     }
 
     /**
-     * Retire un DataSource du cache après déprovisionnement d'un tenant.
-     * Ne ferme pas le DataSource ici : c'est fait par deprovisionner() avant l'appel.
+     * Ferme le pool du tenant puis le retire du cache. N'exige pas que la ligne
+     * laboratoire soit déjà visible : la compensation peut s'exécuter avant le commit.
      */
-    public void desenregistrer(String nomSchema) {
-        if (nomSchema == null || nomSchema.isBlank()) {
-            throw new IllegalArgumentException("Nom de schéma null ou vide");
-        }
-        if (!nomSchema.matches("lims_[a-z0-9_]+")) {
+    public void fermerEtRetirer(String nomSchema) {
+        if (nomSchema == null || !nomSchema.matches("lims_[a-z0-9_]+")) {
             throw new IllegalArgumentException("Format de schéma invalide : " + nomSchema);
         }
-        if (CENTRAL_KEY.equals(nomSchema)) {
+        if (CENTRAL_KEY.equals(nomSchema) || "lims_central".equals(nomSchema)) {
             throw new IllegalArgumentException("Impossible de désenregistrer le schéma central");
         }
         DataSource removed = cache.remove(nomSchema);
-        if (removed != null) {
-            log.info("DataSource désenregistré pour le tenant : {}", nomSchema);
+        if (removed instanceof com.zaxxer.hikari.HikariDataSource hikari
+                && removed != centralDataSource
+                && !hikari.isClosed()) {
+            hikari.close();
+            log.info("Pool Hikari fermé pour le tenant : {}", nomSchema);
         }
+    }
+
+    /**
+     * Retire un DataSource du cache après déprovisionnement d'un tenant.
+     * Ne ferme pas le DataSource ici : préférer {@link #fermerEtRetirer(String)}.
+     */
+    public void desenregistrer(String nomSchema) {
+        fermerEtRetirer(nomSchema);
     }
 
     public String urlPourSchema(String nomSchema) {

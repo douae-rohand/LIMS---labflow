@@ -21,6 +21,8 @@ public class UtilisateurPrincipal implements UserDetails {
     private final RoleUtilisateur role;
     private final Long laboratoireId;
     private final String nomSchema;
+    /** Statut du laboratoire rattaché, relu à chaque requête authentifiée. */
+    private final String statutLaboratoire;
     private final boolean actif;
     private final boolean mustChangePassword;
     private final boolean doubleAuthentification;

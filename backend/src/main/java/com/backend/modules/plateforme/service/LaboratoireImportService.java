@@ -1,5 +1,6 @@
 package com.backend.modules.plateforme.service;
 
+import com.backend.common.audit.JournalAuditService;
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.modules.plateforme.dto.FichierGenere;
 import com.backend.modules.plateforme.dto.LigneImportLaboratoireDto;
@@ -82,6 +83,7 @@ public class LaboratoireImportService {
     private final DemandeIntegrationRepository demandeIntegrationRepository;
     private final LaboratoireRepository laboratoireRepository;
     private final UtilisateurRepository utilisateurRepository;
+    private final JournalAuditService journalAuditService;
 
     public FichierGenere modele(String format) {
         return switch (format == null ? "" : format.trim().toLowerCase(Locale.ROOT)) {
@@ -121,7 +123,7 @@ public class LaboratoireImportService {
     }
 
     @Transactional
-    public RapportImportLaboratoireDto confirmer(List<LigneImportLaboratoireDto> lignes) {
+    public RapportImportLaboratoireDto confirmer(List<LigneImportLaboratoireDto> lignes, String acteurEmail) {
         RapportImportLaboratoireDto rapport = evaluer(lignes, false);
         int enregistrees = 0;
         for (ResultatLigneImportDto ligne : rapport.getLignes()) {
@@ -132,6 +134,14 @@ public class LaboratoireImportService {
             ligne.setDemandeId(demande.getId());
             ligne.setNumeroDemande(demande.getNumero());
             enregistrees++;
+            journalAuditService.enregistrer(
+                    "IMPORTER_DEMANDE_INTEGRATION",
+                    "DemandeIntegration",
+                    demande.getId(),
+                    acteurEmail,
+                    null,
+                    "{\"numero\":\"" + demande.getNumero() + "\",\"ligne\":" + ligne.getNumeroLigne() + "}",
+                    null);
         }
         rapport.setApercu(false);
         rapport.setEnregistrees(enregistrees);

@@ -54,7 +54,7 @@ class PlateformeServiceStatutTest {
         when(laboratoireRepository.findById(4L)).thenReturn(Optional.of(laboratoire));
         when(laboratoireRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var dto = plateformeService.desactiverLaboratoire(4L);
+        var dto = plateformeService.desactiverLaboratoire(4L, "Motif de désactivation", "acteur@lims.test");
 
         assertEquals("DESACTIVE", laboratoire.getStatut());
         assertEquals("lims_atlas", laboratoire.getNomSchema());
@@ -74,7 +74,7 @@ class PlateformeServiceStatutTest {
         when(laboratoireRepository.findById(4L)).thenReturn(Optional.of(laboratoire));
         when(laboratoireRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var dto = plateformeService.activerLaboratoire(4L);
+        var dto = plateformeService.activerLaboratoire(4L, "acteur@lims.test");
 
         assertEquals("ACTIF", laboratoire.getStatut());
         assertEquals("lims_atlas", dto.getSchemaName());

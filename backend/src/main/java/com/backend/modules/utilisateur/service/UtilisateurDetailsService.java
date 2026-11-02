@@ -32,6 +32,7 @@ public class UtilisateurDetailsService implements UserDetailsService {
         RoleUtilisateur role = RoleUtilisateur.valueOf(utilisateur.getRole().getCode());
         Long laboratoireId = utilisateur.getLaboratoire() == null ? null : utilisateur.getLaboratoire().getId();
         String nomSchema = utilisateur.getLaboratoire() == null ? null : utilisateur.getLaboratoire().getNomSchema();
+        String statutLaboratoire = utilisateur.getLaboratoire() == null ? null : utilisateur.getLaboratoire().getStatut();
         return UtilisateurPrincipal.builder()
                 .id(utilisateur.getId())
                 .email(utilisateur.getEmail())
@@ -40,6 +41,7 @@ public class UtilisateurDetailsService implements UserDetailsService {
                 .role(role)
                 .laboratoireId(laboratoireId)
                 .nomSchema(nomSchema)
+                .statutLaboratoire(statutLaboratoire)
                 .actif(utilisateur.isActif())
                 .mustChangePassword(utilisateur.isMustChangePassword())
                 .doubleAuthentification(utilisateur.isDoubleAuthentification())

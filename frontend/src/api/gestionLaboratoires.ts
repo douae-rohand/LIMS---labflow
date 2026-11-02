@@ -179,12 +179,9 @@ export async function modifierAdministrateurLaboratoire(
   return res.data;
 }
 
-export async function changerStatutLaboratoire(
-  id: number,
-  actif: boolean,
-): Promise<LaboratoireAdmin> {
+export async function activerLaboratoire(id: number): Promise<LaboratoireAdmin> {
   const res = await apiClient.patch<ApiResponse<LaboratoireAdmin>>(
-    `/plateforme/laboratoires/${id}/${actif ? "activer" : "desactiver"}`,
+    `/plateforme/laboratoires/${id}/activer`,
   );
   return res.data;
 }

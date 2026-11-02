@@ -12,6 +12,6 @@ CREATE TABLE historique_statut_laboratoire (
     date_changement TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_laboratoire (laboratoire_id),
     INDEX idx_date (date_changement),
-    CONSTRAINT fk_historique_laboratoire FOREIGN KEY (laboratoire_id) 
-        REFERENCES laboratoire(id) ON DELETE CASCADE
+    CONSTRAINT fk_historique_laboratoire FOREIGN KEY (laboratoire_id)
+        REFERENCES laboratoire(id_laboratoire) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

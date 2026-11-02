@@ -27,7 +27,7 @@ export function PanneauLaboratoire({
   laboratoire: LaboratoireAdmin | null;
   modeInitial: "consulter" | "modifier";
   onFermer: () => void;
-  onDemanderStatut: (laboratoire: LaboratoireAdmin) => void;
+  onDemanderStatut: (laboratoire: LaboratoireAdmin, action: "activer" | "suspendre" | "desactiver") => void;
 }) {
   const queryClient = useQueryClient();
   const [mode, setMode] = useState(modeInitial);
@@ -176,18 +176,33 @@ export function PanneauLaboratoire({
         {laboratoire && (
           <div className="flex flex-col gap-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Badge variant={laboratoire.actif ? "lime" : "outline"}>
-                {laboratoire.actif ? "Actif" : "Désactivé"}
+              <Badge
+                variant={laboratoire.statut === "SUSPENDU" ? "mint" : laboratoire.statut === "DESACTIVE" ? "outline" : "lime"}
+                size="sm"
+              >
+                {laboratoire.statut === "SUSPENDU" ? "Suspendu" : laboratoire.statut === "DESACTIVE" ? "Désactivé" : "Actif"}
               </Badge>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {mode === "consulter" && (
                   <Button variant="secondary" size="sm" onClick={() => setMode("modifier")}>
                     Modifier
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" onClick={() => onDemanderStatut(laboratoire)}>
-                  {laboratoire.actif ? "Désactiver" : "Activer"}
-                </Button>
+                {laboratoire.statut !== "ACTIF" && (
+                  <Button variant="ghost" size="sm" onClick={() => onDemanderStatut(laboratoire, "activer")}>
+                    Activer
+                  </Button>
+                )}
+                {laboratoire.statut !== "SUSPENDU" && (
+                  <Button variant="ghost" size="sm" onClick={() => onDemanderStatut(laboratoire, "suspendre")}>
+                    Suspendre
+                  </Button>
+                )}
+                {laboratoire.statut !== "DESACTIVE" && (
+                  <Button variant="ghost" size="sm" onClick={() => onDemanderStatut(laboratoire, "desactiver")}>
+                    Désactiver
+                  </Button>
+                )}
               </div>
             </div>
 

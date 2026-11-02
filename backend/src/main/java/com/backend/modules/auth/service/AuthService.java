@@ -1,5 +1,6 @@
 package com.backend.modules.auth.service;
 
+import com.backend.common.audit.JournalAuditService;
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.config.JwtConfig;
 import com.backend.modules.auth.dto.*;
@@ -38,6 +39,7 @@ public class AuthService {
     private final JwtConfig jwtConfig;
     private final UtilisateurRepository utilisateurRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JournalAuditService journalAuditService;
 
     private final TwoFactorRateLimiter twoFactorRateLimiter;
 
@@ -212,6 +214,28 @@ public class AuthService {
         }
 
         return null;
+    }
+
+    @Transactional
+    public void desactiverTwoFactor(String code, UtilisateurPrincipal principal) {
+        if (principal == null || principal.getEmail() == null) {
+            throw new BusinessRuleException("AUTH_REQUIRED", "Authentification requise");
+        }
+        if (is2faRequiredForRole(principal.getRole())) {
+            throw new BusinessRuleException("2FA_OBLIGATOIRE",
+                    "La double authentification est obligatoire pour ce rôle et ne peut pas être désactivée.");
+        }
+        Utilisateur utilisateur = utilisateurRepository.findById(principal.getId())
+                .orElseThrow(() -> new BusinessRuleException("USER_NOT_FOUND", "Utilisateur introuvable"));
+        twoFactorService.desactiverTotp(utilisateur, code);
+        journalAuditService.enregistrer(
+                "DESACTIVER_2FA",
+                "Utilisateur",
+                utilisateur.getId(),
+                principal.getEmail(),
+                "{\"doubleAuthentification\":true}",
+                "{\"doubleAuthentification\":false}",
+                null);
     }
 
     private Utilisateur getUtilisateurFromRequestOrPrincipal(String twoFactorToken, UtilisateurPrincipal principal) {

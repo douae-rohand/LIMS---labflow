@@ -28,7 +28,9 @@ import { Route as AppDemandesRouteImport } from './routes/app/demandes'
 import { Route as AppDemandesClientsRouteImport } from './routes/app/demandes-clients'
 import { Route as AppEmployesRouteImport } from './routes/app/employes'
 import { Route as AppGestionLaboratoiresRouteImport } from './routes/app/gestion-laboratoires'
+import { Route as AppJournalAuditRouteImport } from './routes/app/journal-audit'
 import { Route as AppLaboratoiresRouteImport } from './routes/app/laboratoires'
+import { Route as AppMonCompteRouteImport } from './routes/app/mon-compte'
 import { Route as AppPanierRouteImport } from './routes/app/panier'
 import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/index'
 import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
@@ -142,9 +144,19 @@ const AppGestionLaboratoiresRoute = AppGestionLaboratoiresRouteImport.update({
   path: '/gestion-laboratoires',
   getParentRoute: () => AppRoute,
 } as any)
+const AppJournalAuditRoute = AppJournalAuditRouteImport.update({
+  id: '/journal-audit',
+  path: '/journal-audit',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppLaboratoiresRoute = AppLaboratoiresRouteImport.update({
   id: '/laboratoires',
   path: '/laboratoires',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMonCompteRoute = AppMonCompteRouteImport.update({
+  id: '/mon-compte',
+  path: '/mon-compte',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPanierRoute = AppPanierRouteImport.update({
@@ -255,7 +267,9 @@ export interface FileRoutesByFullPath {
   '/app/demandes-clients': typeof AppDemandesClientsRouteWithChildren
   '/app/employes': typeof AppEmployesRouteWithChildren
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
+  '/app/journal-audit': typeof AppJournalAuditRoute
   '/app/laboratoires': typeof AppLaboratoiresRouteWithChildren
+  '/app/mon-compte': typeof AppMonCompteRoute
   '/app/panier': typeof AppPanierRouteWithChildren
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
@@ -289,6 +303,8 @@ export interface FileRoutesByTo {
   '/ui-kit': typeof UiKitRoute
   '/app/carte': typeof AppCarteRoute
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
+  '/app/journal-audit': typeof AppJournalAuditRoute
+  '/app/mon-compte': typeof AppMonCompteRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app': typeof AppIndexRoute
   '/laboratoires': typeof LaboratoiresIndexRoute
@@ -327,7 +343,9 @@ export interface FileRoutesById {
   '/app/demandes-clients': typeof AppDemandesClientsRouteWithChildren
   '/app/employes': typeof AppEmployesRouteWithChildren
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
+  '/app/journal-audit': typeof AppJournalAuditRoute
   '/app/laboratoires': typeof AppLaboratoiresRouteWithChildren
+  '/app/mon-compte': typeof AppMonCompteRoute
   '/app/panier': typeof AppPanierRouteWithChildren
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
@@ -368,7 +386,9 @@ export interface FileRouteTypes {
     | '/app/demandes-clients'
     | '/app/employes'
     | '/app/gestion-laboratoires'
+    | '/app/journal-audit'
     | '/app/laboratoires'
+    | '/app/mon-compte'
     | '/app/panier'
     | '/laboratoires/$id'
     | '/app/'
@@ -402,6 +422,8 @@ export interface FileRouteTypes {
     | '/ui-kit'
     | '/app/carte'
     | '/app/gestion-laboratoires'
+    | '/app/journal-audit'
+    | '/app/mon-compte'
     | '/laboratoires/$id'
     | '/app'
     | '/laboratoires'
@@ -439,7 +461,9 @@ export interface FileRouteTypes {
     | '/app/demandes-clients'
     | '/app/employes'
     | '/app/gestion-laboratoires'
+    | '/app/journal-audit'
     | '/app/laboratoires'
+    | '/app/mon-compte'
     | '/app/panier'
     | '/laboratoires/$id'
     | '/app/'
@@ -612,11 +636,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGestionLaboratoiresRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/journal-audit': {
+      id: '/app/journal-audit'
+      path: '/journal-audit'
+      fullPath: '/app/journal-audit'
+      preLoaderRoute: typeof AppJournalAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/laboratoires': {
       id: '/app/laboratoires'
       path: '/laboratoires'
       fullPath: '/app/laboratoires'
       preLoaderRoute: typeof AppLaboratoiresRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/mon-compte': {
+      id: '/app/mon-compte'
+      path: '/mon-compte'
+      fullPath: '/app/mon-compte'
+      preLoaderRoute: typeof AppMonCompteRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/panier': {
@@ -828,7 +866,9 @@ interface AppRouteChildren {
   AppDemandesClientsRoute: typeof AppDemandesClientsRouteWithChildren
   AppEmployesRoute: typeof AppEmployesRouteWithChildren
   AppGestionLaboratoiresRoute: typeof AppGestionLaboratoiresRoute
+  AppJournalAuditRoute: typeof AppJournalAuditRoute
   AppLaboratoiresRoute: typeof AppLaboratoiresRouteWithChildren
+  AppMonCompteRoute: typeof AppMonCompteRoute
   AppPanierRoute: typeof AppPanierRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
   AppDemandesIntegrationIdRoute: typeof AppDemandesIntegrationIdRoute
@@ -844,7 +884,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppDemandesClientsRoute: AppDemandesClientsRouteWithChildren,
   AppEmployesRoute: AppEmployesRouteWithChildren,
   AppGestionLaboratoiresRoute: AppGestionLaboratoiresRoute,
+  AppJournalAuditRoute: AppJournalAuditRoute,
   AppLaboratoiresRoute: AppLaboratoiresRouteWithChildren,
+  AppMonCompteRoute: AppMonCompteRoute,
   AppPanierRoute: AppPanierRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
   AppDemandesIntegrationIdRoute: AppDemandesIntegrationIdRoute,

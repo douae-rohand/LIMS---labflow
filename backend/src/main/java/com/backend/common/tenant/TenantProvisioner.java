@@ -10,130 +10,156 @@ import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class TenantProvisioner {
 
-    private static final String CENTRAL_SCHEMA = "lims_central";
-    private static final String SCHEMA_PATTERN = "lims_[a-z0-9_]+";
+    static final String CENTRAL_SCHEMA = "lims_central";
+    private static final Pattern SCHEMA_VALIDE = Pattern.compile("lims_[a-z0-9_]+");
+    private static final int ER_DB_CREATE_EXISTS = 1007;
 
     private final TenantDataSourceRegistry registry;
     private final JournalAuditService journalAuditService;
 
     public void provisionner(Laboratoire laboratoire) {
-        String nomSchema = laboratoire.getNomSchema();
-        if (nomSchema == null || !nomSchema.matches(SCHEMA_PATTERN)) {
-            throw new BusinessRuleException("SCHEMA_TENANT_INVALIDE",
-                    "Nom de schéma tenant invalide : " + nomSchema);
-        }
-        
-        // Vérifier que le schéma n'existe pas déjà (éviter double soumission)
-        if (schemaExiste(nomSchema)) {
-            throw new BusinessRuleException("SCHEMA_DEJA_EXISTE",
-                    "Le schéma " + nomSchema + " existe déjà. Annulation de la création.");
-        }
-        
-        creerBase(nomSchema);
-        DataSource tenantDataSource = registry.enregistrer(nomSchema);
-        Flyway.configure()
-                .dataSource(tenantDataSource)
-                .locations("classpath:db/migration/tenant")
-                .baselineOnMigrate(true)
-                .validateOnMigrate(true)
-                .outOfOrder(true)
-                .ignoreMigrationPatterns("*:missing")
-                .load()
-                .migrate();
-        log.info("Tenant provisionné : schema={}", nomSchema);
+        provisionner(laboratoire, null);
     }
 
     /**
-     * Déprovisionne un tenant : supprime la base de données et retire le DataSource du cache.
-     * Utilisé en compensation après échec de création d'administrateur.
-     * 
-     * @param nomSchema Nom du schéma à supprimer (doit correspondre au pattern lims_[a-z0-9_]+)
-     * @throws BusinessRuleException si le nom est invalide, c'est central, ou si le DROP échoue
+     * Crée le schéma du tenant puis applique les migrations.
+     * Échoue si le schéma existe déjà : un second appel (double clic) ne le supprime pas.
+     * En cas d'échec après le CREATE, seul le schéma créé par cet appel est retiré.
+     */
+    public void provisionner(Laboratoire laboratoire, String acteurEmail) {
+        String nomSchema = laboratoire.getNomSchema();
+        exigerNomSchema(nomSchema);
+        if (schemaExiste(nomSchema)) {
+            throw new BusinessRuleException("SCHEMA_DEJA_EXISTE",
+                    "Le schéma " + nomSchema + " existe déjà. Création annulée.");
+        }
+
+        boolean schemaCree = false;
+        try {
+            creerBase(nomSchema);
+            schemaCree = true;
+            DataSource tenantDataSource = registry.enregistrer(nomSchema);
+            Flyway.configure()
+                    .dataSource(tenantDataSource)
+                    .locations("classpath:db/migration/tenant")
+                    .baselineOnMigrate(true)
+                    .validateOnMigrate(true)
+                    .outOfOrder(true)
+                    .ignoreMigrationPatterns("*:missing")
+                    .load()
+                    .migrate();
+            log.info("Tenant provisionné : schema={}", nomSchema);
+        } catch (RuntimeException ex) {
+            if (schemaCree) {
+                try {
+                    deprovisionner(nomSchema, acteurEmail);
+                } catch (Exception nettoyage) {
+                    log.error("Compensation interne impossible pour le schéma {} : {}",
+                            nomSchema, nettoyage.getMessage());
+                }
+            }
+            throw ex;
+        }
+    }
+
+    /**
+     * Supprime un schéma créé par l'appel en cours. Le nom est validé avant toute SQL.
+     * Ferme le pool, puis retire l'entrée du registry.
      */
     public void deprovisionner(String nomSchema) {
-        // Validation stricte du nom de schéma
-        if (nomSchema == null || nomSchema.isBlank()) {
-            throw new BusinessRuleException("SCHEMA_TENANT_INVALIDE",
-                    "Nom de schéma null ou vide");
-        }
-        if (!nomSchema.matches(SCHEMA_PATTERN)) {
-            throw new BusinessRuleException("SCHEMA_TENANT_INVALIDE",
-                    "Format de schéma invalide (attendu : lims_[a-z0-9_]+) : " + nomSchema);
-        }
-        if (CENTRAL_SCHEMA.equals(nomSchema)) {
-            throw new BusinessRuleException("SCHEMA_CENTRAL_INTERDIT",
-                    "Impossible de déprovisionner le schéma central : " + nomSchema);
-        }
+        deprovisionner(nomSchema, null);
+    }
 
+    public void deprovisionner(String nomSchema, String acteurEmail) {
+        exigerNomSchema(nomSchema);
         log.info("Déprovisionnement du tenant : schema={}", nomSchema);
-
         try {
-            // Fermer le pool de connexions avant de dropper
-            DataSource dataSource = registry.resolve(nomSchema);
-            if (dataSource instanceof com.zaxxer.hikari.HikariDataSource hikari) {
-                hikari.close();
-                log.info("Pool Hikari fermé pour le tenant : {}", nomSchema);
-            }
-
-            // Supprimer la base de données
+            registry.fermerEtRetirer(nomSchema);
             try (Connection connection = registry.getCentral().getConnection();
                  Statement statement = connection.createStatement()) {
                 statement.execute("DROP DATABASE IF EXISTS `" + nomSchema + "`");
-                log.info("Base de données supprimée : {}", nomSchema);
             }
-
-            // Retirer du cache
-            registry.desenregistrer(nomSchema);
-            log.info("Tenant déprovisionné avec succès : schema={}", nomSchema);
-
+            log.info("Tenant déprovisionné : schema={}", nomSchema);
         } catch (Exception ex) {
-            String msg = "Échec du déprovisionnement du tenant " + nomSchema + " : " + ex.getMessage();
-            log.error(msg);
-            
-            // Enregistrer dans le journal d'audit pour nettoyage manuel
-            try {
-                journalAuditService.enregistrer(
-                        "DEPROVISIONNEMENT_ECHOUE",
-                        "Tenant",
-                        null,
-                        "SYSTEM",
-                        "Échec de compensation : " + msg + ". Schéma orphelin à nettoyer manuellement : " + nomSchema
-                );
-            } catch (Exception auditEx) {
-                log.error("Échec de l'enregistrement d'audit pour le déprovisionnement : {}", auditEx.getMessage());
+            String message = "Échec du déprovisionnement du tenant " + nomSchema + " : " + ex.getMessage();
+            log.error(message);
+            journalAuditService.enregistrer(
+                    "DEPROVISIONNEMENT_ECHOUE",
+                    "SchemaTenant",
+                    null,
+                    acteurEmail,
+                    null,
+                    "{\"schema\":\"" + nomSchema + "\"}",
+                    "Schéma orphelin à nettoyer manuellement : " + nomSchema);
+            throw new BusinessRuleException("DEPROVISIONNEMENT_ECHOUE", message);
+        }
+    }
+
+    boolean schemaExiste(String nomSchema) {
+        exigerNomSchema(nomSchema);
+        try (Connection connection = registry.getCentral().getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?")) {
+            statement.setString(1, nomSchema);
+            try (ResultSet resultat = statement.executeQuery()) {
+                return resultat.next();
             }
-            
-            throw new BusinessRuleException("DEPROVISIONNEMENT_ECHOUE", msg);
+        } catch (SQLException ex) {
+            throw new BusinessRuleException("SCHEMA_VERIFICATION_ECHOUEE",
+                    "Impossible de vérifier le schéma " + nomSchema + " : " + ex.getMessage());
         }
     }
 
     private void creerBase(String nomSchema) {
         try (Connection connection = registry.getCentral().getConnection();
              Statement statement = connection.createStatement()) {
-            statement.execute("CREATE DATABASE IF NOT EXISTS `" + nomSchema
+            statement.execute("CREATE DATABASE `" + nomSchema
                     + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-        } catch (Exception ex) {
+        } catch (SQLException ex) {
+            if (baseDejaExistante(ex)) {
+                throw new BusinessRuleException("SCHEMA_DEJA_EXISTE",
+                        "Le schéma " + nomSchema + " existe déjà. Création annulée.");
+            }
             throw new BusinessRuleException("PROVISIONNEMENT_TENANT_ECHOUE",
                     "Impossible de créer la base " + nomSchema + " : " + ex.getMessage());
         }
     }
 
-    private boolean schemaExiste(String nomSchema) {
-        try (Connection connection = registry.getCentral().getConnection();
-             java.sql.Statement statement = connection.createStatement()) {
-            java.sql.ResultSet rs = statement.executeQuery(
-                    "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '" + nomSchema + "'");
-            return rs.next();
-        } catch (Exception ex) {
-            log.error("Erreur lors de la vérification de l'existence du schéma {} : {}", nomSchema, ex.getMessage());
-            return false;
+    private void exigerNomSchema(String nomSchema) {
+        if (nomSchema == null || !SCHEMA_VALIDE.matcher(nomSchema).matches()) {
+            throw new BusinessRuleException("SCHEMA_TENANT_INVALIDE",
+                    "Nom de schéma tenant invalide (attendu : lims_[a-z0-9_]+) : " + nomSchema);
         }
+        if (CENTRAL_SCHEMA.equals(nomSchema)) {
+            throw new BusinessRuleException("SCHEMA_CENTRAL_INTERDIT",
+                    "Impossible de déprovisionner le schéma central : " + nomSchema);
+        }
+    }
+
+    private static boolean baseDejaExistante(Throwable erreur) {
+        Throwable courant = erreur;
+        while (courant != null) {
+            if (courant instanceof SQLException sql && sql.getErrorCode() == ER_DB_CREATE_EXISTS) {
+                return true;
+            }
+            String message = courant.getMessage();
+            if (message != null && message.toLowerCase(Locale.ROOT).contains("database exists")) {
+                return true;
+            }
+            courant = courant.getCause();
+        }
+        return false;
     }
 }

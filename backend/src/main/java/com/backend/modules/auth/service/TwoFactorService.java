@@ -98,6 +98,24 @@ public class TwoFactorService {
         log.info("2FA activée pour userId={}", utilisateur.getId());
     }
 
+    @Transactional
+    public void desactiverTotp(Utilisateur utilisateur, String code) {
+        if (!utilisateur.isDoubleAuthentification()
+                || utilisateur.getSecret2fa() == null
+                || utilisateur.getSecret2fa().isBlank()) {
+            throw new BusinessRuleException("2FA_INACTIVE",
+                    "La double authentification n'est pas activée sur ce compte.");
+        }
+        if (!verifierTotp(utilisateur.getSecret2fa(), code)) {
+            throw new BusinessRuleException("2FA_CODE_INVALID",
+                    "Code TOTP incorrect — vérifiez l'heure de votre application et réessayez.");
+        }
+        utilisateur.setDoubleAuthentification(false);
+        utilisateur.setSecret2fa(null);
+        utilisateurRepository.save(utilisateur);
+        log.info("2FA désactivée pour userId={}", utilisateur.getId());
+    }
+
     // -------------------------------------------------------------------------
     // Vérification (login)
     // -------------------------------------------------------------------------

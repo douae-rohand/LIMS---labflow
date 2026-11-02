@@ -11,6 +11,7 @@ import com.backend.modules.plateforme.entity.TypeDocumentIntegration;
 import com.backend.modules.plateforme.service.DemandeIntegrationService;
 import com.backend.modules.plateforme.service.LaboratoireExportService;
 import com.backend.modules.plateforme.service.LaboratoireImportService;
+import com.backend.modules.plateforme.service.JournalAuditConsultationService;
 import com.backend.modules.plateforme.service.PlateformeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,10 +27,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
@@ -50,6 +53,7 @@ public class PlateformeController {
     private final DemandeIntegrationService demandeIntegrationService;
     private final LaboratoireExportService laboratoireExportService;
     private final LaboratoireImportService laboratoireImportService;
+    private final JournalAuditConsultationService journalAuditConsultationService;
     private final EmailService emailService;
     private final SendGridProperties sendGridProperties;
     private final ObjectMapper objectMapper;
@@ -65,10 +69,11 @@ public class PlateformeController {
     private String getActeurEmail() {
         org.springframework.security.core.Authentication auth = 
                 org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof com.backend.modules.auth.security.UtilisateurPrincipal principal) {
+        if (auth != null && auth.getPrincipal() instanceof com.backend.modules.auth.security.UtilisateurPrincipal principal
+                && principal.getEmail() != null && !principal.getEmail().isBlank()) {
             return principal.getEmail();
         }
-        return "system@lims.com";
+        throw new BusinessRuleException("ACTEUR_INTROUVABLE", "Utilisateur authentifié introuvable");
     }
 
     // -------------------------------------------------------------------------
@@ -147,7 +152,7 @@ public class PlateformeController {
     public ResponseEntity<ApiResponse<RapportImportLaboratoireDto>> confirmerImport(
             @Valid @RequestBody ConfirmerImportLaboratoireRequest request) {
         return ResponseEntity.ok(ApiResponse.success(
-                "Importation terminée", laboratoireImportService.confirmer(request.getLignes())));
+                "Importation terminée", laboratoireImportService.confirmer(request.getLignes(), getActeurEmail())));
     }
 
     @GetMapping("/laboratoires/{id}/demande")
@@ -170,7 +175,7 @@ public class PlateformeController {
     public ResponseEntity<ApiResponse<LaboratoireDto>> creerLaboratoire(
             @Valid @RequestBody CreerLaboratoireRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Laboratoire créé", plateformeService.creerLaboratoire(request)));
+                .body(ApiResponse.success("Laboratoire créé", plateformeService.creerLaboratoire(request, getActeurEmail())));
     }
 
     @PatchMapping("/laboratoires/{id}")
@@ -180,7 +185,7 @@ public class PlateformeController {
             @PathVariable Long id,
             @Valid @RequestBody ModifierLaboratoireRequest request) {
         return ResponseEntity.ok(ApiResponse.success(
-                "Laboratoire mis à jour", plateformeService.modifierLaboratoire(id, request)));
+                "Laboratoire mis à jour", plateformeService.modifierLaboratoire(id, request, getActeurEmail())));
     }
 
     @PatchMapping("/laboratoires/{id}/administrateur")
@@ -190,7 +195,7 @@ public class PlateformeController {
             @PathVariable Long id,
             @Valid @RequestBody ModifierAdministrateurLaboratoireRequest request) {
         return ResponseEntity.ok(ApiResponse.success(
-                "Administrateur mis à jour", plateformeService.modifierAdministrateur(id, request)));
+                "Administrateur mis à jour", plateformeService.modifierAdministrateur(id, request, getActeurEmail())));
     }
 
     @PatchMapping("/laboratoires/{id}/activer")
@@ -276,7 +281,7 @@ public class PlateformeController {
             @PathVariable Long id,
             @Valid @RequestBody TraiterDemandeIntegrationRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Demande traitée",
-                demandeIntegrationService.traiter(id, request)));
+                demandeIntegrationService.traiter(id, request, getActeurEmail())));
     }
 
     @PatchMapping("/demandes/{id}/traiter")
@@ -290,7 +295,7 @@ public class PlateformeController {
         request.setDecision(decision);
         request.setMotifRefus(commentaire);
         return ResponseEntity.ok(ApiResponse.success("Demande traitée",
-                demandeIntegrationService.traiter(id, request)));
+                demandeIntegrationService.traiter(id, request, getActeurEmail())));
     }
 
     @GetMapping("/demandes/{id}/documents/{type}")
@@ -311,14 +316,14 @@ public class PlateformeController {
             @RequestParam TypeDocumentIntegration type,
             @RequestPart("fichier") MultipartFile fichier) {
         return ResponseEntity.ok(ApiResponse.success(
-                "Document enregistré", demandeIntegrationService.ajouterDocument(id, type, fichier)));
+                "Document enregistré", demandeIntegrationService.ajouterDocument(id, type, fichier, getActeurEmail())));
     }
 
     @PostMapping("/demandes/{id}/invitation")
     @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
     @Operation(summary = "Renvoyer l'e-mail d'activation à l'administrateur laboratoire")
     public ResponseEntity<ApiResponse<ResultatEnvoiEmail>> renvoyerInvitation(@PathVariable Long id) {
-        ResultatEnvoiEmail resultat = demandeIntegrationService.renvoyerInvitation(id);
+        ResultatEnvoiEmail resultat = demandeIntegrationService.renvoyerInvitation(id, getActeurEmail());
         String message = resultat.accepte()
                 ? "Invitation renvoyée et acceptée par SendGrid"
                 : "Jeton régénéré mais e-mail non envoyé : " + resultat.message();
@@ -346,6 +351,46 @@ public class PlateformeController {
         return ResponseEntity.ok(ApiResponse.success(
                 resultat.accepte() ? "E-mail de test accepté par SendGrid" : resultat.message(),
                 resultat));
+    }
+
+    @GetMapping("/audit")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Journal d'audit global, en lecture seule")
+    public ResponseEntity<ApiResponse<Page<JournalAuditDto>>> listerAudit(
+            @RequestParam(required = false) String acteur,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) Long laboratoireId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate du,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate au,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "dateAction") String tri,
+            @RequestParam(defaultValue = "desc") String ordre) {
+        return ResponseEntity.ok(ApiResponse.success(journalAuditConsultationService.rechercher(
+                acteur, action, laboratoireId, du, au, page, size, tri, ordre)));
+    }
+
+    @GetMapping("/audit/actions")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Actions distinctes présentes dans le journal")
+    public ResponseEntity<ApiResponse<java.util.List<String>>> listerActionsAudit() {
+        return ResponseEntity.ok(ApiResponse.success(journalAuditConsultationService.listerActions()));
+    }
+
+    @GetMapping("/audit/export")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Exporter le journal d'audit filtré en CSV")
+    public ResponseEntity<byte[]> exporterAudit(
+            @RequestParam(required = false) String acteur,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) Long laboratoireId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate du,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate au) {
+        byte[] contenu = journalAuditConsultationService.exporterCsv(acteur, action, laboratoireId, du, au);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"journal-audit.csv\"")
+                .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
+                .body(contenu);
     }
 
     private SoumettreDemandeIntegrationRequest lireDemande(MultipartFile demandeJson) {

@@ -49,7 +49,7 @@ class LaboratoireImportServiceTest {
             return demande;
         });
 
-        RapportImportLaboratoireDto rapport = importService.confirmer(List.of(ligneValide()));
+        RapportImportLaboratoireDto rapport = importService.confirmer(List.of(ligneValide()), "acteur@lims.test");
 
         assertEquals(1, rapport.getEnregistrees());
         assertFalse(rapport.isApercu());
