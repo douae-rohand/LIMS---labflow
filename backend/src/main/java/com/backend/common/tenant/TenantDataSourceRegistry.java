@@ -61,6 +61,26 @@ public class TenantDataSourceRegistry {
         return dataSource;
     }
 
+    /**
+     * Retire un DataSource du cache après déprovisionnement d'un tenant.
+     * Ne ferme pas le DataSource ici : c'est fait par deprovisionner() avant l'appel.
+     */
+    public void desenregistrer(String nomSchema) {
+        if (nomSchema == null || nomSchema.isBlank()) {
+            throw new IllegalArgumentException("Nom de schéma null ou vide");
+        }
+        if (!nomSchema.matches("lims_[a-z0-9_]+")) {
+            throw new IllegalArgumentException("Format de schéma invalide : " + nomSchema);
+        }
+        if (CENTRAL_KEY.equals(nomSchema)) {
+            throw new IllegalArgumentException("Impossible de désenregistrer le schéma central");
+        }
+        DataSource removed = cache.remove(nomSchema);
+        if (removed != null) {
+            log.info("DataSource désenregistré pour le tenant : {}", nomSchema);
+        }
+    }
+
     public String urlPourSchema(String nomSchema) {
         return remplacerBase(centralUrl, nomSchema);
     }

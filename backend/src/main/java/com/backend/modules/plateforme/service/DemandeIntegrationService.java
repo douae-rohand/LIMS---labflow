@@ -1,5 +1,6 @@
 package com.backend.modules.plateforme.service;
 
+import com.backend.common.audit.JournalAuditService;
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.common.tenant.TenantProvisioner;
@@ -68,6 +69,7 @@ public class DemandeIntegrationService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final MatriculeGeneratorService matriculeGeneratorService;
+    private final JournalAuditService journalAuditService;
 
     @Value("${app.integration.max-file-size-bytes:10485760}")
     private long tailleMaxOctets;
@@ -163,7 +165,7 @@ public class DemandeIntegrationService {
     }
 
     @Transactional
-    public DemandeIntegrationDto traiter(Long id, TraiterDemandeIntegrationRequest request) {
+    public DemandeIntegrationDto traiter(Long id, TraiterDemandeIntegrationRequest request, String acteurEmail) {
         DemandeIntegration demande = charger(id);
         StatutIntegration actuel = StatutIntegration.depuis(demande.getStatut());
 
@@ -177,6 +179,9 @@ public class DemandeIntegrationService {
                     "La décision doit être ACCEPTEE ou REFUSEE");
         }
 
+        String ancienStatut = demande.getStatut();
+        String nouveauStatut = request.getDecision().name();
+
         if (request.getDecision() == StatutIntegration.REFUSEE) {
             if (!StringUtils.hasText(request.getMotifRefus())) {
                 throw new BusinessRuleException("MOTIF_REFUS_OBLIGATOIRE",
@@ -186,6 +191,17 @@ public class DemandeIntegrationService {
             demande.setMotifRefus(request.getMotifRefus().trim());
             demande.setDateTraitement(Instant.now());
             demande = demandeIntegrationRepository.save(demande);
+            
+            journalAuditService.enregistrer(
+                    "REFUSER_DEMANDE_INTEGRATION",
+                    "DemandeIntegration",
+                    id,
+                    acteurEmail,
+                    ancienStatut,
+                    nouveauStatut,
+                    request.getMotifRefus()
+            );
+            
             DemandeIntegration refusee = demande;
             ApresCommit.executer(() -> emailService.envoyerRefusDemandeIntegration(
                     emailsNotification(refusee),
@@ -198,7 +214,7 @@ public class DemandeIntegrationService {
             return toDto(demande, true);
         }
 
-        return approuver(demande);
+        return approuver(demande, acteurEmail);
     }
 
     public ResponseEntity<Resource> telechargerDocument(Long demandeId, TypeDocumentIntegration type, boolean attachment) {
@@ -223,7 +239,7 @@ public class DemandeIntegrationService {
     }
 
     @Transactional
-    public DemandeIntegrationDto ajouterDocument(Long demandeId, TypeDocumentIntegration type, MultipartFile fichier) {
+    public DemandeIntegrationDto ajouterDocument(Long demandeId, TypeDocumentIntegration type, MultipartFile fichier, String acteurEmail) {
         DemandeIntegration demande = charger(demandeId);
         StatutIntegration statut = StatutIntegration.depuis(demande.getStatut());
         if (statut != StatutIntegration.EN_ATTENTE) {
@@ -238,7 +254,18 @@ public class DemandeIntegrationService {
                     documentIntegrationRepository.flush();
                 });
         enregistrerDocument(demande, type, fichier);
-        log.info("Document d'intégration ajouté : demande={}, type={}", demandeId, type);
+        
+        journalAuditService.enregistrer(
+                "REMPLACER_DOCUMENT_INTEGRATION",
+                "DocumentIntegration",
+                null,
+                acteurEmail,
+                null,
+                type.name(),
+                "Demande " + demande.getNumero()
+        );
+        
+        log.info("Document d'intégration ajouté : demande={}, type={}, acteur={}", demandeId, type, acteurEmail);
         return toDto(charger(demandeId), true);
     }
 
@@ -257,7 +284,7 @@ public class DemandeIntegrationService {
         return activationCompteService.creerEtEnvoyer(admin);
     }
 
-    private DemandeIntegrationDto approuver(DemandeIntegration demande) {
+    private DemandeIntegrationDto approuver(DemandeIntegration demande, String acteurEmail) {
         if (documentIntegrationRepository.countByDemande_Id(demande.getId()) != TypeDocumentIntegration.values().length) {
             throw new BusinessRuleException("DOCUMENTS_INCOMPLETS",
                     "Les 6 documents obligatoires doivent être présents avant l'acceptation");
@@ -267,76 +294,132 @@ public class DemandeIntegrationService {
                     "L'e-mail de l'administrateur est déjà associé à un compte");
         }
 
+        // Drapeaux de compensation
+        boolean laboratoireCree = false;
+        boolean schemaCree = false;
+        String nomSchema = null;
         Laboratoire laboratoire = demande.getLaboratoire();
-        if (laboratoire == null) {
-            String code = slugifier(StringUtils.hasText(demande.getNomLaboratoire())
-                    ? demande.getNomLaboratoire() : demande.getRaisonSociale());
-            if (laboratoireRepository.existsByCode(code)) {
-                code = code + "_" + demande.getId();
-            }
-            String nomAffiche = StringUtils.hasText(demande.getNomLaboratoire())
-                    ? demande.getNomLaboratoire() : demande.getRaisonSociale();
-            laboratoire = laboratoireRepository.save(Laboratoire.builder()
-                    .code(code)
-                    .raisonSociale(nomAffiche)
-                    .ice(demande.getIce())
-                    .typeLaboratoire(demande.getTypeLaboratoire())
-                    .adresse(demande.getAdresse())
-                    .ville(demande.getVille())
-                    .region(demande.getRegion())
-                    .pays(demande.getPays())
-                    .codePostal(demande.getCodePostal())
-                    .latitude(demande.getLatitude())
-                    .longitude(demande.getLongitude())
-                    .telephone(premierNonVide(demande.getTelephoneLaboratoire(), demande.getContactTelephone()))
-                    .email(premierNonVide(demande.getEmailLaboratoire(), demande.getContactEmail()))
-                    .siteWeb(demande.getSiteWeb())
-                    .nomSchema("lims_" + code)
-                    .statut(STATUT_ACTIF)
-                    .dateCreation(Instant.now())
-                    .build());
-            demande.setLaboratoire(laboratoire);
-        }
 
         try {
+            // Étape 1 : Créer le laboratoire (si inexistant)
+            if (laboratoire == null) {
+                String code = slugifier(StringUtils.hasText(demande.getNomLaboratoire())
+                        ? demande.getNomLaboratoire() : demande.getRaisonSociale());
+                if (laboratoireRepository.existsByCode(code)) {
+                    code = code + "_" + demande.getId();
+                }
+                String nomAffiche = StringUtils.hasText(demande.getNomLaboratoire())
+                        ? demande.getNomLaboratoire() : demande.getRaisonSociale();
+                laboratoire = laboratoireRepository.save(Laboratoire.builder()
+                        .code(code)
+                        .raisonSociale(nomAffiche)
+                        .ice(demande.getIce())
+                        .typeLaboratoire(demande.getTypeLaboratoire())
+                        .adresse(demande.getAdresse())
+                        .ville(demande.getVille())
+                        .region(demande.getRegion())
+                        .pays(demande.getPays())
+                        .codePostal(demande.getCodePostal())
+                        .latitude(demande.getLatitude())
+                        .longitude(demande.getLongitude())
+                        .telephone(premierNonVide(demande.getTelephoneLaboratoire(), demande.getContactTelephone()))
+                        .email(premierNonVide(demande.getEmailLaboratoire(), demande.getContactEmail()))
+                        .siteWeb(demande.getSiteWeb())
+                        .nomSchema("lims_" + code)
+                        .statut(STATUT_ACTIF)
+                        .dateCreation(Instant.now())
+                        .build());
+                demande.setLaboratoire(laboratoire);
+                laboratoireCree = true;
+            }
+            nomSchema = laboratoire.getNomSchema();
+
+            // Étape 2 : Provisionner le schéma (CREATE DATABASE - commit implicite)
             tenantProvisioner.provisionner(laboratoire);
+            schemaCree = true;
+
+            // Étape 3 : Créer l'administrateur
+            Utilisateur admin = creerAdministrateur(demande, laboratoire);
+            String lienActivation = activationCompteService.creerJeton(admin);
+
+            // Étape 4 : Mettre à jour la demande (statut ACCEPTEE)
+            demande.setStatut(StatutIntegration.ACCEPTEE.name());
+            demande.setDateTraitement(Instant.now());
+            demande.setMotifRefus(null);
+            demande = demandeIntegrationRepository.save(demande);
+
+            // Étape 5 : Emails (non-critique - échec = pas de compensation)
+            DemandeIntegration acceptee = demande;
+            String nomLabo = premierNonVide(demande.getNomLaboratoire(), demande.getRaisonSociale());
+            String nomAdmin = nomComplet(demande);
+            int ttlHeures = activationCompteService.getDureeHeures();
+            
+            // Audit de l'acceptation
+            journalAuditService.enregistrer(
+                    "ACCEPTER_DEMANDE_INTEGRATION",
+                    "DemandeIntegration",
+                    demande.getId(),
+                    acteurEmail,
+                    StatutIntegration.EN_ATTENTE.name(),
+                    StatutIntegration.ACCEPTEE.name(),
+                    null
+            );
+            
+            ApresCommit.executer(() -> {
+                try {
+                    emailService.envoyerAcceptationDemandeIntegration(
+                            emailsNotification(acceptee),
+                            nomAdmin,
+                            nomLabo,
+                            acceptee.getNumero(),
+                            acceptee.getVille(),
+                            acceptee.getDateTraitement());
+                } catch (Exception emailEx) {
+                    log.error("Échec de l'envoi de l'email d'acceptation : {}", emailEx.getMessage());
+                }
+                try {
+                    emailService.envoyerInvitationAdministrateur(
+                            acceptee.getContactEmail(),
+                            nomAdmin,
+                            nomLabo,
+                            lienActivation,
+                            ttlHeures);
+                } catch (Exception emailEx) {
+                    log.error("Échec de l'envoi de l'email d'invitation : {}", emailEx.getMessage());
+                }
+            });
+
+            log.info("Demande d'intégration approuvée : id={}, labo={}, schema={}",
+                    demande.getId(), laboratoire.getCode(), laboratoire.getNomSchema());
+            return toDto(demande, true);
+
         } catch (RuntimeException ex) {
-            log.error("Provisionnement tenant échoué pour demande {} : {}", demande.getId(), ex.getMessage());
-            throw new BusinessRuleException("PROVISIONNEMENT_TENANT_ECHOUE",
-                    "La création de l'environnement du laboratoire a échoué : " + ex.getMessage());
+            log.error("Erreur lors de l'acceptation de la demande {} : {}", demande.getId(), ex.getMessage());
+            
+            // Compensation : ne nettoyer que ce que cet appel a créé
+            if (schemaCree && nomSchema != null) {
+                try {
+                    tenantProvisioner.deprovisionner(nomSchema);
+                    log.info("Compensation : schéma {} supprimé", nomSchema);
+                } catch (Exception compEx) {
+                    log.error("Échec de la compensation du schéma {} : {}", nomSchema, compEx.getMessage());
+                }
+            }
+            
+            if (laboratoireCree && laboratoire != null && laboratoire.getId() != null) {
+                try {
+                    laboratoireRepository.delete(laboratoire);
+                    log.info("Compensation : laboratoire {} supprimé", laboratoire.getCode());
+                } catch (Exception delEx) {
+                    log.error("Échec de la suppression du laboratoire {} : {}", laboratoire.getCode(), delEx.getMessage());
+                }
+            }
+            
+            // Ne pas supprimer le laboratoire s'il existait déjà avant l'appel
+            // Ne pas compenser les emails (non-critique)
+            
+            throw ex; // Re-lancer l'exception originale
         }
-
-        Utilisateur admin = creerAdministrateur(demande, laboratoire);
-        String lienActivation = activationCompteService.creerJeton(admin);
-
-        demande.setStatut(StatutIntegration.ACCEPTEE.name());
-        demande.setDateTraitement(Instant.now());
-        demande.setMotifRefus(null);
-        demande = demandeIntegrationRepository.save(demande);
-
-        DemandeIntegration acceptee = demande;
-        String nomLabo = premierNonVide(demande.getNomLaboratoire(), demande.getRaisonSociale());
-        String nomAdmin = nomComplet(demande);
-        int ttlHeures = activationCompteService.getDureeHeures();
-        ApresCommit.executer(() -> {
-            emailService.envoyerAcceptationDemandeIntegration(
-                    emailsNotification(acceptee),
-                    nomAdmin,
-                    nomLabo,
-                    acceptee.getNumero(),
-                    acceptee.getVille(),
-                    acceptee.getDateTraitement());
-            emailService.envoyerInvitationAdministrateur(
-                    acceptee.getContactEmail(),
-                    nomAdmin,
-                    nomLabo,
-                    lienActivation,
-                    ttlHeures);
-        });
-
-        log.info("Demande d'intégration approuvée : id={}, labo={}, schema={}",
-                demande.getId(), laboratoire.getCode(), laboratoire.getNomSchema());
-        return toDto(demande, true);
     }
 
     private Utilisateur creerAdministrateur(DemandeIntegration demande, Laboratoire laboratoire) {

@@ -336,7 +336,7 @@ public class AuthService {
     }
 
     /**
-     * Un laboratoire désactivé conserve ses données, mais ses utilisateurs
+     * Un laboratoire désactivé ou suspendu conserve ses données, mais ses utilisateurs
      * ne peuvent plus ouvrir de session ni renouveler un jeton.
      */
     private void refuserSiLaboratoireDesactive(UtilisateurPrincipal principal) {
@@ -345,11 +345,14 @@ public class AuthService {
         }
         Utilisateur utilisateur = utilisateurRepository.findByEmailWithRoleAndLaboratoire(principal.getEmail())
                 .orElseThrow(() -> new BusinessRuleException("USER_NOT_FOUND", "Utilisateur introuvable"));
-        if (utilisateur.getLaboratoire() != null
-                && !"ACTIF".equalsIgnoreCase(utilisateur.getLaboratoire().getStatut())) {
-            throw new BusinessRuleException("LABORATOIRE_DESACTIVE",
-                    "Le laboratoire « " + utilisateur.getLaboratoire().getRaisonSociale()
-                            + " » est désactivé. L'accès de l'administrateur et des utilisateurs est suspendu. Les données sont conservées.");
+        if (utilisateur.getLaboratoire() != null) {
+            String statut = utilisateur.getLaboratoire().getStatut();
+            if (!"ACTIF".equalsIgnoreCase(statut)) {
+                String message = "Le laboratoire « " + utilisateur.getLaboratoire().getRaisonSociale()
+                        + " » est " + ("SUSPENDU".equalsIgnoreCase(statut) ? "suspendu" : "désactivé")
+                        + ". L'accès de l'administrateur et des utilisateurs est suspendu. Les données sont conservées.";
+                throw new BusinessRuleException("LABORATOIRE_DESACTIVE", message);
+            }
         }
     }
 }

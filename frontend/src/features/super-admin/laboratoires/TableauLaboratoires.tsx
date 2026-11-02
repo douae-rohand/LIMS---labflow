@@ -19,9 +19,11 @@ import { Button, Input, Select, Tooltip } from "@/components/lab";
 import { cn } from "@/lib/utils";
 import {
   changerStatutLaboratoire,
+  desactiverLaboratoire,
   exporterLaboratoires,
   listerVillesLaboratoires,
   rechercherLaboratoires,
+  suspendreLaboratoire,
   type LaboratoireAdmin,
 } from "@/api/gestionLaboratoires";
 import { Dialogue } from "../Fenetres";
@@ -61,7 +63,10 @@ export function TableauLaboratoires() {
     laboratoire: LaboratoireAdmin;
     mode: "consulter" | "modifier";
   } | null>(null);
-  const [confirmation, setConfirmation] = useState<LaboratoireAdmin | null>(null);
+  const [confirmation, setConfirmation] = useState<{
+    laboratoire: LaboratoireAdmin;
+    action: "activer" | "suspendre" | "desactiver";
+  } | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setRechercheDifferee(recherche.trim()), 300);
@@ -108,10 +113,21 @@ export function TableauLaboratoires() {
   };
 
   const statutMutation = useMutation({
-    mutationFn: (laboratoire: LaboratoireAdmin) =>
-      changerStatutLaboratoire(laboratoire.id, !laboratoire.actif),
-    onSuccess: async (misAJour, laboratoire) => {
-      toast.success(laboratoire.actif ? "Le laboratoire a été désactivé." : "Le laboratoire a été activé.");
+    mutationFn: ({ laboratoire, action, motif }: { laboratoire: LaboratoireAdmin; action: "activer" | "suspendre" | "desactiver"; motif?: string }) => {
+      if (action === "activer") {
+        return changerStatutLaboratoire(laboratoire.id, true);
+      } else if (action === "suspendre") {
+        return suspendreLaboratoire(laboratoire.id, motif as string);
+      } else {
+        return desactiverLaboratoire(laboratoire.id, motif as string);
+      }
+    },
+    onSuccess: async (misAJour, { laboratoire, action }) => {
+      toast.success(
+        action === "activer" ? "Le laboratoire a été activé." :
+        action === "suspendre" ? "Le laboratoire a été suspendu." :
+        "Le laboratoire a été désactivé."
+      );
       setConfirmation(null);
       setSelection((actuel) =>
         actuel && actuel.laboratoire.id === misAJour.id ? { ...actuel, laboratoire: misAJour } : actuel,

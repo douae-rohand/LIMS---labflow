@@ -189,6 +189,28 @@ export async function changerStatutLaboratoire(
   return res.data;
 }
 
+export async function suspendreLaboratoire(
+  id: number,
+  motif: string,
+): Promise<LaboratoireAdmin> {
+  const res = await apiClient.patch<ApiResponse<LaboratoireAdmin>>(
+    `/plateforme/laboratoires/${id}/suspendre`,
+    { motif },
+  );
+  return res.data;
+}
+
+export async function desactiverLaboratoire(
+  id: number,
+  motif: string,
+): Promise<LaboratoireAdmin> {
+  const res = await apiClient.patch<ApiResponse<LaboratoireAdmin>>(
+    `/plateforme/laboratoires/${id}/desactiver`,
+    { motif },
+  );
+  return res.data;
+}
+
 export async function exporterLaboratoires(
   format: "pdf" | "xlsx" | "csv",
   portee: "filtres" | "tous",

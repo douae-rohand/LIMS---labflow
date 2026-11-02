@@ -59,6 +59,19 @@ public class PlateformeController {
     private String frontendUrl;
 
     // -------------------------------------------------------------------------
+    // Helper pour récupérer l'acteur depuis le SecurityContext
+    // -------------------------------------------------------------------------
+    
+    private String getActeurEmail() {
+        org.springframework.security.core.Authentication auth = 
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof com.backend.modules.auth.security.UtilisateurPrincipal principal) {
+            return principal.getEmail();
+        }
+        return "system@lims.com";
+    }
+
+    // -------------------------------------------------------------------------
     // Laboratoires
     // -------------------------------------------------------------------------
 
@@ -185,15 +198,27 @@ public class PlateformeController {
     @Operation(summary = "Activer un laboratoire")
     public ResponseEntity<ApiResponse<LaboratoireDto>> activerLaboratoire(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
-                "Laboratoire activé", plateformeService.activerLaboratoire(id)));
+                "Laboratoire activé", plateformeService.activerLaboratoire(id, getActeurEmail())));
+    }
+
+    @PatchMapping("/laboratoires/{id}/suspendre")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Suspendre un laboratoire (motif obligatoire)")
+    public ResponseEntity<ApiResponse<LaboratoireDto>> suspendreLaboratoire(
+            @PathVariable Long id,
+            @Valid @RequestBody ChangerStatutLaboratoireRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Laboratoire suspendu", plateformeService.suspendreLaboratoire(id, request.getMotif(), getActeurEmail())));
     }
 
     @PatchMapping("/laboratoires/{id}/desactiver")
     @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
-    @Operation(summary = "Désactiver un laboratoire sans supprimer ses données")
-    public ResponseEntity<ApiResponse<LaboratoireDto>> desactiverLaboratoire(@PathVariable Long id) {
+    @Operation(summary = "Désactiver un laboratoire (motif obligatoire)")
+    public ResponseEntity<ApiResponse<LaboratoireDto>> desactiverLaboratoire(
+            @PathVariable Long id,
+            @Valid @RequestBody ChangerStatutLaboratoireRequest request) {
         return ResponseEntity.ok(ApiResponse.success(
-                "Laboratoire désactivé", plateformeService.desactiverLaboratoire(id)));
+                "Laboratoire désactivé", plateformeService.desactiverLaboratoire(id, request.getMotif(), getActeurEmail())));
     }
 
     // -------------------------------------------------------------------------
