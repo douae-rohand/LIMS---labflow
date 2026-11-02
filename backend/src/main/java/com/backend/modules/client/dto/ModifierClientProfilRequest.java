@@ -13,7 +13,7 @@ public class ModifierClientProfilRequest {
     @Size(max = 255)
     private String raisonSociale;
 
-    @Pattern(regexp = "^[0-9]{15}$", message = "L'ICE doit contenir exactement 15 chiffres.")
+    @Pattern(regexp = "^$|^[0-9]{15}$", message = "L'ICE doit contenir exactement 15 chiffres.")
     private String ice;
 
     @Size(max = 500)

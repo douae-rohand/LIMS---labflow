@@ -1,6 +1,5 @@
 package com.backend.common.tenant;
 
-import com.backend.common.exception.TenantHeaderRequiredException;
 import com.backend.common.exception.UnauthorizedTenantException;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
 import com.backend.modules.client.entity.ClientLaboratoire;
@@ -59,19 +58,21 @@ public class TenantInterceptor implements HandlerInterceptor {
         if (principal.isClient()) {
             String uri = request.getRequestURI();
 
-            // Routes client dont le laboratoire est dans le chemin : l'en-tête X-Tenant-ID
-            // est volontairement ignoré (contexte central).
-            if (uri.startsWith("/api/client/demandes") || uri.startsWith("/api/client/paniers")) {
+            // Routes client dont le laboratoire est porté par le chemin : l'en-tête
+            // X-Tenant-ID est volontairement ignoré (contexte central). La synthèse
+            // agrège tous les laboratoires du client, elle est donc centrale aussi.
+            if (uri.startsWith("/api/client/demandes")
+                    || uri.startsWith("/api/client/paniers")
+                    || uri.startsWith("/api/client/rapports")
+                    || uri.startsWith("/api/client/factures")
+                    || uri.startsWith("/api/client/enquetes")
+                    || uri.startsWith("/api/client/synthese")) {
                 TenantContext.clear();
                 return true;
             }
 
-            // Sans en-tête : central (profil, liste labos) ou 400 (factures)
+            // Sans en-tête : contexte central (profil, liste des laboratoires)
             if (!StringUtils.hasText(header)) {
-                if (uri.startsWith("/api/client/factures")) {
-                    throw new TenantHeaderRequiredException(
-                            "L'en-tête X-Tenant-ID est obligatoire pour accéder aux factures du laboratoire.");
-                }
                 TenantContext.clear();
                 return true;
             }

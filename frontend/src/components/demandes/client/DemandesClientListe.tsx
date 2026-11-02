@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Skeleton } from "@/components/lab";
 import { StatutDemandeBadge } from "@/components/demandes/StatutDemandeBadge";
 import { formatMontant } from "@/components/panier/format";
@@ -26,17 +26,30 @@ export function DemandesClientListe({
   onReinitialiser,
   onReessayer,
 }: DemandesClientListeProps) {
+  const navigate = useNavigate();
+
+  const allerAuDetail = (demande: DemandeResumeClient) => {
+    if (demande.laboratoireId === null) return;
+    void navigate({
+      to: "/app/demandes/$laboratoireId/$demandeId",
+      params: {
+        laboratoireId: String(demande.laboratoireId),
+        demandeId: String(demande.id),
+      },
+    });
+  };
+
   return (
     <div className="overflow-x-auto rounded-2xl border border-brand-900/10">
       <table className="w-full min-w-[760px] text-left text-sm">
         <thead className="bg-surface-card text-brand-900">
           <tr>
-            <th scope="col" className="px-4 py-3 font-semibold">Référence</th>
-            <th scope="col" className="px-4 py-3 font-semibold">Objet</th>
-            <th scope="col" className="px-4 py-3 font-semibold">Laboratoire</th>
-            <th scope="col" className="px-4 py-3 font-semibold">Statut</th>
-            <th scope="col" className="px-4 py-3 font-semibold">Total</th>
-            <th scope="col" className="px-4 py-3 font-semibold">Soumise le</th>
+            <th scope="col" className="w-36 px-4 py-3 font-semibold">Référence</th>
+            <th scope="col" className="px-4 py-3 font-semibold">Intitulé</th>
+            <th scope="col" className="w-56 px-4 py-3 font-semibold">Laboratoire</th>
+            <th scope="col" className="w-40 px-4 py-3 font-semibold">Statut</th>
+            <th scope="col" className="w-32 px-4 py-3 font-semibold text-right">Total</th>
+            <th scope="col" className="w-36 px-4 py-3 font-semibold text-right">Soumise le</th>
           </tr>
         </thead>
         <tbody>
@@ -68,7 +81,11 @@ export function DemandesClientListe({
 
           {!isLoading && !isError && demandes !== undefined &&
             demandes.map((demande) => (
-              <tr key={demande.id} className="border-t border-brand-900/10 hover:bg-surface-card/60">
+              <tr
+                key={demande.id}
+                onClick={() => allerAuDetail(demande)}
+                className="group border-t border-brand-900/10 hover:bg-surface-card/60 cursor-pointer"
+              >
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                   {demande.reference}
                 </td>
@@ -80,7 +97,8 @@ export function DemandesClientListe({
                         laboratoireId: String(demande.laboratoireId),
                         demandeId: String(demande.id),
                       }}
-                      className="hover:text-brand-900 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900"
+                      className="group-hover:text-brand-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       {demande.objet ?? "Demande"}
                     </Link>
@@ -94,10 +112,10 @@ export function DemandesClientListe({
                 <td className="px-4 py-3">
                   <StatutDemandeBadge statut={demande.statut} />
                 </td>
-                <td className="px-4 py-3 font-semibold text-ink-900">
+                <td className="px-4 py-3 font-semibold text-ink-900 text-right">
                   {formatMontant(demande.total)}
                 </td>
-                <td className="px-4 py-3 text-muted-foreground">
+                <td className="px-4 py-3 text-muted-foreground text-right">
                   {formatDate(demande.dateSoumission)}
                 </td>
               </tr>

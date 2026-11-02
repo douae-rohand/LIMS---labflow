@@ -28,7 +28,7 @@ export function DemandesTable({
 }: DemandesTableProps) {
   return (
     <div className="overflow-x-auto rounded-2xl border border-brand-900/10">
-      <table className="w-full min-w-[720px] text-left text-sm">
+      <table className="w-full min-w-180 text-left text-sm">
         <thead className="bg-surface-card text-brand-900">
           <tr>
             <th scope="col" className="px-4 py-3 font-semibold">Référence</th>
@@ -86,7 +86,7 @@ export function DemandesTable({
                         e.stopPropagation();
                         onSelect(demande.id);
                       }}
-                      className="text-left font-semibold text-ink-900 hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-900 rounded"
+                      className="text-left font-semibold text-ink-900 hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-900 rounded underline!"
                     >
                       {demande.objet}
                     </button>
