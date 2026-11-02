@@ -4,10 +4,7 @@ import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.common.exception.UnauthorizedTenantException;
 import com.backend.common.security.SecurityUtils;
 import com.backend.common.tenant.TenantContext;
-import com.backend.common.tenant.TenantExecutor;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
-import com.backend.modules.client.entity.ClientLaboratoire;
-import com.backend.modules.client.repository.ClientLaboratoireRepository;
 import com.backend.modules.demande.entity.Demande;
 import com.backend.modules.demande.repository.DemandeRepository;
 import com.backend.modules.facturation.dto.FactureDto;
@@ -25,9 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -37,8 +31,6 @@ public class FacturationService {
     private final FactureRepository factureRepository;
     private final PaiementRepository paiementRepository;
     private final DemandeRepository demandeRepository;
-    private final ClientLaboratoireRepository clientLaboratoireRepository;
-    private final TenantExecutor tenantExecutor;
 
     @Transactional(readOnly = true)
     public FactureDto trouverParId(Long id) {
@@ -58,24 +50,6 @@ public class FacturationService {
         UtilisateurPrincipal principal = SecurityUtils.principalCourant();
         return factureRepository.findByDemande_Client_UtilisateurId(principal.getId(), pageable)
                 .map(f -> toDto(f, TenantContext.getCurrentTenant()));
-    }
-
-    public List<FactureDto> listerToutesMesFactures() {
-        UtilisateurPrincipal principal = SecurityUtils.principalCourant();
-        List<ClientLaboratoire> liaisons = tenantExecutor.inCentral(
-                () -> clientLaboratoireRepository.findByUtilisateur_Id(principal.getId()));
-        List<FactureDto> resultats = new ArrayList<>();
-        for (ClientLaboratoire liaison : liaisons) {
-            String nomSchema = liaison.getLaboratoire().getNomSchema();
-            String code = liaison.getLaboratoire().getCode();
-            resultats.addAll(tenantExecutor.inTenant(nomSchema, () ->
-                    factureRepository.findByDemande_Client_UtilisateurId(principal.getId()).stream()
-                            .map(f -> toDto(f, code))
-                            .toList()));
-        }
-        resultats.sort(Comparator.comparing(FactureDto::getDateEmission,
-                Comparator.nullsLast(Comparator.reverseOrder())));
-        return resultats;
     }
 
     @Transactional

@@ -15,6 +15,16 @@ import java.time.Instant;
 public class ClientProfilDto {
     private Long id;
     private Long utilisateurId;
+
+    /** Nom de l'utilisateur (lecture seule ; non modifiable via le profil). */
+    private String nom;
+    /** Prénom de l'utilisateur (lecture seule ; non modifiable via le profil). */
+    private String prenom;
+    /** Email de connexion (lecture seule ; non modifiable via le profil). */
+    private String email;
+    /** Téléphone de l'utilisateur (lecture seule ; non modifiable via le profil). */
+    private String telephone;
+
     private TypeClient typeClient;
     private String raisonSociale;
     private String ice;

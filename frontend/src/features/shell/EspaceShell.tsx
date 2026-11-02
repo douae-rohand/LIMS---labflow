@@ -33,7 +33,11 @@ export type CheminEspace =
   | "/app/employes"
   | "/app/panier"
   | "/app/laboratoires"
-  | "/app/carte";
+  | "/app/carte"
+  | "/app/rapports"
+  | "/app/factures"
+  | "/app/enquetes"
+  | "/app/profil";
 
 export type EntreeNavigation = {
   to: CheminEspace;
@@ -156,20 +160,24 @@ export function EspaceShell({
           {/* Profil utilisateur + déconnexion */}
           <div className="border-t border-brand-900/10 p-3">
             <div className="flex items-center gap-3 rounded-2xl px-3 py-2.5">
-              {/* Avatar initiales */}
-              <span
-                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-900 text-xs font-bold text-primary-foreground"
-                aria-hidden="true"
+              {/* Avatar initiales — lien vers /app/profil */}
+              <Link
+                to="/app/profil"
+                aria-label="Mon profil"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-900 text-xs font-bold text-primary-foreground hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900"
               >
                 {initiales}
-              </span>
-              {/* Nom + rôle */}
-              <div className="min-w-0 flex-1">
+              </Link>
+              {/* Nom + rôle — lien vers /app/profil */}
+              <Link
+                to="/app/profil"
+                className="min-w-0 flex-1 rounded hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900"
+              >
                 <p className="truncate text-sm font-semibold text-ink-900">
                   {utilisateur.nomComplet}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">{libelleRole}</p>
-              </div>
+              </Link>
               {/* Bouton déconnexion (icône seule) */}
               <Button
                 variant="ghost"

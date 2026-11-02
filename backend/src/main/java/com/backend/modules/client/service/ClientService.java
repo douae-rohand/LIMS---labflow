@@ -69,14 +69,27 @@ public class ClientService {
     @Transactional
     public ClientProfilDto modifierProfil(Long utilisateurId, ModifierClientProfilRequest request) {
         ClientProfil profil = chargerProfil(utilisateurId);
-        if (request.getTypeClient() != null) {
-            profil.setTypeClient(request.getTypeClient());
-        }
-        if (request.getRaisonSociale() != null) {
-            profil.setRaisonSociale(request.getRaisonSociale());
-        }
-        if (request.getIce() != null) {
-            profil.setIce(request.getIce());
+        TypeClient typeClient = request.getTypeClient() != null
+                ? request.getTypeClient()
+                : profil.getTypeClient();
+        if (typeClient == TypeClient.ENTREPRISE) {
+            String raisonSociale = request.getRaisonSociale() != null
+                    ? request.getRaisonSociale()
+                    : profil.getRaisonSociale();
+            String ice = request.getIce() != null ? request.getIce() : profil.getIce();
+            if (!StringUtils.hasText(raisonSociale) || !StringUtils.hasText(ice)) {
+                throw new BusinessRuleException("PROFIL_ENTREPRISE_INCOMPLET",
+                        "Une entreprise doit renseigner une raison sociale et un ICE.");
+            }
+            profil.setTypeClient(TypeClient.ENTREPRISE);
+            profil.setRaisonSociale(raisonSociale);
+            profil.setIce(ice);
+        } else {
+            // Un particulier n'a ni raison sociale ni ICE : ces champs sont ignorés
+            // (remis à null), même si la requête en fournit.
+            profil.setTypeClient(TypeClient.PARTICULIER);
+            profil.setRaisonSociale(null);
+            profil.setIce(null);
         }
         if (request.getAdresse() != null) {
             profil.setAdresse(request.getAdresse());
@@ -160,9 +173,14 @@ public class ClientService {
     }
 
     private ClientProfilDto toDto(ClientProfil profil) {
+        Utilisateur utilisateur = profil.getUtilisateur();
         return ClientProfilDto.builder()
                 .id(profil.getId())
-                .utilisateurId(profil.getUtilisateur() == null ? null : profil.getUtilisateur().getId())
+                .utilisateurId(utilisateur == null ? null : utilisateur.getId())
+                .nom(utilisateur == null ? null : utilisateur.getNom())
+                .prenom(utilisateur == null ? null : utilisateur.getPrenom())
+                .email(utilisateur == null ? null : utilisateur.getEmail())
+                .telephone(utilisateur == null ? null : utilisateur.getTelephone())
                 .typeClient(profil.getTypeClient())
                 .raisonSociale(profil.getRaisonSociale())
                 .ice(profil.getIce())
