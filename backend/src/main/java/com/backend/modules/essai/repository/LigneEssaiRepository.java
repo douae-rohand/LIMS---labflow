@@ -34,4 +34,6 @@ public interface LigneEssaiRepository extends JpaRepository<LigneEssai, Long> {
     Page<LigneEssai> findByTechnicienId(Long technicienId, Pageable pageable);
 
     Page<LigneEssai> findByStatut(StatutEssai statut, Pageable pageable);
+
+    boolean existsByEssaiId(Long essaiId);
 }

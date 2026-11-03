@@ -94,4 +94,17 @@ public interface DemandeRepository extends JpaRepository<Demande, Long> {
     int annulerSiNouvelle(@Param("id") Long id,
                           @Param("motif") String motif,
                           @Param("statutsNouveau") Collection<String> statutsNouveau);
+
+    @Query("SELECT COUNT(d) FROM Demande d WHERE d.dateSoumission BETWEEN :debut AND :fin")
+    Long countByDateSoumissionBetween(@Param("debut") java.time.LocalDate debut,
+                                      @Param("fin") java.time.LocalDate fin);
+
+    @Query("SELECT d.statut, COUNT(d) FROM Demande d GROUP BY d.statut")
+    List<Object[]> countByStatut();
+
+    @Query("SELECT YEAR(d.dateSoumission), MONTH(d.dateSoumission), COUNT(d) FROM Demande d GROUP BY YEAR(d.dateSoumission), MONTH(d.dateSoumission) ORDER BY YEAR(d.dateSoumission), MONTH(d.dateSoumission)")
+    List<Object[]> countByMonth();
+
+    @Query("SELECT d.id, d.numero, d.titre, d.statut, d.dateSoumission, c.raisonSociale FROM Demande d LEFT JOIN d.client c ORDER BY d.dateSoumission DESC")
+    org.springframework.data.domain.Page<Object[]> listerPourExport(org.springframework.data.domain.Pageable pageable);
 }

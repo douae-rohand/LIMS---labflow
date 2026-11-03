@@ -47,4 +47,55 @@ public interface FactureRepository extends JpaRepository<Facture, Long> {
             """)
     Optional<Facture> findVisibleClientParId(@Param("factureId") Long factureId,
                                              @Param("utilisateurId") Long utilisateurId);
+
+    boolean existsByDemandeId(Long demandeId);
+
+    @Query("""
+            SELECT f FROM Facture f
+            JOIN f.demande d
+            LEFT JOIN d.client c
+            WHERE (:statutPayee IS NULL OR
+                   (CASE WHEN :statutPayee = true THEN f.statut = 'PAYEE' ELSE f.statut != 'PAYEE' END))
+              AND (:echeanceDepassee IS NULL OR
+                   (CASE WHEN :echeanceDepassee = true THEN f.dateEcheance < CURRENT_DATE ELSE true END))
+              AND (:debut IS NULL OR f.dateFacture >= :debut)
+              AND (:fin IS NULL OR f.dateFacture <= :fin)
+              AND (:clientId IS NULL OR c.id = :clientId)
+              AND (:q IS NULL OR :q = '' OR
+                   LOWER(f.numero) LIKE LOWER(CONCAT('%', :q, '%')) ESCAPE '!' OR
+                   LOWER(d.numero) LIKE LOWER(CONCAT('%', :q, '%')) ESCAPE '!' OR
+                   LOWER(c.raisonSociale) LIKE LOWER(CONCAT('%', :q, '%')) ESCAPE '!')
+            """)
+    Page<Facture> rechercher(@Param("statutPayee") Boolean statutPayee,
+                             @Param("echeanceDepassee") Boolean echeanceDepassee,
+                             @Param("debut") java.time.LocalDate debut,
+                             @Param("fin") java.time.LocalDate fin,
+                             @Param("clientId") Long clientId,
+                             @Param("q") String q,
+                             Pageable pageable);
+
+    @Query("SELECT SUM(f.montantHt) FROM Facture f WHERE f.dateFacture BETWEEN :debut AND :fin")
+    java.math.BigDecimal sumMontantHtBetween(@Param("debut") java.time.LocalDate debut,
+                                            @Param("fin") java.time.LocalDate fin);
+
+    @Query("SELECT SUM(p.montant) FROM Paiement p WHERE p.datePaiement BETWEEN :debut AND :fin")
+    java.math.BigDecimal sumMontantBetween(@Param("debut") java.time.LocalDate debut,
+                                          @Param("fin") java.time.LocalDate fin);
+
+    @Query("SELECT SUM(f.montantHt - COALESCE((SELECT SUM(p.montant) FROM Paiement p WHERE p.facture.id = f.id), 0)) FROM Facture f WHERE f.dateFacture BETWEEN :debut AND :fin")
+    java.math.BigDecimal sumImpayeBetween(@Param("debut") java.time.LocalDate debut,
+                                         @Param("fin") java.time.LocalDate fin);
+
+    @Query("SELECT COUNT(f) FROM Facture f WHERE f.dateFacture BETWEEN :debut AND :fin AND f.statut != 'PAYEE'")
+    Long countImpayeesBetween(@Param("debut") java.time.LocalDate debut,
+                              @Param("fin") java.time.LocalDate fin);
+
+    @Query("SELECT COUNT(f) FROM Facture f WHERE f.statut != 'PAYEE' AND f.dateEcheance < :date")
+    Long countEnRetardBefore(@Param("date") java.time.LocalDate date);
+
+    @Query("SELECT MAX(CAST(SUBSTRING(f.numero, 12, 3) AS integer)) FROM Facture f WHERE YEAR(f.dateFacture) = :annee AND MONTH(f.dateFacture) = :mois")
+    Integer maxNumeroDuMois(@Param("annee") int annee, @Param("mois") int mois);
+
+    @Query("SELECT SUM(f.montantHt) FROM Facture f WHERE YEAR(f.dateFacture) = :annee AND MONTH(f.dateFacture) = :mois")
+    java.math.BigDecimal sumMontantHtByMonth(@Param("annee") int annee, @Param("mois") int mois);
 }

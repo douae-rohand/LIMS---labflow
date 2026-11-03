@@ -36,4 +36,7 @@ public class Produit {
 
     @Column(name = "conditions_stockage", columnDefinition = "TEXT")
     private String conditionsStockage;
+
+    @Builder.Default
+    private Boolean actif = true;
 }

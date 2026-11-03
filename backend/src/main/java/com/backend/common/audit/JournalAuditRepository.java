@@ -30,25 +30,31 @@ public interface JournalAuditRepository extends JpaRepository<JournalAudit, Long
                     JOIN FETCH j.utilisateur u
                     WHERE (:acteur IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :acteur, '%')) ESCAPE '\\')
                       AND (:action IS NULL OR j.action = :action)
-                      AND (:laboratoireId IS NULL OR j.objet = :objetLaboratoire OR j.laboratoire.id = :laboratoireId)
+                      AND (:typeObjet IS NULL OR j.objet LIKE CONCAT(:typeObjet, '#%'))
+                      AND (:laboratoireId IS NULL OR j.objet LIKE CONCAT(:nomSchema, '/%') OR j.laboratoire.id = :laboratoireId)
                       AND (:debut IS NULL OR j.dateAction >= :debut)
                       AND (:fin IS NULL OR j.dateAction < :fin)
+                      AND (:q IS NULL OR :q = '' OR LOWER(j.objet) LIKE LOWER(CONCAT('%', :q, '%')) ESCAPE '\\')
                     """,
             countQuery = """
                     SELECT COUNT(j) FROM JournalAudit j
                     JOIN j.utilisateur u
                     WHERE (:acteur IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :acteur, '%')) ESCAPE '\\')
                       AND (:action IS NULL OR j.action = :action)
-                      AND (:laboratoireId IS NULL OR j.objet = :objetLaboratoire OR j.laboratoire.id = :laboratoireId)
+                      AND (:typeObjet IS NULL OR j.objet LIKE CONCAT(:typeObjet, '#%'))
+                      AND (:laboratoireId IS NULL OR j.objet LIKE CONCAT(:nomSchema, '/%') OR j.laboratoire.id = :laboratoireId)
                       AND (:debut IS NULL OR j.dateAction >= :debut)
                       AND (:fin IS NULL OR j.dateAction < :fin)
+                      AND (:q IS NULL OR :q = '' OR LOWER(j.objet) LIKE LOWER(CONCAT('%', :q, '%')) ESCAPE '\\')
                     """)
     Page<JournalAudit> rechercher(
             @Param("acteur") String acteur,
             @Param("action") String action,
-            @Param("objetLaboratoire") String objetLaboratoire,
-            @Param("laboratoireId") Long laboratoireId,
+            @Param("typeObjet") String typeObjet,
+            @Param("nomSchema") String nomSchema,
+            @Param("laboratoireId") String laboratoireId,
             @Param("debut") Instant debut,
             @Param("fin") Instant fin,
+            @Param("q") String q,
             Pageable pageable);
 }

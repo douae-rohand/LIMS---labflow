@@ -1,6 +1,11 @@
 package com.backend.common.audit;
 
+import com.backend.common.security.SecurityUtils;
+import com.backend.common.tenant.TenantContext;
 import com.backend.common.util.ApresCommit;
+import com.backend.modules.auth.security.UtilisateurPrincipal;
+import com.backend.modules.plateforme.entity.Laboratoire;
+import com.backend.modules.plateforme.repository.LaboratoireRepository;
 import com.backend.modules.utilisateur.entity.Utilisateur;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +25,7 @@ public class JournalAuditService {
     private final JournalAuditRepository journalAuditRepository;
     private final ObjectMapper objectMapper;
     private final JournalAuditEcriture ecriture;
+    private final LaboratoireRepository laboratoireRepository;
 
     /**
      * Trace une action réussie après le commit de la transaction métier.
@@ -30,12 +36,42 @@ public class JournalAuditService {
             return;
         }
         String email = emailActeur(entree.getUtilisateur());
-        Long laboratoireId = null;
-        if (entree.getLaboratoire() != null && entree.getLaboratoire().getId() != null) {
-            laboratoireId = entree.getLaboratoire().getId();
-        }
+        Long laboratoireId = resoudreLaboratoireId(entree.getObjet(), entree.getUtilisateur());
         planifier(entree.getAction(), entree.getObjet(), entree.getValeurAvant(), entree.getValeurApres(),
                 entree.getMotif(), email, entree.getDateAction(), laboratoireId);
+    }
+
+    /**
+     * Résout le laboratoire_id pour l'audit :
+     * (a) laboratoire de l'acteur (utilisateur.laboratoire) s'il existe
+     * (b) sinon, si l'objet commence par <nomSchema>/, laboratoire retrouvé par nom_schema
+     * (c) sinon NULL
+     */
+    private Long resoudreLaboratoireId(String objet, Utilisateur utilisateur) {
+        if (utilisateur == null) {
+            return null;
+        }
+        // (a) laboratoire de l'acteur
+        if (utilisateur.getLaboratoire() != null && utilisateur.getLaboratoire().getId() != null) {
+            return utilisateur.getLaboratoire().getId();
+        }
+        // (b) depuis l'objet si c'est un objet tenant
+        if (objet != null && objet.startsWith("lims_")) {
+            int slashIndex = objet.indexOf('/');
+            if (slashIndex > 0) {
+                String nomSchema = objet.substring(5, slashIndex); // "lims_" est le préfixe
+                try {
+                    Laboratoire labo = laboratoireRepository.findByNomSchema(nomSchema).orElse(null);
+                    if (labo != null) {
+                        return labo.getId();
+                    }
+                } catch (Exception ex) {
+                    log.warn("Impossible de résoudre laboratoire depuis l'objet {} : {}", objet, ex.getMessage());
+                }
+            }
+        }
+        // (c) NULL
+        return null;
     }
 
     public void enregistrer(String action, String nomEntite, Long idEntite,

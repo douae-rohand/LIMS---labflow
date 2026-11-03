@@ -33,8 +33,14 @@ public class DemoDataSeeder implements ApplicationRunner {
             try {
                 tenantProvisioner.provisionner(laboratoire);
             } catch (Exception ex) {
-                log.error("Provisionnement du laboratoire '{}' impossible",
-                        laboratoire.getCode(), ex);
+                // Si le schéma existe déjà, c'est normal en développement : on log en WARN
+                if (ex.getMessage() != null && ex.getMessage().contains("existe déjà")) {
+                    log.warn("Provisionnement du laboratoire '{}' ignoré : le schéma existe déjà",
+                            laboratoire.getCode());
+                } else {
+                    log.error("Provisionnement du laboratoire '{}' impossible",
+                            laboratoire.getCode(), ex);
+                }
             }
         }
     }

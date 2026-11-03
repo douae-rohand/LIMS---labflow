@@ -73,4 +73,12 @@ public interface EssaiRepository extends JpaRepository<Essai, Long> {
      */
     @Query("SELECT e FROM Essai e LEFT JOIN FETCH e.domaine WHERE e.id IN :ids")
     List<Essai> findByIdsAvecDomaine(@Param("ids") Collection<Long> ids);
+
+    Page<Essai> findByDomaine_IdAndActif(Long domaineId, Boolean actif, Pageable pageable);
+
+    long countByActifTrue();
+
+    long countByDomaine_IdAndActifTrue(Long domaineId);
+
+    boolean existsByDomaine_Id(Long domaineId);
 }
