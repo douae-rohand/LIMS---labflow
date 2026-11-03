@@ -20,7 +20,6 @@ public class CompteUtilisateurDto {
     /** ACTIF ou INACTIF. Aucun secret n'est exposé. */
     private String statut;
     private Instant derniereConnexion;
-    private boolean deuxFacteursActive;
     /** Vrai lorsqu'au moins un écart de permission est enregistré. */
     private boolean personnalise;
 }

@@ -14,7 +14,6 @@ export interface CompteUtilisateur {
   laboratoireNom?: string | null;
   statut: "ACTIF" | "INACTIF";
   derniereConnexion?: string | null;
-  deuxFacteursActive: boolean;
   personnalise: boolean;
 }
 
@@ -116,11 +115,6 @@ export async function reactiverCompte(id: number, motif?: string): Promise<Compt
 
 export async function reinitialiserMotDePasseCompte(id: number): Promise<ResultatEnvoi> {
   const res = await apiClient.post<ApiResponse<ResultatEnvoi>>(`/plateforme/utilisateurs/${id}/reinitialiser-mot-de-passe`);
-  return res.data;
-}
-
-export async function reinitialiser2faCompte(id: number): Promise<CompteUtilisateur> {
-  const res = await apiClient.post<ApiResponse<CompteUtilisateur>>(`/plateforme/utilisateurs/${id}/reinitialiser-2fa`);
   return res.data;
 }
 

@@ -47,7 +47,6 @@ public class UtilisateurDetailsService implements UserDetailsService {
                 .actif(utilisateur.isActif())
                 .mustChangePassword(utilisateur.isMustChangePassword())
                 .doubleAuthentification(utilisateur.isDoubleAuthentification())
-                .secret2faPresent(utilisateur.getSecret2fa() != null && !utilisateur.getSecret2fa().isBlank())
                 .permissions(permissions == null ? java.util.Set.of() : permissions)
                 .build();
     }

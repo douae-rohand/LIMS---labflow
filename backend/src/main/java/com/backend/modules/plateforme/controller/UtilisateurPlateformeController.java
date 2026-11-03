@@ -162,14 +162,6 @@ public class UtilisateurPlateformeController {
                 administrateurLaboratoireService.reinitialiserMotDePasse(id, acteur)));
     }
 
-    @PostMapping("/{id}/reinitialiser-2fa")
-    @Operation(summary = "Réinitialiser la double authentification d'un administrateur")
-    public ResponseEntity<ApiResponse<CompteUtilisateurDto>> reinitialiserDeuxFacteurs(@PathVariable Long id) {
-        String acteur = acteur().getEmail();
-        var compte = administrateurLaboratoireService.reinitialiserDeuxFacteurs(id, acteur);
-        return ResponseEntity.ok(ApiResponse.success("Double authentification réinitialisée", versCompte(compte)));
-    }
-
     @PostMapping("/{id}/renvoyer-invitation")
     @Operation(summary = "Renvoyer l'invitation d'un administrateur")
     public ResponseEntity<ApiResponse<?>> renvoyerInvitation(@PathVariable Long id) {
@@ -229,7 +221,6 @@ public class UtilisateurPlateformeController {
                 .laboratoireNom(admin.getLaboratoireNom())
                 .statut("ACTIF".equals(admin.getStatut()) ? "ACTIF" : "INACTIF")
                 .derniereConnexion(admin.getDerniereConnexion())
-                .deuxFacteursActive(admin.isDoubleAuthentification())
                 .build();
     }
 

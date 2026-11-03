@@ -735,9 +735,9 @@ public class UtilisateurService {
         }
 
         if (request.getActif() != null) utilisateur.setActif(request.getActif());
-        if (request.getDeuxFacteursActif() != null)
+        if (request.getDeuxFacteursActif() != null) {
             utilisateur.setDoubleAuthentification(request.getDeuxFacteursActif());
-
+        }
         return utilisateurMapper.toDto(utilisateurRepository.save(utilisateur));
     }
 

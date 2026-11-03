@@ -20,6 +20,4 @@ public class CompteAdministrateurDto {
     private String statut;
     private Instant derniereConnexion;
     private boolean mustChangePassword;
-    private boolean doubleAuthentification;
-    private boolean reenrolementObligatoire;
 }

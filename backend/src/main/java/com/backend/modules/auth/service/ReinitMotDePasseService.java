@@ -135,8 +135,7 @@ public class ReinitMotDePasseService {
      * Applique le nouveau mot de passe à partir d'un jeton valide.
      *
      * <p>La politique est validée AVANT la consommation du jeton : si elle échoue,
-     * la transaction est annulée et le jeton reste utilisable. Le 2FA n'est ni
-     * désactivé ni contourné.
+     * la transaction est annulée et le jeton reste utilisable.
      *
      * @throws BusinessRuleException (400) si le jeton est invalide, expiré ou déjà utilisé,
      *                               ou si la politique de mot de passe n'est pas respectée

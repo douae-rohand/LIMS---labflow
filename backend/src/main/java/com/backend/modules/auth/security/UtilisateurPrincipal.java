@@ -28,8 +28,6 @@ public class UtilisateurPrincipal implements UserDetails {
     private final boolean actif;
     private final boolean mustChangePassword;
     private final boolean doubleAuthentification;
-    /** Vrai seulement si un secret TOTP non vide est enregistré. Le secret lui-même n'est pas porté. */
-    private final boolean secret2faPresent;
     /** Codes de permission effectifs, sans le préfixe PERM_. Vide pour le Super Admin et le Client. */
     private final Set<String> permissions;
 

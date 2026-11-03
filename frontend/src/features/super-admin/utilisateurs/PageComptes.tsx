@@ -16,7 +16,6 @@ import {
   lirePermissions,
   modifierCompte,
   reactiverCompte,
-  reinitialiser2faCompte,
   reinitialiserMotDePasseCompte,
   renvoyerInvitationCompte,
   type CompteUtilisateur,
@@ -106,9 +105,8 @@ export function PageComptes() {
   });
 
   const action = useMutation({
-    mutationFn: async ({ id, type }: { id: number; type: "mdp" | "2fa" | "invitation" }) => {
+    mutationFn: async ({ id, type }: { id: number; type: "mdp" | "invitation" }) => {
       if (type === "mdp") return reinitialiserMotDePasseCompte(id);
-      if (type === "2fa") return reinitialiser2faCompte(id);
       return renvoyerInvitationCompte(id);
     },
     onSuccess: async (resultat) => {
@@ -199,7 +197,6 @@ export function PageComptes() {
                 <th className="px-4 py-3">Laboratoire</th>
                 <th className="px-4 py-3">Statut</th>
                 <th className="px-4 py-3">Dernière connexion</th>
-                <th className="px-4 py-3">2FA</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -242,7 +239,6 @@ export function PageComptes() {
                       <span className="sr-only">{compte.statut === "ACTIF" ? "Actif" : "Inactif"}</span>
                     </td>
                     <td className="px-4 py-3">{compte.derniereConnexion ? formaterDate(compte.derniereConnexion) : "—"}</td>
-                    <td className="px-4 py-3">{compte.deuxFacteursActive ? "Activée" : "Inactive"}</td>
                     <td className="px-4 py-3 text-right">
                       <TooltipProvider>
                         <div className="flex items-center justify-end gap-1">
@@ -260,7 +256,6 @@ export function PageComptes() {
                                 {compte.role === "ADMINISTRATEUR" && (
                                   <>
                                     <DropdownMenuItem onSelect={() => action.mutate({ id: compte.id, type: "mdp" })}>Réinitialiser le mot de passe</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => action.mutate({ id: compte.id, type: "2fa" })}>Réinitialiser la 2FA</DropdownMenuItem>
                                   </>
                                 )}
                                 {invitation && (
@@ -447,7 +442,6 @@ function PanneauCompte({ compte, onFermer }: { compte: CompteUtilisateur | null;
             <dt className="text-muted-foreground">Laboratoire</dt><dd>{texte(compte.laboratoireNom)}</dd>
             <dt className="text-muted-foreground">Statut</dt><dd>{compte.statut === "ACTIF" ? "Actif" : "Inactif"}</dd>
             <dt className="text-muted-foreground">Dernière connexion</dt><dd>{compte.derniereConnexion ? formaterDate(compte.derniereConnexion) : "—"}</dd>
-            <dt className="text-muted-foreground">Double authentification</dt><dd>{compte.deuxFacteursActive ? "Activée" : "Inactive"}</dd>
           </dl>
           {!permissions.data?.personnalisable && (
             <p className="text-muted-foreground">Les permissions de ce compte suivent le rôle et ne sont pas personnalisables.</p>

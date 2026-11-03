@@ -48,7 +48,7 @@ public class UtilisateurPlateformeService {
     static final int EXPORT_MAX = 5000;
     private static final Set<String> TRIS = Set.of("nom", "prenom", "email", "derniereConnexion", "role");
     private static final List<String> COLONNES = List.of(
-            "Nom", "Prénom", "E-mail", "Rôle", "Laboratoire", "Statut", "Dernière connexion", "Double authentification");
+            "Nom", "Prénom", "E-mail", "Rôle", "Laboratoire", "Statut", "Dernière connexion");
     private static final DateTimeFormatter DATE =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(ZoneId.of("Africa/Casablanca"));
 
@@ -202,7 +202,6 @@ public class UtilisateurPlateformeService {
                 .laboratoireNom(laboratoire == null ? null : laboratoire.getRaisonSociale())
                 .statut(compte.isActif() ? "ACTIF" : "INACTIF")
                 .derniereConnexion(compte.getDerniereConnexion())
-                .deuxFacteursActive(compte.isDoubleAuthentification() && StringUtils.hasText(compte.getSecret2fa()))
                 .personnalise(personnalise)
                 .build();
     }
@@ -320,8 +319,7 @@ public class UtilisateurPlateformeService {
                 compte.getRole() == null ? "" : compte.getRole().getCode(),
                 laboratoire == null ? "" : texte(laboratoire.getRaisonSociale()),
                 compte.isActif() ? "Actif" : "Inactif",
-                compte.getDerniereConnexion() == null ? "" : DATE.format(compte.getDerniereConnexion()),
-                compte.isDoubleAuthentification() && StringUtils.hasText(compte.getSecret2fa()) ? "Oui" : "Non");
+                compte.getDerniereConnexion() == null ? "" : DATE.format(compte.getDerniereConnexion()));
     }
 
     private static String cellule(String valeur) {

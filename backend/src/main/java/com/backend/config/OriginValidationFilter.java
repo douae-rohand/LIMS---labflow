@@ -35,7 +35,6 @@ public class OriginValidationFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Appliquer la vérification uniquement sur /api/auth/refresh, /api/auth/logout, /api/auth/2fa/**
         if (path.startsWith("/api/auth/refresh") || path.startsWith("/api/auth/logout") || path.startsWith("/api/auth/2fa/")) {
             String origin = request.getHeader("Origin");
 

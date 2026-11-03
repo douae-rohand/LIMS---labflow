@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
  * Réponse retournée après une authentification réussie.
  *
  * <p>Si la 2FA est activée, {@code requiresTwoFactor=true} et les tokens
- * sont absents — le client doit appeler {@code POST /api/auth/2fa/verify}.
+ * sont absents — le client doit appeler {@code POST /api/auth/2fa/valider}.
  */
 @Data
 @Builder
@@ -19,7 +19,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class LoginResponse {
 
-    /** Token JWT d'accès (null si 2FA requise). */
+    /** Token JWT d'accès, absent tant que la 2FA n'est pas validée. */
     private String accessToken;
 
     @Builder.Default
@@ -28,15 +28,13 @@ public class LoginResponse {
     /** Durée de vie du token d'accès en secondes. */
     private long expiresIn;
 
-    /** Indique si une vérification 2FA est requise pour compléter la connexion. */
     @Builder.Default
     private boolean requiresTwoFactor = false;
 
-    /** Indique si le 2FA est obligatoire mais non encore configuré (setup requis). */
     @Builder.Default
     private boolean setupRequired = false;
 
-    /** Token temporaire renvoyé quand requiresTwoFactor=true (valable quelques minutes). */
+    /** Jeton temporaire quand {@code requiresTwoFactor} est vrai. */
     private String twoFactorToken;
 
     // Informations basiques sur l'utilisateur
