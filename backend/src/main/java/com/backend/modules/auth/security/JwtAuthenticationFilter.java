@@ -26,7 +26,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
-    private final ObligationDeuxFacteurs obligationDeuxFacteurs;
 
     @Override
     protected void doFilterInternal(
@@ -43,15 +42,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.setContentType("application/json;charset=UTF-8");
                     response.getWriter().write("{\"success\":false,\"message\":\"Compte désactivé\",\"data\":null}");
-                    return;
-                }
-                if (userDetails instanceof UtilisateurPrincipal principal
-                        && !obligationDeuxFacteurs.accesAutorise(principal)) {
-                    log.warn("Accès refusé, enrôlement 2FA incomplet : {}", username);
-                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                    response.setContentType("application/json;charset=UTF-8");
-                    response.getWriter().write(
-                            "{\"success\":false,\"message\":\"Enrôlement de la double authentification requis\",\"data\":null}");
                     return;
                 }
                 if (userDetails instanceof UtilisateurPrincipal principal && laboratoireBloque(principal)) {

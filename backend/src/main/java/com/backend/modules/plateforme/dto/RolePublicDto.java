@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * Rôle exposé publiquement : uniquement les colonnes persistées {@code role.code} et {@code role.libelle}.
- * Aucune capacité ni flag 2FA n'est inventé — ces données n'existent pas en base.
+ * Aucune capacité n'est inventée — ces données n'existent pas en base.
  */
 @Data
 @Builder

@@ -119,7 +119,6 @@ public class AdministrateurLaboratoireService {
                 .mustChangePassword(true)
                 .actif(false)
                 .compteConfirme(false)
-                .doubleAuthentification(false)
                 .role(role)
                 .laboratoire(laboratoire)
                 .build();
@@ -161,28 +160,6 @@ public class AdministrateurLaboratoireService {
                 null,
                 idLaboratoire(admin));
         return versResultat(envoi);
-    }
-
-    @Transactional
-    public CompteAdministrateurDto reinitialiserDeuxFacteurs(Long id, String acteurEmail) {
-        Utilisateur admin = charger(id);
-        limiterEnvoi(admin.getId());
-        boolean actifAvant = admin.isDoubleAuthentification();
-        admin.setSecret2fa(null);
-        admin.setDoubleAuthentification(true);
-        utilisateurRepository.save(admin);
-        refreshTokenRepository.revoquerTousParUtilisateur(admin.getId());
-        journalAuditService.enregistrer(
-                "REINITIALISER_2FA_ADMINISTRATEUR",
-                "Utilisateur",
-                admin.getId(),
-                acteurEmail,
-                "{\"doubleAuthentification\":" + actifAvant + "}",
-                "{\"doubleAuthentification\":true,\"secretEfface\":true,\"reenrolement\":true}",
-                null,
-                idLaboratoire(admin));
-        log.info("2FA administrateur réinitialisée : userId={}", admin.getId());
-        return versDto(admin);
     }
 
     @Async
@@ -318,8 +295,6 @@ public class AdministrateurLaboratoireService {
                 .statut(statut(admin))
                 .derniereConnexion(admin.getDerniereConnexion())
                 .mustChangePassword(admin.isMustChangePassword())
-                .doubleAuthentification(admin.isDoubleAuthentification() && StringUtils.hasText(admin.getSecret2fa()))
-                .reenrolementObligatoire(admin.isDoubleAuthentification() && !StringUtils.hasText(admin.getSecret2fa()))
                 .build();
     }
 
@@ -343,7 +318,6 @@ public class AdministrateurLaboratoireService {
         valeurs.put("actif", admin.isActif());
         valeurs.put("compteConfirme", admin.isCompteConfirme());
         valeurs.put("mustChangePassword", admin.isMustChangePassword());
-        valeurs.put("doubleAuthentification", admin.isDoubleAuthentification() && StringUtils.hasText(admin.getSecret2fa()));
         try {
             return objectMapper.writeValueAsString(valeurs);
         } catch (JsonProcessingException ex) {

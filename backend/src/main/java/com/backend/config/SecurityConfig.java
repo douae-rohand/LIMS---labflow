@@ -74,7 +74,6 @@ public class SecurityConfig {
             )
             // Règles d'autorisation
             .authorizeHttpRequests(auth -> auth
-                // Endpoints publics (login, refresh, 2FA valider/setup/activer sans auth Bearer)
                 .requestMatchers(
                     "/api/auth/login",
                     "/api/auth/refresh",

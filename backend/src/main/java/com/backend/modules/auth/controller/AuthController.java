@@ -158,22 +158,17 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest) {
         Object result = authService.login(request, httpRequest);
-
         if (result instanceof AuthService.LoginResult loginResult) {
             ResponseCookie cookie = refreshCookieService.creerCookieRefreshToken(loginResult.rawRefreshToken());
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, cookie.toString())
                     .body(ApiResponse.success("Connexion réussie", loginResult.response()));
-        } else if (result instanceof LoginResponse response) {
+        }
+        if (result instanceof LoginResponse response) {
             return ResponseEntity.ok(ApiResponse.success("Vérification 2FA requise", response));
         }
-
         throw new IllegalStateException("Résultat de connexion inattendu");
     }
-
-    // -------------------------------------------------------------------------
-    // Authentification à deux facteurs — validation
-    // -------------------------------------------------------------------------
 
     @PostMapping("/2fa/valider")
     @Operation(summary = "Validation du code TOTP (2FA)")
@@ -253,10 +248,6 @@ public class AuthController {
                 .body(ApiResponse.success("Mot de passe changé avec succès", loginResult.response()));
     }
 
-    // -------------------------------------------------------------------------
-    // 2FA — Enrôlement : génération du secret (setup)
-    // -------------------------------------------------------------------------
-
     @PostMapping("/2fa/setup")
     @Operation(summary = "Génère le secret TOTP et retourne l'URL QR code")
     public ResponseEntity<ApiResponse<SetupTwoFactorResponse>> setupTwoFactor(
@@ -267,10 +258,6 @@ public class AuthController {
                 "Secret TOTP généré. Scannez le QR code puis appelez /2fa/activer.",
                 response));
     }
-
-    // -------------------------------------------------------------------------
-    // 2FA — Enrôlement : activation après vérification du premier code
-    // -------------------------------------------------------------------------
 
     @PostMapping("/2fa/activer")
     @Operation(summary = "Active la 2FA après vérification du premier code TOTP")

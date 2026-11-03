@@ -11,7 +11,7 @@ import java.time.Instant;
 /**
  * DTO de détail pour un employé d'un laboratoire.
  *
- * <p>Ne contient aucun mot de passe, secret 2FA ni jeton.
+ * <p>Ne contient aucun mot de passe ni jeton.
  */
 @Data
 @Builder

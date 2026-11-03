@@ -303,8 +303,6 @@ export class ApiClient {
   private registerRequestInterceptor(): void {
     this.http.interceptors.request.use(
       (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
-        // Authorization ne porte QUE l'accessToken (jamais un twoFactorToken).
-        // Les twoFactorToken sont transmis dans le corps JSON des requêtes 2FA.
         const token = getAccessToken();
         if (token !== null) {
           config.headers.set('Authorization', `Bearer ${token}`);
@@ -473,7 +471,7 @@ export class ApiClient {
  *
  * Initialisation typique au démarrage (dans le composant racine ou après login) :
  *
- *   // Après login réussi (cas sans 2FA) :
+ *   // Après login réussi :
  *   setSession(response.accessToken, toSessionUser(response));
  *
  *   // Callback de déconnexion forcée (refresh token expiré) :
