@@ -95,7 +95,7 @@ public class TenantProvisioner {
         } catch (Exception ex) {
             String message = "Échec du déprovisionnement du tenant " + nomSchema + " : " + ex.getMessage();
             log.error(message);
-            journalAuditService.enregistrer(
+            journalAuditService.enregistrerEchec(
                     "DEPROVISIONNEMENT_ECHOUE",
                     "SchemaTenant",
                     null,

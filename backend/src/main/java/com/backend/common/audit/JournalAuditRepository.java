@@ -30,7 +30,7 @@ public interface JournalAuditRepository extends JpaRepository<JournalAudit, Long
                     JOIN FETCH j.utilisateur u
                     WHERE (:acteur IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :acteur, '%')) ESCAPE '\\')
                       AND (:action IS NULL OR j.action = :action)
-                      AND (:objetLaboratoire IS NULL OR j.objet = :objetLaboratoire)
+                      AND (:laboratoireId IS NULL OR j.objet = :objetLaboratoire OR j.laboratoire.id = :laboratoireId)
                       AND (:debut IS NULL OR j.dateAction >= :debut)
                       AND (:fin IS NULL OR j.dateAction < :fin)
                     """,
@@ -39,7 +39,7 @@ public interface JournalAuditRepository extends JpaRepository<JournalAudit, Long
                     JOIN j.utilisateur u
                     WHERE (:acteur IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :acteur, '%')) ESCAPE '\\')
                       AND (:action IS NULL OR j.action = :action)
-                      AND (:objetLaboratoire IS NULL OR j.objet = :objetLaboratoire)
+                      AND (:laboratoireId IS NULL OR j.objet = :objetLaboratoire OR j.laboratoire.id = :laboratoireId)
                       AND (:debut IS NULL OR j.dateAction >= :debut)
                       AND (:fin IS NULL OR j.dateAction < :fin)
                     """)
@@ -47,6 +47,7 @@ public interface JournalAuditRepository extends JpaRepository<JournalAudit, Long
             @Param("acteur") String acteur,
             @Param("action") String action,
             @Param("objetLaboratoire") String objetLaboratoire,
+            @Param("laboratoireId") Long laboratoireId,
             @Param("debut") Instant debut,
             @Param("fin") Instant fin,
             Pageable pageable);

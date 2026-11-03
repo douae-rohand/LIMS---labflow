@@ -1,19 +1,16 @@
 package com.backend.common.audit;
 
+import com.backend.common.util.ApresCommit;
 import com.backend.modules.utilisateur.entity.Utilisateur;
-import com.backend.modules.utilisateur.repository.UtilisateurRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -21,74 +18,67 @@ import java.util.UUID;
 public class JournalAuditService {
 
     private final JournalAuditRepository journalAuditRepository;
-    private final UtilisateurRepository utilisateurRepository;
     private final ObjectMapper objectMapper;
+    private final JournalAuditEcriture ecriture;
 
-    @Async
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    /**
+     * Trace une action réussie après le commit de la transaction métier.
+     * Un rollback n'écrit donc pas une ligne « réussi ».
+     */
     public void enregistrer(JournalAudit entree) {
-        try {
-            journalAuditRepository.save(entree);
-        } catch (Exception ex) {
-            log.error("Erreur lors de la persistance de l'audit [action={}] : {}",
-                    entree.getAction(), ex.getMessage());
-        }
-    }
-
-    @Async
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void enregistrer(String action, String nomEntite, Long idEntite,
-                            String utilisateur, String description) {
-        Utilisateur auteur = utilisateurRepository.findByEmail(utilisateur).orElse(null);
-        if (auteur == null) {
-            log.warn("Audit ignoré : utilisateur introuvable pour {}", utilisateur);
+        if (entree == null) {
             return;
         }
+        String email = emailActeur(entree.getUtilisateur());
+        Long laboratoireId = null;
+        if (entree.getLaboratoire() != null && entree.getLaboratoire().getId() != null) {
+            laboratoireId = entree.getLaboratoire().getId();
+        }
+        planifier(entree.getAction(), entree.getObjet(), entree.getValeurAvant(), entree.getValeurApres(),
+                entree.getMotif(), email, entree.getDateAction(), laboratoireId);
+    }
+
+    public void enregistrer(String action, String nomEntite, Long idEntite,
+                            String utilisateur, String description) {
         String objet = idEntite == null ? nomEntite : nomEntite + "#" + idEntite;
-        JournalAudit entree = JournalAudit.builder()
-                .code("AUD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-                .dateAction(Instant.now())
-                .action(action)
-                .objet(objet)
-                .motif(description)
-                .utilisateur(auteur)
-                .build();
-        enregistrer(entree);
+        planifier(action, objet, null, null, description, utilisateur, Instant.now(), null);
+    }
+
+    public void enregistrer(String action, String nomEntite, Long idEntite, String acteurEmail,
+                            String valeurAvant, String valeurApres, String motif) {
+        enregistrer(action, nomEntite, idEntite, acteurEmail, valeurAvant, valeurApres, motif, null);
+    }
+
+    public void enregistrer(String action, String nomEntite, Long idEntite, String acteurEmail,
+                            String valeurAvant, String valeurApres, String motif, Long laboratoireId) {
+        String objet = idEntite == null ? nomEntite : nomEntite + "#" + idEntite;
+        planifier(action, objet, commeJson(valeurAvant), commeJson(valeurApres), motif,
+                acteurEmail, Instant.now(), laboratoireId);
     }
 
     /**
-     * Trace une action métier. L'acteur est l'e-mail capturé par le controller
-     * avant l'appel : le SecurityContext n'est pas disponible dans ce thread @Async.
-     * Un échec d'écriture est journalisé et n'est jamais propagé.
+     * Ligne d'échec qui doit survivre au rollback (déprovisionnement orphelin).
+     * Écrite tout de suite, dans une transaction neuve.
      */
-    @Async
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void enregistrer(String action, String nomEntite, Long idEntite, String acteurEmail,
-                            String valeurAvant, String valeurApres, String motif) {
-        try {
-            if (acteurEmail == null || acteurEmail.isBlank()) {
-                log.error("Audit non enregistré [{}] : acteur absent", action);
-                return;
-            }
-            Utilisateur auteur = utilisateurRepository.findByEmail(acteurEmail).orElse(null);
-            if (auteur == null) {
-                log.error("Audit non enregistré [{}] : utilisateur introuvable pour {}", action, acteurEmail);
-                return;
-            }
-            JournalAudit entree = JournalAudit.builder()
-                    .code("AUD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-                    .dateAction(Instant.now())
-                    .action(action)
-                    .objet(idEntite == null ? nomEntite : nomEntite + "#" + idEntite)
-                    .valeurAvant(commeJson(valeurAvant))
-                    .valeurApres(commeJson(valeurApres))
-                    .motif(motif)
-                    .utilisateur(auteur)
-                    .build();
-            journalAuditRepository.save(entree);
-        } catch (Exception ex) {
-            log.error("Erreur lors de la persistance de l'audit [action={}] : {}", action, ex.getMessage());
+    public void enregistrerEchec(String action, String nomEntite, Long idEntite, String acteurEmail,
+                                 String valeurAvant, String valeurApres, String motif) {
+        String objet = idEntite == null ? nomEntite : nomEntite + "#" + idEntite;
+        ecriture.persister(action, objet, commeJson(valeurAvant), commeJson(valeurApres), motif,
+                acteurEmail, Instant.now(), null);
+    }
+
+    private void planifier(String action, String objet, String valeurAvant, String valeurApres,
+                           String motif, String acteurEmail, Instant dateAction, Long laboratoireId) {
+        Instant quand = dateAction == null ? Instant.now() : dateAction;
+        ApresCommit.executer(() -> ecriture.persister(
+                action, objet, valeurAvant, valeurApres, motif, acteurEmail, quand, laboratoireId));
+    }
+
+    private static String emailActeur(Utilisateur utilisateur) {
+        if (utilisateur == null) {
+            return null;
         }
+        return utilisateur.getEmail();
     }
 
     private String commeJson(String valeur) {

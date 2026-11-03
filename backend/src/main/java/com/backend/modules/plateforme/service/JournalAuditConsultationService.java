@@ -37,6 +37,7 @@ public class JournalAuditConsultationService {
                         like(acteur),
                         texte(action),
                         objetLaboratoire(laboratoireId),
+                        laboratoireId,
                         debut(du),
                         fin(au),
                         page(page, size, tri, ordre))
@@ -54,6 +55,7 @@ public class JournalAuditConsultationService {
                         like(acteur),
                         texte(action),
                         objetLaboratoire(laboratoireId),
+                        laboratoireId,
                         debut(du),
                         fin(au),
                         PageRequest.of(0, EXPORT_MAX, Sort.by(Sort.Direction.DESC, "dateAction")))
@@ -138,7 +140,15 @@ public class JournalAuditConsultationService {
             return "";
         }
         String texte = valeur;
-        if (!texte.isEmpty() && "=+-@".indexOf(texte.charAt(0)) >= 0) {
+        int index = 0;
+        while (index < texte.length()) {
+            char caractere = texte.charAt(index);
+            if (caractere != ' ' && caractere != '\t' && caractere != '\r') {
+                break;
+            }
+            index++;
+        }
+        if (index < texte.length() && "=+-@".indexOf(texte.charAt(index)) >= 0) {
             texte = "'" + texte;
         }
         return "\"" + texte.replace("\"", "\"\"") + "\"";
