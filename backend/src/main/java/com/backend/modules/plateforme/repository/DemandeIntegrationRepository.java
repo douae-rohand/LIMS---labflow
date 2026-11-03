@@ -36,4 +36,14 @@ public interface DemandeIntegrationRepository extends JpaRepository<DemandeInteg
     Page<DemandeIntegration> rechercher(@Param("statut") String statut,
                                         @Param("recherche") String recherche,
                                         Pageable pageable);
+
+    @Query("""
+            SELECT d FROM DemandeIntegration d
+            WHERE d.statut IN ('EN_ATTENTE', 'EN_COURS_VALIDATION', 'SUSPENDUE')
+              AND d.dateDemande < :avant
+            ORDER BY d.dateDemande ASC
+            """)
+    java.util.List<DemandeIntegration> trouverAnciennes(
+            @Param("avant") java.time.Instant avant,
+            Pageable pageable);
 }

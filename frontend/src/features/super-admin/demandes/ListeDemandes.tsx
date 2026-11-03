@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Eye, RefreshCw, Search, X } from "lucide-react";
-import { Badge, Button, Input, Select, Tooltip } from "@/components/lab";
+import { Eye } from "lucide-react";
+import { Badge, Button, Select, Tooltip } from "@/components/lab";
 import {
   listerDemandesIntegration,
   type DemandeIntegration,
   type StatutIntegration,
 } from "@/api/plateforme";
+import { BarreListe } from "../BarreListe";
 import { formaterDate } from "../texte";
 import { PanneauDemande } from "./PanneauDemande";
 
@@ -55,22 +56,22 @@ export function ListeDemandes({ demandeInitiale }: { demandeInitiale?: number | 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl border border-brand-900/10 bg-card p-3 sm:p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input
-              value={recherche}
-              onChange={(event) => setRecherche(event.target.value)}
-              placeholder="Rechercher par nom, numéro, ville ou e-mail"
-              aria-label="Rechercher une demande"
-              className="pl-10"
-            />
-          </div>
+      <BarreListe
+        recherche={recherche}
+        onRecherche={setRecherche}
+        placeholder="Rechercher par nom, numéro, ville ou e-mail"
+        libelleRecherche="Rechercher une demande"
+        filtresActifs={filtresActifs}
+        onReinitialiser={() => { setRecherche(""); setStatut(""); }}
+        puces={[
+          ...(rechercheDifferee ? [{ libelle: `Recherche : ${rechercheDifferee}`, onRetirer: () => setRecherche("") }] : []),
+          ...(statut ? [{ libelle: LIBELLES[statut], onRetirer: () => setStatut("") }] : []),
+        ]}
+        filtres={
           <Select
             value={statut}
             aria-label="Filtrer par statut de la demande"
-            className="lg:w-64"
+            className="xl:w-52"
             onChange={(event) => setStatut(event.target.value as StatutIntegration | "")}
           >
             <option value="">Tous les statuts</option>
@@ -78,40 +79,8 @@ export function ListeDemandes({ demandeInitiale }: { demandeInitiale?: number | 
             <option value="ACCEPTEE">Acceptées</option>
             <option value="REFUSEE">Refusées</option>
           </Select>
-          <div className="flex gap-2">
-            {filtresActifs && (
-              <Button variant="ghost" size="sm" onClick={() => { setRecherche(""); setStatut(""); }}>
-                Réinitialiser
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<RefreshCw className="size-4" aria-hidden="true" />}
-              iconPosition="left"
-              onClick={() => void demandes.refetch()}
-            >
-              Actualiser
-            </Button>
-          </div>
-        </div>
-        {filtresActifs && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {rechercheDifferee && (
-              <button type="button" className="inline-flex items-center gap-1 rounded-full bg-surface-alt px-3 py-1 text-xs font-semibold text-brand-900" onClick={() => setRecherche("")}>
-                Recherche : {rechercheDifferee}
-                <X className="size-3" aria-hidden="true" />
-              </button>
-            )}
-            {statut && (
-              <button type="button" className="inline-flex items-center gap-1 rounded-full bg-surface-alt px-3 py-1 text-xs font-semibold text-brand-900" onClick={() => setStatut("")}>
-                {LIBELLES[statut]}
-                <X className="size-3" aria-hidden="true" />
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+        }
+      />
 
       <div className="overflow-x-auto rounded-2xl border border-brand-900/10 bg-card">
         <table className="w-full min-w-[980px] border-separate border-spacing-0 text-left text-sm">

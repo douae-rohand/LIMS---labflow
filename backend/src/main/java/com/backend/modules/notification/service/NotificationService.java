@@ -1,6 +1,9 @@
 package com.backend.modules.notification.service;
 
+import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
+import com.backend.common.security.SecurityUtils;
+import com.backend.modules.auth.security.UtilisateurPrincipal;
 import com.backend.modules.notification.dto.NotificationDto;
 import com.backend.modules.notification.entity.CanalNotification;
 import com.backend.modules.notification.entity.Notification;
@@ -47,9 +50,25 @@ public class NotificationService {
                 : List.of(CanalNotification.IN_APP);
 
         if (dto.getDestinataireIds() != null) {
+            UtilisateurPrincipal emetteur = SecurityUtils.principalCourant();
             for (Long uid : dto.getDestinataireIds()) {
-                Utilisateur utilisateur = utilisateurRepository.findById(uid)
-                        .orElseThrow(() -> new ResourceNotFoundException("Utilisateur", "id", uid));
+                Utilisateur utilisateur = utilisateurRepository.findById(uid).orElse(null);
+                if (utilisateur == null) {
+                    if (emetteur.isSuperAdministrateur()) {
+                        throw new ResourceNotFoundException("Utilisateur", "id", uid);
+                    }
+                    throw new BusinessRuleException("DESTINATAIRE_HORS_LABORATOIRE",
+                            "Les destinataires doivent appartenir à votre laboratoire.");
+                }
+                if (!emetteur.isSuperAdministrateur()) {
+                    Long laboEmetteur = emetteur.getLaboratoireId();
+                    Long laboDestinataire = utilisateur.getLaboratoire() == null
+                            ? null : utilisateur.getLaboratoire().getId();
+                    if (laboEmetteur == null || !laboEmetteur.equals(laboDestinataire)) {
+                        throw new BusinessRuleException("DESTINATAIRE_HORS_LABORATOIRE",
+                                "Les destinataires doivent appartenir à votre laboratoire.");
+                    }
+                }
                 CanalNotification canal = canaux.getFirst();
                 NotificationReception reception = NotificationReception.builder()
                         .notification(notification)

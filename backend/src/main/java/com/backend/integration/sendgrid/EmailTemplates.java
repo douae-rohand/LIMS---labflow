@@ -215,18 +215,6 @@ public final class EmailTemplates {
         );
     }
 
-    public static String testConfiguration(String destinataire) {        return page(
-                "Test SendGrid",
-                "La configuration e-mail LabFlow fonctionne.",
-                """
-                <p>Cet e-mail de test a été envoyé à <strong>%s</strong> depuis l'application LIMS.</p>
-                <p>Si vous le lisez, l'API SendGrid et l'expéditeur sont correctement configurés.</p>
-                """.formatted(e(destinataire)),
-                null,
-                null
-        );
-    }
-
     public static String texteBrut(String html) {
         return html
                 .replaceAll("(?s)<style.*?>.*?</style>", " ")

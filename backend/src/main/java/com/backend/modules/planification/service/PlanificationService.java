@@ -1,6 +1,9 @@
 package com.backend.modules.planification.service;
 
 import com.backend.common.exception.BusinessRuleException;
+import com.backend.common.security.ProprieteClient;
+import com.backend.common.security.SecurityUtils;
+import com.backend.modules.utilisateur.entity.RoleUtilisateur;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.modules.demande.entity.Demande;
 import com.backend.modules.demande.repository.DemandeRepository;
@@ -30,14 +33,21 @@ public class PlanificationService {
     private final LigneEssaiRepository ligneEssaiRepository;
     private final DemandeRepository demandeRepository;
     private final EssaiRepository essaiRepository;
+    private final ProprieteClient proprieteClient;
 
     @Transactional(readOnly = true)
     public PlanificationDto trouverParId(Long id) {
-        return toDto(charger(id));
+        if (!proprieteClient.clientConnecte()) {
+            return toDto(charger(id));
+        }
+        LigneEssai ligne = ligneEssaiRepository.findById(id).orElseThrow(proprieteClient::introuvable);
+        proprieteClient.exiger(ligne.getDemande());
+        return toDto(ligne);
     }
 
     @Transactional(readOnly = true)
     public List<PlanificationDto> listerParDemande(Long demandeId) {
+        proprieteClient.exigerDemande(demandeId);
         return ligneEssaiRepository.findByDemande_Id(demandeId).stream().map(this::toDto).toList();
     }
 
@@ -76,6 +86,11 @@ public class PlanificationService {
             ligne.setDateDebut(Instant.now());
         }
         if (statut == StatutPlanification.TERMINEE) {
+            RoleUtilisateur role = SecurityUtils.principalCourant().getRole();
+            if (role != RoleUtilisateur.RESPONSABLE && role != RoleUtilisateur.ADMINISTRATEUR) {
+                throw new BusinessRuleException("DECISION_RESERVEE_AU_ROLE",
+                        "Le passage d'une planification à terminée est réservé au responsable ou à l'administrateur.");
+            }
             ligne.setDateFin(Instant.now());
         }
         return toDto(ligneEssaiRepository.save(ligne));

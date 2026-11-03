@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.util.List;
 
@@ -84,11 +83,6 @@ public class EmailService {
         String html = EmailTemplates.invitationEmploye(
                 nomComplet, nomLaboratoire, lienActivation, ttlHeures);
         return envoyerHtml(email, sujet, html);
-    }
-
-    public ResultatEnvoiEmail envoyerTest(String destinataire) {
-        String sujet = "[LabFlow] Test de configuration SendGrid";
-        return envoyerHtml(destinataire, sujet, EmailTemplates.testConfiguration(destinataire));
     }
 
     @Async

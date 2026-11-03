@@ -10,7 +10,7 @@ export const Route = createFileRoute("/app/")({
   beforeLoad: () => {
     const session = getSession();
     if (session?.user.role === "SUPER_ADMINISTRATEUR") {
-      throw redirect({ to: "/app/gestion-laboratoires", search: { onglet: "laboratoires" } });
+      throw redirect({ to: "/app/tableau-de-bord" });
     }
     if (session?.user.role === "ADMINISTRATEUR") {
       throw redirect({ to: "/app/employes", search: { page: 1, tri: "nom", direction: "asc" } });

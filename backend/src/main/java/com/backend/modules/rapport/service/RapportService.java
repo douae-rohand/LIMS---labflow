@@ -1,6 +1,7 @@
 package com.backend.modules.rapport.service;
 
 import com.backend.common.exception.ResourceNotFoundException;
+import com.backend.common.security.ProprieteClient;
 import com.backend.modules.demande.entity.Demande;
 import com.backend.modules.demande.repository.DemandeRepository;
 import com.backend.modules.rapport.dto.RapportDto;
@@ -22,14 +23,21 @@ public class RapportService {
 
     private final RapportRepository rapportRepository;
     private final DemandeRepository demandeRepository;
+    private final ProprieteClient proprieteClient;
 
     @Transactional(readOnly = true)
     public RapportDto trouverParId(Long id) {
-        return toDto(charger(id));
+        if (!proprieteClient.clientConnecte()) {
+            return toDto(charger(id));
+        }
+        Rapport rapport = rapportRepository.findById(id).orElseThrow(proprieteClient::introuvable);
+        proprieteClient.exiger(rapport.getDemande());
+        return toDto(rapport);
     }
 
     @Transactional(readOnly = true)
     public Page<RapportDto> listerParDemande(Long demandeId, Pageable pageable) {
+        proprieteClient.exigerDemande(demandeId);
         return rapportRepository.findByDemande_Id(demandeId, pageable).map(this::toDto);
     }
 

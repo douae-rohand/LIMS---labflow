@@ -20,20 +20,20 @@ public class StockController {
     private final StockService stockService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TECHNICIEN','RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_STOCK_CONSULTER')")
     public ResponseEntity<ApiResponse<Page<ArticleStockDto>>> lister(
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "50") int size) {
         return ResponseEntity.ok(ApiResponse.success(stockService.lister(PageRequest.of(page, size))));
     }
 
     @GetMapping("/alertes")
-    @PreAuthorize("hasAnyRole('TECHNICIEN','RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_STOCK_CONSULTER')")
     public ResponseEntity<ApiResponse<List<ArticleStockDto>>> alertesRupture() {
         return ResponseEntity.ok(ApiResponse.success(stockService.alertesRupture()));
     }
 
     @PostMapping("/{articleId}/mouvement")
-    @PreAuthorize("hasAnyRole('TECHNICIEN','RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_STOCK_GERER')")
     public ResponseEntity<ApiResponse<ArticleStockDto>> enregistrerMouvement(
             @PathVariable Long articleId, @RequestParam TypeMouvement type,
             @RequestParam Double quantite, @RequestParam(required = false) String motif,

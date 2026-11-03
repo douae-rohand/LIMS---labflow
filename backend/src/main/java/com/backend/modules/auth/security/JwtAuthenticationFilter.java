@@ -26,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
+    private final ObligationDeuxFacteurs obligationDeuxFacteurs;
 
     @Override
     protected void doFilterInternal(
@@ -44,6 +45,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     response.getWriter().write("{\"success\":false,\"message\":\"Compte désactivé\",\"data\":null}");
                     return;
                 }
+                if (userDetails instanceof UtilisateurPrincipal principal
+                        && !obligationDeuxFacteurs.accesAutorise(principal)) {
+                    log.warn("Accès refusé, enrôlement 2FA incomplet : {}", username);
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write(
+                            "{\"success\":false,\"message\":\"Enrôlement de la double authentification requis\",\"data\":null}");
+                    return;
+                }
+                if (userDetails instanceof UtilisateurPrincipal principal && laboratoireBloque(principal)) {
+                    log.warn("Accès refusé, laboratoire non actif : {}", username);
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write(
+                            "{\"success\":false,\"message\":\"Laboratoire suspendu ou désactivé\",\"data\":null}");
+                    return;
+                }
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails, null, userDetails.getAuthorities());
@@ -59,6 +77,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } finally {
             TenantContext.clear();
         }
+    }
+
+    private static boolean laboratoireBloque(UtilisateurPrincipal principal) {
+        if (!principal.isEmployeLaboratoire() || principal.getLaboratoireId() == null) {
+            return false;
+        }
+        return principal.getStatutLaboratoire() == null
+                || !"ACTIF".equalsIgnoreCase(principal.getStatutLaboratoire());
     }
 
     private String extractToken(HttpServletRequest request) {

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -9,27 +9,37 @@ import {
   FileSpreadsheet,
   FileText,
   Pencil,
-  Loader2,
-  Search,
-  Upload,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Button, Input, Select, Tooltip } from "@/components/lab";
-import { cn } from "@/lib/utils";
+import { Badge, Button, Label, Select, Textarea, Tooltip } from "@/components/lab";
 import {
-  changerStatutLaboratoire,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  activerLaboratoire,
+  desactiverLaboratoire,
   exporterLaboratoires,
   listerVillesLaboratoires,
   rechercherLaboratoires,
+  suspendreLaboratoire,
   type LaboratoireAdmin,
 } from "@/api/gestionLaboratoires";
-import { Dialogue } from "../Fenetres";
+import { BarreListe } from "../BarreListe";
 import { formaterDate, messageErreur, texte } from "../texte";
 import { DialogueImport } from "./DialogueImport";
 import { PanneauLaboratoire } from "./PanneauLaboratoire";
 
 type Tri = "raisonSociale" | "code" | "ville" | "email" | "dateCreation" | "statut";
+type ActionStatut = "activer" | "suspendre" | "desactiver";
 type TaillePage = 10 | 20 | 50;
 
 const COLONNES: { cle: Tri | "coordonnees" | "administrateur" | "actions"; libelle: string; tri?: Tri }[] = [
@@ -45,7 +55,6 @@ const COLONNES: { cle: Tri | "coordonnees" | "administrateur" | "actions"; libel
 
 export function TableauLaboratoires() {
   const queryClient = useQueryClient();
-  const exportRef = useRef<HTMLDivElement>(null);
   const [recherche, setRecherche] = useState("");
   const [rechercheDifferee, setRechercheDifferee] = useState("");
   const [statut, setStatut] = useState<"" | "ACTIF" | "SUSPENDU" | "DESACTIVE">("");
@@ -55,13 +64,16 @@ export function TableauLaboratoires() {
   const [tri, setTri] = useState<Tri>("dateCreation");
   const [ordre, setOrdre] = useState<"asc" | "desc">("desc");
   const [portee, setPortee] = useState<"filtres" | "tous">("filtres");
-  const [exportOuvert, setExportOuvert] = useState(false);
   const [importOuvert, setImportOuvert] = useState(false);
   const [selection, setSelection] = useState<{
     laboratoire: LaboratoireAdmin;
     mode: "consulter" | "modifier";
   } | null>(null);
-  const [confirmation, setConfirmation] = useState<LaboratoireAdmin | null>(null);
+  const [confirmation, setConfirmation] = useState<{
+    laboratoire: LaboratoireAdmin;
+    action: ActionStatut;
+  } | null>(null);
+  const [motif, setMotif] = useState("");
 
   useEffect(() => {
     const timer = window.setTimeout(() => setRechercheDifferee(recherche.trim()), 300);
@@ -71,15 +83,6 @@ export function TableauLaboratoires() {
   useEffect(() => {
     setPage(0);
   }, [rechercheDifferee, statut, ville, tri, ordre, taille]);
-
-  useEffect(() => {
-    if (!exportOuvert) return;
-    const fermer = (event: MouseEvent) => {
-      if (!exportRef.current?.contains(event.target as Node)) setExportOuvert(false);
-    };
-    window.addEventListener("mousedown", fermer);
-    return () => window.removeEventListener("mousedown", fermer);
-  }, [exportOuvert]);
 
   const filtre = {
     recherche: rechercheDifferee || undefined,
@@ -108,11 +111,23 @@ export function TableauLaboratoires() {
   };
 
   const statutMutation = useMutation({
-    mutationFn: (laboratoire: LaboratoireAdmin) =>
-      changerStatutLaboratoire(laboratoire.id, !laboratoire.actif),
-    onSuccess: async (misAJour, laboratoire) => {
-      toast.success(laboratoire.actif ? "Le laboratoire a été désactivé." : "Le laboratoire a été activé.");
+    mutationFn: ({ laboratoire, action, motif }: { laboratoire: LaboratoireAdmin; action: ActionStatut; motif?: string }) => {
+      if (action === "activer") {
+        return activerLaboratoire(laboratoire.id);
+      } else if (action === "suspendre") {
+        return suspendreLaboratoire(laboratoire.id, motif as string);
+      } else {
+        return desactiverLaboratoire(laboratoire.id, motif as string);
+      }
+    },
+    onSuccess: async (misAJour, { action }) => {
+      toast.success(
+        action === "activer" ? "Le laboratoire a été activé." :
+        action === "suspendre" ? "Le laboratoire a été suspendu." :
+        "Le laboratoire a été désactivé."
+      );
       setConfirmation(null);
+      setMotif("");
       setSelection((actuel) =>
         actuel && actuel.laboratoire.id === misAJour.id ? { ...actuel, laboratoire: misAJour } : actuel,
       );
@@ -125,7 +140,6 @@ export function TableauLaboratoires() {
     mutationFn: (format: "pdf" | "xlsx" | "csv") => exporterLaboratoires(format, portee, filtre),
     onSuccess: () => {
       toast.success("Le fichier a été téléchargé.");
-      setExportOuvert(false);
     },
     onError: (erreur) => toast.error(messageErreur(erreur, "L'exportation a échoué.")),
   });
@@ -146,19 +160,39 @@ export function TableauLaboratoires() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl border border-brand-900/10 bg-card p-3 sm:p-4">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input
-              value={recherche}
-              onChange={(event) => setRecherche(event.target.value)}
-              placeholder="Rechercher par nom, identifiant, ville ou e-mail"
-              aria-label="Rechercher un laboratoire"
-              className="pl-10"
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:flex">
+      <BarreListe
+        recherche={recherche}
+        onRecherche={setRecherche}
+        placeholder="Rechercher par nom, identifiant, ville ou e-mail"
+        libelleRecherche="Rechercher un laboratoire"
+        filtresActifs={filtresActifs}
+        onReinitialiser={() => { setRecherche(""); setStatut(""); setVille(""); }}
+        onImporter={() => setImportOuvert(true)}
+        exportEnCours={exportMutation.isPending}
+        porteeExport={{
+          id: "portee-export",
+          valeur: portee,
+          onChange: (valeur) => setPortee(valeur as "filtres" | "tous"),
+          options: [
+            { valeur: "filtres", libelle: "Résultats filtrés" },
+            { valeur: "tous", libelle: "Tous les laboratoires" },
+          ],
+        }}
+        formatsExport={[
+          { icone: FileText, libelle: "Exporter en PDF", onClick: () => exportMutation.mutate("pdf") },
+          { icone: FileSpreadsheet, libelle: "Exporter en Excel", onClick: () => exportMutation.mutate("xlsx") },
+          { icone: Download, libelle: "Exporter en CSV", onClick: () => exportMutation.mutate("csv") },
+        ]}
+        puces={[
+          ...(rechercheDifferee ? [{ libelle: `Recherche : ${rechercheDifferee}`, onRetirer: () => setRecherche("") }] : []),
+          ...(statut ? [{
+            libelle: statut === "ACTIF" ? "Actif" : statut === "SUSPENDU" ? "Suspendu" : "Désactivé",
+            onRetirer: () => setStatut(""),
+          }] : []),
+          ...(ville ? [{ libelle: ville, onRetirer: () => setVille("") }] : []),
+        ]}
+        filtres={
+          <>
             <Select
               value={statut}
               aria-label="Filtrer par statut"
@@ -178,77 +212,12 @@ export function TableauLaboratoires() {
             >
               <option value="">Toutes les villes</option>
               {(villes.data ?? []).map((nom) => (
-                <option key={nom} value={nom}>
-                  {nom}
-                </option>
+                <option key={nom} value={nom}>{nom}</option>
               ))}
             </Select>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {filtresActifs && (
-              <Button variant="ghost" size="sm" onClick={() => { setRecherche(""); setStatut(""); setVille(""); }}>
-                Réinitialiser
-              </Button>
-            )}
-            <Button
-              size="sm"
-              icon={<Upload className="size-4" aria-hidden="true" />}
-              iconPosition="left"
-              onClick={() => setImportOuvert(true)}
-            >
-              Importer
-            </Button>
-            <div className="relative" ref={exportRef}>
-              <Button
-                variant="secondary"
-                size="sm"
-                aria-expanded={exportOuvert}
-                aria-haspopup="menu"
-                icon={<ChevronDown className="size-4" aria-hidden="true" />}
-                onClick={() => setExportOuvert((ouvert) => !ouvert)}
-              >
-                Exporter
-              </Button>
-              {exportOuvert && (
-                <div role="menu" className="absolute right-0 z-40 mt-2 w-64 rounded-2xl border border-brand-900/10 bg-card p-3 shadow-lg">
-                  <label htmlFor="portee-export" className="text-xs font-semibold text-ink-900">
-                    Étendue
-                  </label>
-                  <Select
-                    id="portee-export"
-                    className="mt-1"
-                    value={portee}
-                    onChange={(event) => setPortee(event.target.value as "filtres" | "tous")}
-                  >
-                    <option value="filtres">Résultats filtrés</option>
-                    <option value="tous">Tous les laboratoires</option>
-                  </Select>
-                  <div className="mt-3 flex flex-col gap-1">
-                    <BoutonExport icone={FileText} libelle="Exporter en PDF" onClick={() => exportMutation.mutate("pdf")} />
-                    <BoutonExport icone={FileSpreadsheet} libelle="Exporter en Excel" onClick={() => exportMutation.mutate("xlsx")} />
-                    <BoutonExport icone={Download} libelle="Exporter en CSV" onClick={() => exportMutation.mutate("csv")} />
-                  </div>
-                  {exportMutation.isPending && <p className="mt-2 text-xs text-muted-foreground">Préparation du fichier…</p>}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        {filtresActifs && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {rechercheDifferee && (
-              <FiltreActif libelle={`Recherche : ${rechercheDifferee}`} onRetirer={() => setRecherche("")} />
-            )}
-            {statut && (
-              <FiltreActif
-                libelle={statut === "ACTIF" ? "Actif" : statut === "SUSPENDU" ? "Suspendu" : "Désactivé"}
-                onRetirer={() => setStatut("")}
-              />
-            )}
-            {ville && <FiltreActif libelle={ville} onRetirer={() => setVille("")} />}
-          </div>
-        )}
-      </div>
+          </>
+        }
+      />
 
       <div className="overflow-x-auto rounded-2xl border border-brand-900/10 bg-card">
         <table className="w-full min-w-[1080px] border-separate border-spacing-0 text-left text-sm">
@@ -354,12 +323,17 @@ export function TableauLaboratoires() {
                   {formaterDate(laboratoire.dateCreation)}
                 </td>
                 <td className="border-t border-brand-900/10 bg-card px-4 py-3 group-hover:bg-surface-alt">
-                  <InterrupteurStatut
-                    actif={laboratoire.actif}
-                    chargement={statutMutation.isPending && confirmation?.id === laboratoire.id}
-                    nom={laboratoire.nom}
-                    onChanger={() => setConfirmation(laboratoire)}
-                  />
+                  <div className="flex items-center gap-2">
+                    <BadgeStatut statut={laboratoire.statut} />
+                    <MenuStatut
+                      nom={laboratoire.nom}
+                      statut={laboratoire.statut}
+                      onChoisir={(action) => {
+                        setMotif("");
+                        setConfirmation({ laboratoire, action });
+                      }}
+                    />
+                  </div>
                 </td>
                 <td className="sticky right-0 z-10 border-t border-brand-900/10 bg-card px-2 py-3 text-right shadow-[-8px_0_12px_-12px_rgba(36,42,46,0.35)] group-hover:bg-surface-alt">
                   <div className="inline-flex justify-end">
@@ -413,116 +387,127 @@ export function TableauLaboratoires() {
         laboratoire={selection?.laboratoire ?? null}
         modeInitial={selection?.mode ?? "consulter"}
         onFermer={() => setSelection(null)}
-        onDemanderStatut={(laboratoire) => setConfirmation(laboratoire)}
+        onDemanderStatut={(laboratoire, action) => {
+          setMotif("");
+          setConfirmation({ laboratoire, action });
+        }}
       />
       <DialogueImport ouvert={importOuvert} onFermer={() => setImportOuvert(false)} />
-      <Dialogue
-        ouvert={confirmation !== null}
-        titre={confirmation?.actif ? "Désactiver ce laboratoire ?" : "Activer ce laboratoire ?"}
-        description={
-          confirmation?.actif
-            ? "L'administrateur et les utilisateurs ne pourront plus accéder à cet espace. Les données et l'environnement du laboratoire sont conservés. Vous pourrez le réactiver plus tard."
-            : "L'administrateur et les utilisateurs pourront de nouveau accéder à cet espace. Aucune donnée n'a été supprimée."
-        }
-        onFermer={() => setConfirmation(null)}
-      >
-        <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="ghost" onClick={() => setConfirmation(null)}>Annuler</Button>
-          <Button loading={statutMutation.isPending} onClick={() => confirmation && statutMutation.mutate(confirmation)}>
-            {confirmation?.actif ? "Désactiver" : "Activer"}
-          </Button>
-        </div>
-      </Dialogue>
+      <DialogueStatut
+        confirmation={confirmation}
+        motif={motif}
+        onMotif={setMotif}
+        chargement={statutMutation.isPending}
+        onFermer={() => {
+          if (statutMutation.isPending) return;
+          setConfirmation(null);
+          setMotif("");
+        }}
+        onConfirmer={() => {
+          if (!confirmation) return;
+          statutMutation.mutate({
+            laboratoire: confirmation.laboratoire,
+            action: confirmation.action,
+            motif: motif.trim(),
+          });
+        }}
+      />
     </div>
   );
 }
 
-function InterrupteurStatut({
-  actif,
-  chargement,
+function BadgeStatut({ statut }: { statut: string }) {
+  if (statut === "SUSPENDU") return <Badge variant="mint" size="sm">Suspendu</Badge>;
+  if (statut === "DESACTIVE") return <Badge variant="outline" size="sm">Désactivé</Badge>;
+  return <Badge variant="lime" size="sm">Actif</Badge>;
+}
+
+function MenuStatut({
   nom,
-  onChanger,
+  statut,
+  onChoisir,
 }: {
-  actif: boolean;
-  chargement: boolean;
   nom: string;
-  onChanger: () => void;
+  statut: string;
+  onChoisir: (action: ActionStatut) => void;
 }) {
   return (
-    <Tooltip
-      content={
-        actif
-          ? "Désactiver : les utilisateurs ne pourront plus accéder à cet espace. Les données sont conservées."
-          : "Activer : les utilisateurs pourront de nouveau accéder à cet espace."
-      }
-    >
-      <button
-        type="button"
-        role="switch"
-        aria-checked={actif}
-        aria-busy={chargement}
-        disabled={chargement}
-        aria-label={actif ? `Désactiver ${nom}` : `Activer ${nom}`}
-        onClick={onChanger}
-        className={cn(
-          "relative inline-flex h-7 w-[7rem] shrink-0 items-center rounded-full text-[11px] font-semibold transition-colors",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900",
-          "disabled:cursor-wait",
-          actif
-            ? "bg-brand-900 text-primary-foreground hover:bg-brand-800"
-            : "border border-brand-900/15 bg-mint-200 text-ink-900 hover:bg-mint-200/70",
-        )}
-      >
-        <span className="pointer-events-none absolute inset-y-0 right-[1.3rem] left-[1.3rem] flex items-center justify-center">
-          {actif ? "Actif" : "Désactivé"}
-        </span>
-        <span
-          aria-hidden="true"
-          className={cn(
-            "absolute top-0.5 left-0.5 flex size-4 items-center justify-center rounded-full shadow-sm transition-transform duration-200",
-            actif ? "translate-x-[5.75rem] bg-accent-lime" : "translate-x-0 bg-card",
-          )}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Actions de statut pour ${nom}`}
+          className="flex size-8 items-center justify-center rounded-full text-brand-900 hover:bg-surface-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900"
         >
-          {chargement && <Loader2 className="size-3 animate-spin text-brand-900" aria-hidden="true" />}
-        </span>
-      </button>
-    </Tooltip>
+          <ChevronDown className="size-4" aria-hidden="true" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="rounded-2xl border-brand-900/10 bg-card p-1">
+        <DropdownMenuItem disabled={statut === "ACTIF"} onSelect={() => onChoisir("activer")}>
+          Activer
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={statut === "SUSPENDU"} onSelect={() => onChoisir("suspendre")}>
+          Suspendre
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={statut === "DESACTIVE"} onSelect={() => onChoisir("desactiver")}>
+          Désactiver
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
-function BoutonExport({
-  icone: Icone,
-  libelle,
-  onClick,
+function DialogueStatut({
+  confirmation,
+  motif,
+  onMotif,
+  chargement,
+  onFermer,
+  onConfirmer,
 }: {
-  icone: typeof FileText;
-  libelle: string;
-  onClick: () => void;
+  confirmation: { laboratoire: LaboratoireAdmin; action: ActionStatut } | null;
+  motif: string;
+  onMotif: (valeur: string) => void;
+  chargement: boolean;
+  onFermer: () => void;
+  onConfirmer: () => void;
 }) {
+  const action = confirmation?.action;
+  const motifRequis = action === "suspendre" || action === "desactiver";
+  const motifValide = !motifRequis || motif.trim().length >= 10;
+  const titre = action === "suspendre"
+    ? "Suspendre ce laboratoire ?"
+    : action === "desactiver"
+      ? "Désactiver ce laboratoire ?"
+      : "Activer ce laboratoire ?";
+  const description = action === "activer"
+    ? "L'administrateur et les utilisateurs pourront de nouveau accéder à cet espace. Aucune donnée n'a été supprimée."
+    : "L'effet est immédiat, y compris pour une session déjà ouverte. Les données et l'environnement du laboratoire sont conservés.";
   return (
-    <button
-      type="button"
-      role="menuitem"
-      className="flex items-center gap-2 rounded-xl px-2 py-2 text-left text-sm font-semibold text-ink-900 hover:bg-surface-alt focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900"
-      onClick={onClick}
-    >
-      <Icone className="size-4 text-brand-900" aria-hidden="true" />
-      {libelle}
-    </button>
-  );
-}
-
-function FiltreActif({ libelle, onRetirer }: { libelle: string; onRetirer: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onRetirer}
-      className="inline-flex items-center gap-1 rounded-full bg-surface-alt px-3 py-1 text-xs font-semibold text-brand-900"
-    >
-      {libelle}
-      <X className="size-3" aria-hidden="true" />
-      <span className="sr-only">Retirer ce filtre</span>
-    </button>
+    <Dialog open={confirmation !== null} onOpenChange={(ouvert) => { if (!ouvert) onFermer(); }}>
+      <DialogContent className="glass-card glossy-top max-w-lg rounded-3xl border-0 bg-card p-6">
+        <DialogTitle className="text-lg font-extrabold text-ink-900">{titre}</DialogTitle>
+        <DialogDescription className="text-sm text-muted-foreground">{description}</DialogDescription>
+        {motifRequis && (
+          <div className="mt-4">
+            <Label htmlFor="motif-statut">Motif</Label>
+            <Textarea
+              id="motif-statut"
+              value={motif}
+              onChange={(event) => onMotif(event.target.value)}
+              placeholder="Décrivez le motif (10 caractères minimum)"
+              className="mt-2 min-h-24"
+            />
+          </div>
+        )}
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <Button variant="ghost" onClick={onFermer} disabled={chargement}>Annuler</Button>
+          <Button loading={chargement} disabled={!motifValide} onClick={onConfirmer}>
+            {action === "suspendre" ? "Suspendre" : action === "desactiver" ? "Désactiver" : "Activer"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

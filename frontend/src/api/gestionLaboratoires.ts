@@ -179,12 +179,31 @@ export async function modifierAdministrateurLaboratoire(
   return res.data;
 }
 
-export async function changerStatutLaboratoire(
+export async function activerLaboratoire(id: number): Promise<LaboratoireAdmin> {
+  const res = await apiClient.patch<ApiResponse<LaboratoireAdmin>>(
+    `/plateforme/laboratoires/${id}/activer`,
+  );
+  return res.data;
+}
+
+export async function suspendreLaboratoire(
   id: number,
-  actif: boolean,
+  motif: string,
 ): Promise<LaboratoireAdmin> {
   const res = await apiClient.patch<ApiResponse<LaboratoireAdmin>>(
-    `/plateforme/laboratoires/${id}/${actif ? "activer" : "desactiver"}`,
+    `/plateforme/laboratoires/${id}/suspendre`,
+    { motif },
+  );
+  return res.data;
+}
+
+export async function desactiverLaboratoire(
+  id: number,
+  motif: string,
+): Promise<LaboratoireAdmin> {
+  const res = await apiClient.patch<ApiResponse<LaboratoireAdmin>>(
+    `/plateforme/laboratoires/${id}/desactiver`,
+    { motif },
   );
   return res.data;
 }

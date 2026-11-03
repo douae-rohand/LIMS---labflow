@@ -24,7 +24,7 @@ public class ValidationController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_VALIDATION_GERER')")
     public ResponseEntity<ApiResponse<ValidationDto>> creer(@RequestBody ValidationDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Validation créée", validationService.creer(dto)));

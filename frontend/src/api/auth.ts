@@ -26,7 +26,7 @@
  *
  *  POST /api/auth/2fa/setup
  *    En-tête : Authorization: Bearer <twoFactorToken>  (type=2fa)
- *    Réponse : { qrCodeUri: string; secret: string }
+ *    Réponse : { otpAuthUrl: string }
  *
  *  POST /api/auth/2fa/activer
  *    En-tête : Authorization: Bearer <twoFactorToken>  (type=2fa)
@@ -69,6 +69,8 @@ export interface LoginResponse {
   mustChangePassword?: boolean;
   email?: string;
   nomComplet?: string;
+  userId?: number;
+  permissions?: string[];
 
   // --- Cas (a) et (b) ---
   requiresTwoFactor?: boolean;
@@ -84,12 +86,13 @@ export interface TwoFactorCompleteResponse {
   mustChangePassword: boolean;
   email: string;
   nomComplet: string;
+  userId?: number;
+  permissions?: string[];
 }
 
 /** Réponse de POST /api/auth/2fa/setup. */
 export interface TwoFactorSetupResponse {
-  qrCodeUri: string;
-  secret: string;
+  otpAuthUrl: string;
 }
 
 /** Réponse de POST /api/auth/refresh. */
@@ -100,6 +103,8 @@ export interface RefreshResponse {
   mustChangePassword: boolean;
   email: string;
   nomComplet: string;
+  userId?: number;
+  permissions?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -319,6 +324,8 @@ export function toSessionUser(r: LoginResponse): SessionUser {
     mustChangePassword: r.mustChangePassword ?? false,
     email: r.email ?? '',
     nomComplet: r.nomComplet ?? '',
+    userId: r.userId ?? null,
+    permissions: r.permissions ?? [],
   };
 }
 
@@ -330,5 +337,7 @@ export function toSessionUserFrom2FA(r: TwoFactorCompleteResponse): SessionUser 
     mustChangePassword: r.mustChangePassword,
     email: r.email,
     nomComplet: r.nomComplet,
+    userId: r.userId ?? null,
+    permissions: r.permissions ?? [],
   };
 }

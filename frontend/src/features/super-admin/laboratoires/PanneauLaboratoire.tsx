@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Badge, Button, Input, Label } from "@/components/lab";
 import { ApiError } from "@/api/axios";
 import { trouverDemandeDuLaboratoire } from "@/api/plateforme";
+import { historiqueLaboratoire } from "@/api/tableauBord";
 import { IndicateurEtapes } from "@/components/integration/IndicateurEtapes";
 import { LocationPicker } from "@/components/integration/LocationPicker";
 import { TYPES_LABORATOIRE } from "@/components/integration/constants";
@@ -27,7 +28,7 @@ export function PanneauLaboratoire({
   laboratoire: LaboratoireAdmin | null;
   modeInitial: "consulter" | "modifier";
   onFermer: () => void;
-  onDemanderStatut: (laboratoire: LaboratoireAdmin) => void;
+  onDemanderStatut: (laboratoire: LaboratoireAdmin, action: "activer" | "suspendre" | "desactiver") => void;
 }) {
   const queryClient = useQueryClient();
   const [mode, setMode] = useState(modeInitial);
@@ -37,6 +38,7 @@ export function PanneauLaboratoire({
   const [erreurCoordonnees, setErreurCoordonnees] = useState("");
   const [erreurAdmin, setErreurAdmin] = useState("");
   const [confirmerFermeture, setConfirmerFermeture] = useState(false);
+  const [vue, setVue] = useState<"fiche" | "historique">("fiche");
   const sale =
     mode === "modifier" &&
     JSON.stringify(formulaire) !== JSON.stringify(versFormulaire(laboratoire));
@@ -49,6 +51,7 @@ export function PanneauLaboratoire({
     setErreurCoordonnees("");
     setErreurAdmin("");
     setConfirmerFermeture(false);
+    setVue("fiche");
   }, [laboratoire, modeInitial]);
 
   const dossier = useQuery({
@@ -176,21 +179,58 @@ export function PanneauLaboratoire({
         {laboratoire && (
           <div className="flex flex-col gap-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Badge variant={laboratoire.actif ? "lime" : "outline"}>
-                {laboratoire.actif ? "Actif" : "Désactivé"}
+              <Badge
+                variant={laboratoire.statut === "SUSPENDU" ? "mint" : laboratoire.statut === "DESACTIVE" ? "outline" : "lime"}
+                size="sm"
+              >
+                {laboratoire.statut === "SUSPENDU" ? "Suspendu" : laboratoire.statut === "DESACTIVE" ? "Désactivé" : "Actif"}
               </Badge>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {mode === "consulter" && (
                   <Button variant="secondary" size="sm" onClick={() => setMode("modifier")}>
                     Modifier
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" onClick={() => onDemanderStatut(laboratoire)}>
-                  {laboratoire.actif ? "Désactiver" : "Activer"}
-                </Button>
+                {laboratoire.statut !== "ACTIF" && (
+                  <Button variant="ghost" size="sm" onClick={() => onDemanderStatut(laboratoire, "activer")}>
+                    Activer
+                  </Button>
+                )}
+                {laboratoire.statut !== "SUSPENDU" && (
+                  <Button variant="ghost" size="sm" onClick={() => onDemanderStatut(laboratoire, "suspendre")}>
+                    Suspendre
+                  </Button>
+                )}
+                {laboratoire.statut !== "DESACTIVE" && (
+                  <Button variant="ghost" size="sm" onClick={() => onDemanderStatut(laboratoire, "desactiver")}>
+                    Désactiver
+                  </Button>
+                )}
               </div>
             </div>
 
+            {mode === "consulter" && (
+              <div className="inline-flex flex-wrap gap-1 rounded-full bg-surface-card p-1" role="tablist">
+                {([
+                  ["fiche", "Fiche"],
+                  ["historique", "Historique"],
+                ] as const).map(([valeur, libelle]) => (
+                  <button
+                    key={valeur}
+                    type="button"
+                    role="tab"
+                    aria-selected={vue === valeur}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold ${vue === valeur ? "bg-brand-900 text-primary-foreground" : "text-brand-900"}`}
+                    onClick={() => setVue(valeur)}
+                  >
+                    {libelle}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {(mode === "modifier" || vue === "fiche") && (
+            <>
             <IndicateurEtapes etapes={ETAPES} etape={etape} onAller={aller} autoriserSuivantes />
 
             {etape === 0 && (
@@ -356,6 +396,9 @@ export function PanneauLaboratoire({
                 ) : null}
               </div>
             </div>
+            </>
+            )}
+            {mode === "consulter" && vue === "historique" && <OngletHistorique id={laboratoire.id} />}
           </div>
         )}
       </Panneau>
@@ -383,6 +426,40 @@ export function PanneauLaboratoire({
         </div>
       )}
     </>
+  );
+}
+
+function OngletHistorique({ id }: { id: number }) {
+  const historique = useQuery({
+    queryKey: ["historique-laboratoire", id],
+    queryFn: () => historiqueLaboratoire(id),
+  });
+  if (historique.isLoading) return <p className="text-sm text-muted-foreground">Chargement…</p>;
+  if (historique.isError) return <p className="text-sm text-ink-900">{messageErreur(historique.error, "Historique indisponible.")}</p>;
+  if (!historique.data?.length) return <p className="text-sm text-muted-foreground">Aucun changement de statut enregistré.</p>;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-sm">
+        <thead className="text-xs text-muted-foreground">
+          <tr>
+            <th className="py-2 pr-3 font-semibold">Date</th>
+            <th className="py-2 pr-3 font-semibold">Passage</th>
+            <th className="py-2 pr-3 font-semibold">Motif</th>
+            <th className="py-2 font-semibold">Acteur</th>
+          </tr>
+        </thead>
+        <tbody>
+          {historique.data.map((ligne) => (
+            <tr key={ligne.id} className="border-t border-brand-900/10">
+              <td className="py-2 pr-3">{formaterDate(ligne.dateChangement)}</td>
+              <td className="py-2 pr-3">{texte(ligne.ancienStatut)} → {ligne.nouveauStatut}</td>
+              <td className="py-2 pr-3">{texte(ligne.motif)}</td>
+              <td className="py-2">{ligne.acteurEmail}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

@@ -34,7 +34,7 @@ public class EchantillonController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ACCUEIL')")
+    @PreAuthorize("hasAuthority('PERM_ECHANTILLONS_GERER')")
     public ResponseEntity<ApiResponse<EchantillonDto>> enregistrer(@RequestBody EchantillonDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Échantillon enregistré", echantillonService.enregistrer(dto)));

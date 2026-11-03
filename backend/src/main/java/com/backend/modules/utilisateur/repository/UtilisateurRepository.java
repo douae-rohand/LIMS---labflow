@@ -89,4 +89,59 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
             ORDER BY u.id ASC
             """)
     List<Utilisateur> findAdministrateursDesLaboratoires(@Param("ids") Collection<Long> ids);
+
+    long countByActifTrue();
+
+    @Query("""
+            SELECT u.laboratoire.id, COUNT(u) FROM Utilisateur u
+            WHERE u.laboratoire IS NOT NULL
+            GROUP BY u.laboratoire.id
+            """)
+    List<Object[]> compterParLaboratoire();
+
+    @Query("""
+            SELECT COUNT(u) FROM Utilisateur u
+            WHERE u.role.code = 'ADMINISTRATEUR'
+              AND u.laboratoire.id = :laboratoireId
+              AND u.actif = true
+            """)
+    long compterAdministrateursActifs(@Param("laboratoireId") Long laboratoireId);
+
+    boolean existsByEmailIgnoreCase(String email);
+
+    @Query(
+            value = """
+                    SELECT u FROM Utilisateur u
+                    JOIN FETCH u.role r
+                    LEFT JOIN FETCH u.laboratoire l
+                    WHERE (:role IS NULL OR r.code = :role)
+                      AND (:laboratoireId IS NULL OR l.id = :laboratoireId)
+                      AND (:actif IS NULL OR u.actif = :actif)
+                      AND (
+                            :recherche IS NULL
+                            OR LOWER(u.nom) LIKE LOWER(CONCAT('%', :recherche, '%')) ESCAPE '\\'
+                            OR LOWER(COALESCE(u.prenom, '')) LIKE LOWER(CONCAT('%', :recherche, '%')) ESCAPE '\\'
+                            OR LOWER(u.email) LIKE LOWER(CONCAT('%', :recherche, '%')) ESCAPE '\\'
+                          )
+                    """,
+            countQuery = """
+                    SELECT COUNT(u) FROM Utilisateur u
+                    JOIN u.role r
+                    LEFT JOIN u.laboratoire l
+                    WHERE (:role IS NULL OR r.code = :role)
+                      AND (:laboratoireId IS NULL OR l.id = :laboratoireId)
+                      AND (:actif IS NULL OR u.actif = :actif)
+                      AND (
+                            :recherche IS NULL
+                            OR LOWER(u.nom) LIKE LOWER(CONCAT('%', :recherche, '%')) ESCAPE '\\'
+                            OR LOWER(COALESCE(u.prenom, '')) LIKE LOWER(CONCAT('%', :recherche, '%')) ESCAPE '\\'
+                            OR LOWER(u.email) LIKE LOWER(CONCAT('%', :recherche, '%')) ESCAPE '\\'
+                          )
+                    """)
+    Page<Utilisateur> rechercherComptesPlateforme(
+            @Param("role") String role,
+            @Param("laboratoireId") Long laboratoireId,
+            @Param("actif") Boolean actif,
+            @Param("recherche") String recherche,
+            Pageable pageable);
 }

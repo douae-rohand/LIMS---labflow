@@ -20,7 +20,7 @@ public class IaController {
     private final IaService iaService;
 
     @PostMapping("/analyser")
-    @PreAuthorize("hasAnyRole('TECHNICIEN','RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_IA_GERER')")
     @Operation(summary = "Soumettre une tâche d'analyse au modèle IA")
     public ResponseEntity<ApiResponse<AnalyseIaResponse>> analyser(@RequestBody AnalyseIaRequest request) {
         return ResponseEntity.ok(ApiResponse.success(iaService.analyser(request)));

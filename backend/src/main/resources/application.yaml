@@ -179,6 +179,8 @@ management:
 # Seed de démonstration : provisionne les schémas tenant des laboratoires
 # insérés par V21__seed_demo_central.sql (lims_atlas, lims_nord).
 app:
+  securite:
+    2fa-obligatoire: ${APP_2FA_OBLIGATOIRE:true}
   demo-seed: ${APP_DEMO_SEED:true}
   trust-proxy: ${APP_TRUST_PROXY:false}
   frontend-url: ${APP_FRONTEND_URL:${FRONTEND_URL:http://localhost:5173}}

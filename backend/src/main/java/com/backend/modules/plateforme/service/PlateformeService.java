@@ -1,10 +1,14 @@
 package com.backend.modules.plateforme.service;
 
+import com.backend.common.audit.JournalAuditService;
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.common.exception.UnauthorizedTenantException;
 import com.backend.common.tenant.TenantExecutor;
 import com.backend.common.tenant.TenantProvisioner;
+import com.backend.modules.plateforme.entity.HistoriqueStatutLaboratoire;
+import com.backend.modules.plateforme.repository.HistoriqueStatutLaboratoireRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.backend.modules.demande.entity.StatutDemande;
 import com.backend.modules.essai.entity.Essai;
 import com.backend.modules.essai.entity.ExigenceEchantillon;
@@ -29,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -55,9 +60,12 @@ public class PlateformeService {
     private final EssaiRepository essaiRepository;
     private final ExigenceEchantillonRepository exigenceEchantillonRepository;
     private final UtilisateurRepository utilisateurRepository;
+    private final HistoriqueStatutLaboratoireRepository historiqueStatutRepository;
+    private final JournalAuditService journalAuditService;
+    private final ObjectMapper objectMapper;
 
     @Transactional
-    public LaboratoireDto creerLaboratoire(CreerLaboratoireRequest request) {
+    public LaboratoireDto creerLaboratoire(CreerLaboratoireRequest request, String acteurEmail) {
         if (laboratoireRepository.existsByCode(request.getCode())) {
             throw new BusinessRuleException("CODE_LABORATOIRE_EXISTANT",
                     "Le code laboratoire '" + request.getCode() + "' est déjà utilisé");
@@ -76,7 +84,16 @@ public class PlateformeService {
                 .build();
 
         labo = laboratoireRepository.save(labo);
-        tenantProvisioner.provisionner(labo);
+        tenantProvisioner.provisionner(labo, acteurEmail);
+        journalAuditService.enregistrer(
+                "CREER_LABORATOIRE",
+                "Laboratoire",
+                labo.getId(),
+                acteurEmail,
+                null,
+                snapshotLaboratoire(labo),
+                null,
+                labo.getId());
         log.info("Laboratoire créé : code={}, schema={}", labo.getCode(), labo.getNomSchema());
 
         return toDto(labo);
@@ -216,7 +233,7 @@ public class PlateformeService {
     }
 
     @Transactional
-    public LaboratoireDto modifierLaboratoire(Long id, ModifierLaboratoireRequest request) {
+    public LaboratoireDto modifierLaboratoire(Long id, ModifierLaboratoireRequest request, String acteurEmail) {
         Laboratoire labo = chargerLaboratoire(id);
         String email = texte(request.getEmail());
         if (email != null && laboratoireRepository.existsByEmailIgnoreCaseAndIdNot(email, id)) {
@@ -233,6 +250,9 @@ public class PlateformeService {
                     "La latitude et la longitude doivent être renseignées ensemble");
         }
 
+        // Capture valeur avant pour audit
+        String valeurAvant = snapshotLaboratoire(labo);
+
         labo.setRaisonSociale(request.getNom().trim());
         labo.setIce(ice);
         labo.setTypeLaboratoire(texte(request.getTypeLaboratoire()));
@@ -247,12 +267,26 @@ public class PlateformeService {
         labo.setLatitude(request.getLatitude());
         labo.setLongitude(request.getLongitude());
         labo = laboratoireRepository.save(labo);
-        log.info("Laboratoire modifié : id={}, code={}", labo.getId(), labo.getCode());
+        
+        // Audit
+        String valeurApres = snapshotLaboratoire(labo);
+        journalAuditService.enregistrer(
+                "MODIFIER_LABORATOIRE",
+                "Laboratoire",
+                id,
+                acteurEmail,
+                valeurAvant,
+                valeurApres,
+                null,
+                id
+        );
+        
+        log.info("Laboratoire modifié : id={}, code={}, acteur={}", labo.getId(), labo.getCode(), acteurEmail);
         return toDto(labo);
     }
 
     @Transactional
-    public LaboratoireDto modifierAdministrateur(Long laboratoireId, ModifierAdministrateurLaboratoireRequest request) {
+    public LaboratoireDto modifierAdministrateur(Long laboratoireId, ModifierAdministrateurLaboratoireRequest request, String acteurEmail) {
         Laboratoire labo = chargerLaboratoire(laboratoireId);
         Utilisateur admin = utilisateurRepository.findById(request.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur", "id", request.getId()));
@@ -265,6 +299,8 @@ public class PlateformeService {
             throw new BusinessRuleException("ROLE_NON_MODIFIABLE",
                     "Seul le compte administrateur du laboratoire peut être modifié ici");
         }
+
+        String valeurAvant = snapshotAdministrateur(admin);
 
         String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
         if (!email.equalsIgnoreCase(admin.getEmail()) && utilisateurRepository.existsByEmail(email)) {
@@ -279,7 +315,20 @@ public class PlateformeService {
         admin.setFonction(texte(request.getFonction()));
         admin.setCin(texte(request.getCin()));
         utilisateurRepository.save(admin);
-        log.info("Administrateur de laboratoire modifié : userId={}, labo={}", admin.getId(), labo.getCode());
+        
+        String valeurApres = snapshotAdministrateur(admin);
+        journalAuditService.enregistrer(
+                "MODIFIER_ADMINISTRATE_LABORATOIRE",
+                "Utilisateur",
+                admin.getId(),
+                acteurEmail,
+                valeurAvant,
+                valeurApres,
+                null,
+                labo.getId()
+        );
+        
+        log.info("Administrateur de laboratoire modifié : userId={}, labo={}, acteur={}", admin.getId(), labo.getCode(), acteurEmail);
         return toDto(labo, admin);
     }
 
@@ -289,13 +338,23 @@ public class PlateformeService {
      * refusent l'accès tant que le statut n'est pas ACTIF.
      */
     @Transactional
-    public LaboratoireDto desactiverLaboratoire(Long id) {
-        return changerStatut(id, STATUT_DESACTIVE);
+    public LaboratoireDto suspendreLaboratoire(Long id, String motif, String acteurEmail) {
+        return changerStatutAvecMotif(id, StatutLabo.SUSPENDU.name(), motif, acteurEmail);
+    }
+
+    /**
+     * Désactive le laboratoire sans supprimer son schéma ni ses données.
+     * Les comptes restent en base : l'intercepteur de tenant et la connexion
+     * refusent l'accès tant que le statut n'est pas ACTIF.
+     */
+    @Transactional
+    public LaboratoireDto desactiverLaboratoire(Long id, String motif, String acteurEmail) {
+        return changerStatutAvecMotif(id, STATUT_DESACTIVE, motif, acteurEmail);
     }
 
     @Transactional
-    public LaboratoireDto activerLaboratoire(Long id) {
-        return changerStatut(id, STATUT_ACTIF);
+    public LaboratoireDto activerLaboratoire(Long id, String acteurEmail) {
+        return changerStatutAvecMotif(id, STATUT_ACTIF, null, acteurEmail);
     }
 
     private LaboratoireDto changerStatut(Long id, String statut) {
@@ -304,6 +363,51 @@ public class PlateformeService {
         labo = laboratoireRepository.save(labo);
         log.info("Statut laboratoire mis à jour : id={}, code={}, statut={}, schema={}",
                 id, labo.getCode(), statut, labo.getNomSchema());
+        return toDto(labo);
+    }
+
+    private LaboratoireDto changerStatutAvecMotif(Long id, String nouveauStatut, String motif, String acteurEmail) {
+        if (!STATUT_ACTIF.equals(nouveauStatut) && !StringUtils.hasText(motif)) {
+            throw new BusinessRuleException("MOTIF_OBLIGATOIRE",
+                    "Le motif est obligatoire pour suspendre ou désactiver un laboratoire");
+        }
+        Laboratoire labo = chargerLaboratoire(id);
+        String ancienStatut = labo.getStatut();
+        String motifNormalise = StringUtils.hasText(motif) ? motif.trim() : null;
+        
+        // Enregistrer l'historique
+        HistoriqueStatutLaboratoire historique = HistoriqueStatutLaboratoire.builder()
+                .laboratoire(labo)
+                .ancienStatut(ancienStatut)
+                .nouveauStatut(nouveauStatut)
+                .motif(motifNormalise)
+                .acteurEmail(acteurEmail)
+                .dateChangement(Instant.now())
+                .build();
+        historiqueStatutRepository.save(historique);
+
+        String action = STATUT_ACTIF.equals(nouveauStatut)
+                ? "ACTIVER_LABORATOIRE"
+                : (StatutLabo.SUSPENDU.name().equals(nouveauStatut)
+                ? "SUSPENDRE_LABORATOIRE"
+                : "DESACTIVER_LABORATOIRE");
+        journalAuditService.enregistrer(
+                action,
+                "Laboratoire",
+                id,
+                acteurEmail,
+                "{\"statut\":\"" + ancienStatut + "\"}",
+                "{\"statut\":\"" + nouveauStatut + "\"}",
+                motifNormalise,
+                id
+        );
+        
+        // Changer le statut
+        labo.setStatut(nouveauStatut);
+        labo = laboratoireRepository.save(labo);
+        
+        log.info("Statut laboratoire mis à jour : id={}, code={}, {}->{}, acteur={}",
+                id, labo.getCode(), ancienStatut, nouveauStatut, acteurEmail);
         return toDto(labo);
     }
 
@@ -462,6 +566,22 @@ public class PlateformeService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public List<HistoriqueStatutDto> historiqueStatut(Long laboratoireId) {
+        if (!laboratoireRepository.existsById(laboratoireId)) {
+            throw new ResourceNotFoundException("Laboratoire", "id", laboratoireId);
+        }
+        return historiqueStatutRepository.findByLaboratoire_IdOrderByDateChangementDesc(laboratoireId).stream()
+                .map(ligne -> new HistoriqueStatutDto(
+                        ligne.getId(),
+                        ligne.getAncienStatut(),
+                        ligne.getNouveauStatut(),
+                        ligne.getMotif(),
+                        ligne.getActeurEmail(),
+                        ligne.getDateChangement()))
+                .toList();
+    }
+
     private static List<String> extraireTypes(String brut) {
         if (!StringUtils.hasText(brut)) {
             return List.of();
@@ -469,5 +589,41 @@ public class PlateformeService {
         return Arrays.stream(brut.split("\\s*,\\s*"))
                 .filter(StringUtils::hasText)
                 .toList();
+    }
+
+    private String snapshotLaboratoire(Laboratoire labo) {
+        Map<String, Object> valeurs = new HashMap<>();
+        valeurs.put("id", labo.getId());
+        valeurs.put("code", labo.getCode());
+        valeurs.put("nom", labo.getRaisonSociale());
+        valeurs.put("ice", labo.getIce());
+        valeurs.put("ville", labo.getVille());
+        valeurs.put("email", labo.getEmail());
+        valeurs.put("telephone", labo.getTelephone());
+        valeurs.put("statut", labo.getStatut());
+        valeurs.put("schema", labo.getNomSchema());
+        return mapperToAuditJson(valeurs);
+    }
+
+    private String snapshotAdministrateur(Utilisateur admin) {
+        Map<String, Object> valeurs = new HashMap<>();
+        valeurs.put("id", admin.getId());
+        valeurs.put("nom", admin.getNom());
+        valeurs.put("prenom", admin.getPrenom());
+        valeurs.put("email", admin.getEmail());
+        valeurs.put("telephone", admin.getTelephone());
+        valeurs.put("fonction", admin.getFonction());
+        valeurs.put("cin", admin.getCin());
+        valeurs.put("actif", admin.isActif());
+        return mapperToAuditJson(valeurs);
+    }
+
+    private String mapperToAuditJson(Object obj) {
+        try {
+            return objectMapper.writeValueAsString(obj);
+        } catch (Exception ex) {
+            log.error("Erreur de sérialisation pour audit : {}", ex.getMessage());
+            return "{}";
+        }
     }
 }

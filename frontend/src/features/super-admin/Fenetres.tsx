@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 
 export function Dialogue({
@@ -16,13 +16,37 @@ export function Dialogue({
   large?: boolean;
   children: ReactNode;
 }) {
+  const dialogue = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!ouvert) return;
-    const fermer = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onFermer();
+    const precedent = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const noeud = dialogue.current;
+    noeud?.focus();
+    const gererClavier = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onFermer();
+        return;
+      }
+      if (event.key !== "Tab" || !noeud) return;
+      const focusables = [...noeud.querySelectorAll<HTMLElement>(
+        "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])",
+      )];
+      if (focusables.length === 0) return;
+      const premier = focusables[0];
+      const dernier = focusables[focusables.length - 1];
+      if (event.shiftKey && document.activeElement === premier) {
+        event.preventDefault();
+        dernier?.focus();
+      } else if (!event.shiftKey && document.activeElement === dernier) {
+        event.preventDefault();
+        premier?.focus();
+      }
     };
-    window.addEventListener("keydown", fermer);
-    return () => window.removeEventListener("keydown", fermer);
+    window.addEventListener("keydown", gererClavier);
+    return () => {
+      window.removeEventListener("keydown", gererClavier);
+      precedent?.focus();
+    };
   }, [ouvert, onFermer]);
 
   if (!ouvert) return null;
@@ -31,14 +55,18 @@ export function Dialogue({
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink-900/40 p-0 sm:items-center sm:p-4">
       <button
         type="button"
+        tabIndex={-1}
         aria-label="Fermer la fenêtre"
         className="absolute inset-0 cursor-default"
         onClick={onFermer}
       />
       <div
+        ref={dialogue}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="titre-dialogue"
+        {...(description ? { "aria-describedby": "description-dialogue" } : {})}
         className={`relative z-10 max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-card p-5 shadow-xl sm:rounded-3xl sm:p-6 ${
           large ? "max-w-4xl" : "max-w-lg"
         }`}
@@ -48,7 +76,7 @@ export function Dialogue({
             <h2 id="titre-dialogue" className="text-lg font-extrabold text-ink-900">
               {titre}
             </h2>
-            {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+            {description && <p id="description-dialogue" className="mt-1 text-sm text-muted-foreground">{description}</p>}
           </div>
           <button
             type="button"

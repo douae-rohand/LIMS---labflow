@@ -32,7 +32,7 @@ public class DemandeController {
      * en-tête {@code X-Tenant-ID} d'un autre laboratoire ne change pas le tenant.
      */
     @GetMapping("/laboratoire")
-    @PreAuthorize("hasAnyRole('RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_DEMANDES_CONSULTER')")
     public ResponseEntity<ApiResponse<PageResponse<DemandeResumeDto>>> listerPourLaboratoire(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String statut,
@@ -43,13 +43,13 @@ public class DemandeController {
     }
 
     @GetMapping("/laboratoire/indicateurs")
-    @PreAuthorize("hasAnyRole('RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_DEMANDES_CONSULTER')")
     public ResponseEntity<ApiResponse<IndicateursDemandesDto>> indicateursLaboratoire() {
         return ResponseEntity.ok(ApiResponse.success(demandeService.indicateursLaboratoire()));
     }
 
     @GetMapping("/laboratoire/{id}")
-    @PreAuthorize("hasAnyRole('RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_DEMANDES_CONSULTER')")
     public ResponseEntity<ApiResponse<DemandeLaboratoireDto>> detailLaboratoire(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(demandeService.detailLaboratoire(id)));
     }
@@ -85,7 +85,7 @@ public class DemandeController {
     }
 
     @GetMapping("/statut/{statut}")
-    @PreAuthorize("hasAnyRole('ACCUEIL','TECHNICIEN','RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_DEMANDES_SUIVI')")
     public ResponseEntity<ApiResponse<Page<DemandeDto>>> listerParStatut(
             @PathVariable StatutDemande statut,
             @RequestParam(defaultValue = "0") int page,
@@ -95,7 +95,7 @@ public class DemandeController {
     }
 
     @PatchMapping("/{id}/statut")
-    @PreAuthorize("hasAnyRole('ACCUEIL','RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_DEMANDES_STATUT')")
     public ResponseEntity<ApiResponse<DemandeDto>> changerStatut(
             @PathVariable Long id, @RequestParam StatutDemande statut) {
         return ResponseEntity.ok(ApiResponse.success("Statut mis à jour",

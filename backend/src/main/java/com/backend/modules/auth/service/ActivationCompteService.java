@@ -116,11 +116,16 @@ public class ActivationCompteService {
 
         utilisateur.setMotDePasseHash(passwordEncoder.encode(motDePasse));
         utilisateur.setActif(true);
+        utilisateur.setCompteConfirme(true);
         utilisateur.setMustChangePassword(false);
         utilisateurRepository.save(utilisateur);
 
+        int consomme = tokenActivationRepository.consommerToken(token.getTokenHash(), Instant.now());
+        if (consomme != 1) {
+            throw new BusinessRuleException("JETON_ACTIVATION_INVALIDE",
+                    "Ce lien d'activation est invalide ou déjà utilisé.");
+        }
         token.setUtilise(true);
-        tokenActivationRepository.save(token);
         log.info("Compte activé : userId={}", utilisateur.getId());
     }
 

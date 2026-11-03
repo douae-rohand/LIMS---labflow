@@ -20,7 +20,7 @@ public class ConformiteController {
     private final ConformiteService conformiteService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TECHNICIEN','RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_CONFORMITE_CONSULTER')")
     public ResponseEntity<ApiResponse<Page<NonConformiteDto>>> lister(
             @RequestParam(required = false) StatutNonConformite statut,
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
@@ -28,14 +28,14 @@ public class ConformiteController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TECHNICIEN','RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_CONFORMITE_DECLARER')")
     public ResponseEntity<ApiResponse<NonConformiteDto>> declarer(@RequestBody NonConformiteDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("NC déclarée", conformiteService.declarer(dto)));
     }
 
     @PatchMapping("/{id}/traiter")
-    @PreAuthorize("hasAnyRole('RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_CONFORMITE_GERER')")
     public ResponseEntity<ApiResponse<NonConformiteDto>> traiter(
             @PathVariable Long id, @RequestParam String actionCorrective, @RequestParam Long responsableId) {
         return ResponseEntity.ok(ApiResponse.success("NC en traitement",
@@ -43,7 +43,7 @@ public class ConformiteController {
     }
 
     @PatchMapping("/{id}/cloturer")
-    @PreAuthorize("hasAnyRole('RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_CONFORMITE_GERER')")
     public ResponseEntity<ApiResponse<NonConformiteDto>> cloturer(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("NC clôturée", conformiteService.cloturer(id)));
     }

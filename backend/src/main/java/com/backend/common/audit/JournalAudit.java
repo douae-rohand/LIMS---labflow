@@ -1,6 +1,7 @@
 package com.backend.common.audit;
 
 import com.backend.common.config.SchemaConstants;
+import com.backend.modules.plateforme.entity.Laboratoire;
 import com.backend.modules.utilisateur.entity.Utilisateur;
 import jakarta.persistence.*;
 import lombok.*;
@@ -51,4 +52,8 @@ public class JournalAudit {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "utilisateur_id", nullable = false)
     private Utilisateur utilisateur;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "laboratoire_id")
+    private Laboratoire laboratoire;
 }

@@ -150,4 +150,35 @@ public class SendGridMailClient {
         }
         return "SendGrid a renvoyé une erreur";
     }
+
+    /**
+     * Vérifie que l'API répond, sans envoyer d'e-mail et sans renvoyer la clé ni l'URL.
+     */
+    public String sonder() {
+        if (!properties.isEnabled()) {
+            return "DESACTIVE";
+        }
+        if (!properties.clePresente()) {
+            return "NON_CONFIGURE";
+        }
+        String base = properties.getApiBaseUrl() == null || properties.getApiBaseUrl().isBlank()
+                ? "https://api.sendgrid.com/v3"
+                : properties.getApiBaseUrl().replaceAll("/$", "");
+        try {
+            java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
+                    .connectTimeout(java.time.Duration.ofSeconds(2))
+                    .build();
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(base + "/scopes"))
+                    .timeout(java.time.Duration.ofSeconds(2))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.getApiKey().trim())
+                    .GET()
+                    .build();
+            int statut = client.send(request, java.net.http.HttpResponse.BodyHandlers.discarding()).statusCode();
+            return statut >= 200 && statut < 300 ? "OK" : "INDISPONIBLE";
+        } catch (Exception ex) {
+            log.warn("Sonde SendGrid indisponible");
+            return "INDISPONIBLE";
+        }
+    }
 }

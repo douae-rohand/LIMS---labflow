@@ -2,14 +2,14 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Button, Card, Input, Label } from "@/components/lab";
 import { Photo } from "@/components/landing/Photo";
 import { Container } from "@/components/layout/Container";
 import { photos } from "@/data/images";
 import { PublicLayout } from "@/layouts/PublicLayout";
-import { login, toSessionUser } from "@/api/auth";
+import { activer2FA, login, setup2FA, toSessionUser, valider2FA, type LoginResponse } from "@/api/auth";
 import { setSession, getSession, getStatus } from "@/api/session";
 import { apiClient, ApiError } from "@/api/axios";
 import { cn } from "@/lib/utils";
@@ -116,6 +116,13 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 function LoginPage() {
   const router = useRouter();
   const search = Route.useSearch();
+  const [etape, setEtape] = useState<"identifiants" | "code" | "enrolement">("identifiants");
+  const [jetonDeuxFacteurs, setJetonDeuxFacteurs] = useState("");
+  const [secret, setSecret] = useState("");
+  const [secretDemande, setSecretDemande] = useState(false);
+  const [code, setCode] = useState("");
+  const [message2fa, setMessage2fa] = useState("");
+  const [enCours, setEnCours] = useState(false);
 
   const {
     register,
@@ -144,26 +151,22 @@ function LoginPage() {
         motDePasse: values.motDePasse,
       });
 
-      // Cas 2FA (a) ou (b) : n'enregistre rien, n'expose jamais le twoFactorToken
       if (response.requiresTwoFactor) {
-        setError("root", {
-          message:
-            "La double authentification n'est pas encore disponible dans cette interface.",
-        });
+        if (!response.twoFactorToken) {
+          setError("root", { message: "La vérification en deux étapes n'a pas pu démarrer." });
+          return;
+        }
+        setJetonDeuxFacteurs(response.twoFactorToken);
+        setCode("");
+        setMessage2fa("");
+        setSecret("");
+        setSecretDemande(false);
+        setEtape(response.setupRequired ? "enrolement" : "code");
         return;
       }
 
-      // Cas (c) : accès direct
       if (response.accessToken) {
-        const user = toSessionUser(response);
-        setSession(response.accessToken, user);
-        apiClient.setTenant(user.tenantId);
-
-        const defaut = user.role === "RESPONSABLE" ? "/app/demandes-clients" : "/app";
-        const cible = user.mustChangePassword
-          ? "/changer-mot-de-passe"
-          : cibleApresConnexion(user.role, search.redirect, defaut);
-        router.history.push(cible);
+        ouvrirSession(response);
       }
     } catch (err) {
       if (err instanceof ApiError) {
@@ -194,6 +197,60 @@ function LoginPage() {
       }
     }
   };
+
+  useEffect(() => {
+    if (etape !== "enrolement" || !jetonDeuxFacteurs || secretDemande) return;
+    let actif = true;
+    setSecretDemande(true);
+    setup2FA({ twoFactorToken: jetonDeuxFacteurs })
+      .then((reponse) => {
+        if (!actif) return;
+        const trouve = /[?&]secret=([^&]+)/.exec(reponse.otpAuthUrl);
+        if (!trouve?.[1]) {
+          setMessage2fa("Le secret n'a pas pu être lu.");
+          return;
+        }
+        setSecret(decodeURIComponent(trouve[1]));
+      })
+      .catch((err) => {
+        if (!actif) return;
+        setMessage2fa(err instanceof ApiError ? err.message : "Le secret n'a pas pu être préparé.");
+      });
+    return () => {
+      actif = false;
+    };
+  }, [etape, jetonDeuxFacteurs, secretDemande]);
+
+  function ouvrirSession(response: LoginResponse) {
+    if (!response.accessToken) return;
+    const user = toSessionUser(response);
+    setSession(response.accessToken, user);
+    apiClient.setTenant(user.tenantId);
+    setJetonDeuxFacteurs("");
+    setSecret("");
+    const defaut = user.role === "RESPONSABLE" ? "/app/demandes-clients" : "/app";
+    const cible = user.mustChangePassword
+      ? "/changer-mot-de-passe"
+      : cibleApresConnexion(user.role, search.redirect, defaut);
+    router.history.push(cible);
+  }
+
+  async function confirmerCode(event: FormEvent) {
+    event.preventDefault();
+    setEnCours(true);
+    setMessage2fa("");
+    try {
+      const response = etape === "enrolement"
+        ? await activer2FA({ twoFactorToken: jetonDeuxFacteurs, code: code.trim() })
+        : await valider2FA({ twoFactorToken: jetonDeuxFacteurs, code: code.trim() });
+      ouvrirSession(response);
+    } catch (err) {
+      setMessage2fa(err instanceof ApiError ? err.message : "Le code n'a pas pu être vérifié.");
+    } finally {
+      setEnCours(false);
+    }
+  }
+
   return (
     <PublicLayout>
       <Container className="grid items-center gap-10 py-16 lg:grid-cols-2">
@@ -221,6 +278,59 @@ function LoginPage() {
             </div>
           )}
 
+          {etape !== "identifiants" ? (
+            <form className="mt-6 flex flex-col gap-4" onSubmit={confirmerCode}>
+              <h2 className="text-lg font-extrabold text-ink-900">
+                {etape === "enrolement" ? "Activer la double authentification" : "Code de vérification"}
+              </h2>
+              {etape === "enrolement" && (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Saisissez ce secret dans votre application TOTP, puis le code à 6 chiffres. Il n'est envoyé à aucun service externe. Le jeton de cette étape expire en quelques minutes et n'ouvre pas l'application.
+                  </p>
+                  <p className="break-all rounded-2xl bg-surface-alt p-3 font-mono text-sm text-ink-900">
+                    {secret || "Préparation du secret…"}
+                  </p>
+                </>
+              )}
+              {etape === "code" && (
+                <p className="text-sm text-muted-foreground">
+                  Saisissez le code à 6 chiffres de votre application TOTP.
+                </p>
+              )}
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="code-2fa">Code à 6 chiffres</Label>
+                <Input
+                  id="code-2fa"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={code}
+                  onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                />
+              </div>
+              {message2fa && (
+                <p role="alert" className="text-sm text-red-700">{message2fa}</p>
+              )}
+              <Button type="submit" loading={enCours} disabled={code.length !== 6 || (etape === "enrolement" && !secret)}>
+                {etape === "enrolement" ? "Activer et continuer" : "Vérifier"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setEtape("identifiants");
+                  setJetonDeuxFacteurs("");
+                  setSecret("");
+                  setSecretDemande(false);
+                  setCode("");
+                  setMessage2fa("");
+                }}
+              >
+                Revenir à la connexion
+              </Button>
+            </form>
+          ) : (
           <form
             className="mt-6 flex flex-col gap-4"
             onSubmit={handleSubmit(onSubmit)}
@@ -269,6 +379,7 @@ function LoginPage() {
               {isSubmitting ? "Connexion…" : "Continuer"}
             </Button>
           </form>
+          )}
 
           <p className="mt-5 text-center text-sm text-muted-foreground">
             Vous n'avez pas encore de compte ?{" "}

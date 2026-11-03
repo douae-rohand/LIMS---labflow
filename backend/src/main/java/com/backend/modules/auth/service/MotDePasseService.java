@@ -78,6 +78,7 @@ public class MotDePasseService {
                 .actif(utilisateur.isActif())
                 .mustChangePassword(false)
                 .doubleAuthentification(utilisateur.isDoubleAuthentification())
+                .secret2faPresent(utilisateur.getSecret2fa() != null && !utilisateur.getSecret2fa().isBlank())
                 .build();
 
         return authService.buildLoginResult(principalMisAJour, httpRequest);
