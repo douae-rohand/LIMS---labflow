@@ -56,6 +56,13 @@ export interface CreerUtilisateurInterne {
   role: 'RESPONSABLE' | 'TECHNICIEN' | 'ACCUEIL';
 }
 
+/** Payload de modification partiel d'un utilisateur. */
+export interface ModifierUtilisateurRequest {
+  nom?: string;
+  prenom?: string;
+  telephone?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Fonctions API
 // ---------------------------------------------------------------------------
@@ -111,4 +118,16 @@ export async function activerUtilisateur(id: number): Promise<void> {
 /** Renvoyer l'email d'invitation à un utilisateur dont le compte n'est pas encore activé. */
 export async function renvoyerInvitation(id: number): Promise<void> {
   await apiClient.post(`/utilisateurs/${id}/renvoyer-invitation`);
+}
+
+/** Modifier partiellement un utilisateur (nom, prénom, téléphone). */
+export async function modifierUtilisateur(
+  id: number,
+  data: ModifierUtilisateurRequest
+): Promise<UtilisateurDto> {
+  const res = await apiClient.patch<ApiEnvelope<UtilisateurDto>>(
+    `/utilisateurs/${id}`,
+    data
+  );
+  return res.data;
 }

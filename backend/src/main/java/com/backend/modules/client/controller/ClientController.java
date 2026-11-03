@@ -4,13 +4,14 @@ import com.backend.common.dto.ApiResponse;
 import com.backend.common.security.SecurityUtils;
 import com.backend.modules.client.dto.ClientProfilDto;
 import com.backend.modules.client.dto.ModifierClientProfilRequest;
+import com.backend.modules.client.dto.SyntheseClientDto;
 import com.backend.modules.client.service.ClientService;
+import com.backend.modules.client.service.SyntheseClientService;
 import com.backend.modules.demande.dto.DemandeDto;
 import com.backend.modules.demande.service.DemandeService;
-import com.backend.modules.facturation.dto.FactureDto;
-import com.backend.modules.facturation.service.FacturationService;
 import com.backend.modules.plateforme.dto.LaboratoirePublicDto;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,7 +28,7 @@ public class ClientController {
 
     private final ClientService clientService;
     private final DemandeService demandeService;
-    private final FacturationService facturationService;
+    private final SyntheseClientService syntheseClientService;
 
     @GetMapping("/profil")
     public ResponseEntity<ApiResponse<ClientProfilDto>> lireProfil() {
@@ -37,7 +38,7 @@ public class ClientController {
 
     @PatchMapping("/profil")
     public ResponseEntity<ApiResponse<ClientProfilDto>> modifierProfil(
-            @RequestBody ModifierClientProfilRequest request) {
+            @Valid @RequestBody ModifierClientProfilRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Profil mis à jour",
                 clientService.modifierProfil(SecurityUtils.principalCourant().getId(), request)));
     }
@@ -53,8 +54,9 @@ public class ClientController {
         return ResponseEntity.ok(ApiResponse.success(demandeService.listerToutesMesDemandes()));
     }
 
-    @GetMapping("/factures")
-    public ResponseEntity<ApiResponse<List<FactureDto>>> mesFactures() {
-        return ResponseEntity.ok(ApiResponse.success(facturationService.listerToutesMesFactures()));
+    @GetMapping("/synthese")
+    public ResponseEntity<ApiResponse<SyntheseClientDto>> synthese() {
+        return ResponseEntity.ok(ApiResponse.success(
+                syntheseClientService.calculerSynthese(SecurityUtils.principalCourant().getId())));
     }
 }

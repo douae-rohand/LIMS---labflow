@@ -27,10 +27,14 @@ import { Route as AppCatalogueRouteImport } from './routes/app/catalogue'
 import { Route as AppDemandesRouteImport } from './routes/app/demandes'
 import { Route as AppDemandesClientsRouteImport } from './routes/app/demandes-clients'
 import { Route as AppEmployesRouteImport } from './routes/app/employes'
+import { Route as AppEnquetesRouteImport } from './routes/app/enquetes'
+import { Route as AppFacturesRouteImport } from './routes/app/factures'
 import { Route as AppGestionLaboratoiresRouteImport } from './routes/app/gestion-laboratoires'
 import { Route as AppJournalAuditRouteImport } from './routes/app/journal-audit'
 import { Route as AppLaboratoiresRouteImport } from './routes/app/laboratoires'
 import { Route as AppPanierRouteImport } from './routes/app/panier'
+import { Route as AppProfilRouteImport } from './routes/app/profil'
+import { Route as AppRapportsRouteImport } from './routes/app/rapports'
 import { Route as AppTableauDeBordRouteImport } from './routes/app/tableau-de-bord'
 import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/index'
 import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
@@ -41,13 +45,19 @@ import { Route as AppDemandesIntegrationIdRouteImport } from './routes/app/deman
 import { Route as AppDemandesIndexRouteImport } from './routes/app/demandes/index'
 import { Route as AppEmployesIndexRouteImport } from './routes/app/employes/index'
 import { Route as AppEmployesNouveauRouteImport } from './routes/app/employes/nouveau'
+import { Route as AppEnquetesIndexRouteImport } from './routes/app/enquetes/index'
+import { Route as AppFacturesIndexRouteImport } from './routes/app/factures/index'
 import { Route as AppLaboratoiresIndexRouteImport } from './routes/app/laboratoires/index'
 import { Route as AppLaboratoiresIdRouteImport } from './routes/app/laboratoires/$id'
 import { Route as AppPanierIndexRouteImport } from './routes/app/panier/index'
 import { Route as AppPanierLaboratoireIdRouteImport } from './routes/app/panier/$laboratoireId'
+import { Route as AppRapportsIndexRouteImport } from './routes/app/rapports/index'
 import { Route as AppUtilisateursIndexRouteImport } from './routes/app/utilisateurs/index'
 import { Route as AppUtilisateursNouveauRouteImport } from './routes/app/utilisateurs/nouveau'
 import { Route as AppDemandesLaboratoireIdDemandeIdRouteImport } from './routes/app/demandes/$laboratoireId.$demandeId'
+import { Route as AppEnquetesLaboratoireIdEnqueteIdRouteImport } from './routes/app/enquetes/$laboratoireId.$enqueteId'
+import { Route as AppFacturesLaboratoireIdFactureIdRouteImport } from './routes/app/factures/$laboratoireId.$factureId'
+import { Route as AppRapportsLaboratoireIdRapportIdRouteImport } from './routes/app/rapports/$laboratoireId.$rapportId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -139,6 +149,16 @@ const AppEmployesRoute = AppEmployesRouteImport.update({
   path: '/employes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppEnquetesRoute = AppEnquetesRouteImport.update({
+  id: '/enquetes',
+  path: '/enquetes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFacturesRoute = AppFacturesRouteImport.update({
+  id: '/factures',
+  path: '/factures',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppGestionLaboratoiresRoute = AppGestionLaboratoiresRouteImport.update({
   id: '/gestion-laboratoires',
   path: '/gestion-laboratoires',
@@ -157,6 +177,16 @@ const AppLaboratoiresRoute = AppLaboratoiresRouteImport.update({
 const AppPanierRoute = AppPanierRouteImport.update({
   id: '/panier',
   path: '/panier',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProfilRoute = AppProfilRouteImport.update({
+  id: '/profil',
+  path: '/profil',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRapportsRoute = AppRapportsRouteImport.update({
+  id: '/rapports',
+  path: '/rapports',
   getParentRoute: () => AppRoute,
 } as any)
 const AppTableauDeBordRoute = AppTableauDeBordRouteImport.update({
@@ -211,6 +241,16 @@ const AppEmployesNouveauRoute = AppEmployesNouveauRouteImport.update({
   path: '/nouveau',
   getParentRoute: () => AppEmployesRoute,
 } as any)
+const AppEnquetesIndexRoute = AppEnquetesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppEnquetesRoute,
+} as any)
+const AppFacturesIndexRoute = AppFacturesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppFacturesRoute,
+} as any)
 const AppLaboratoiresIndexRoute = AppLaboratoiresIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -231,6 +271,11 @@ const AppPanierLaboratoireIdRoute = AppPanierLaboratoireIdRouteImport.update({
   path: '/$laboratoireId',
   getParentRoute: () => AppPanierRoute,
 } as any)
+const AppRapportsIndexRoute = AppRapportsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRapportsRoute,
+} as any)
 const AppUtilisateursIndexRoute = AppUtilisateursIndexRouteImport.update({
   id: '/utilisateurs/',
   path: '/utilisateurs/',
@@ -246,6 +291,24 @@ const AppDemandesLaboratoireIdDemandeIdRoute =
     id: '/$laboratoireId/$demandeId',
     path: '/$laboratoireId/$demandeId',
     getParentRoute: () => AppDemandesRoute,
+  } as any)
+const AppEnquetesLaboratoireIdEnqueteIdRoute =
+  AppEnquetesLaboratoireIdEnqueteIdRouteImport.update({
+    id: '/$laboratoireId/$enqueteId',
+    path: '/$laboratoireId/$enqueteId',
+    getParentRoute: () => AppEnquetesRoute,
+  } as any)
+const AppFacturesLaboratoireIdFactureIdRoute =
+  AppFacturesLaboratoireIdFactureIdRouteImport.update({
+    id: '/$laboratoireId/$factureId',
+    path: '/$laboratoireId/$factureId',
+    getParentRoute: () => AppFacturesRoute,
+  } as any)
+const AppRapportsLaboratoireIdRapportIdRoute =
+  AppRapportsLaboratoireIdRapportIdRouteImport.update({
+    id: '/$laboratoireId/$rapportId',
+    path: '/$laboratoireId/$rapportId',
+    getParentRoute: () => AppRapportsRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -266,10 +329,14 @@ export interface FileRoutesByFullPath {
   '/app/demandes': typeof AppDemandesRouteWithChildren
   '/app/demandes-clients': typeof AppDemandesClientsRouteWithChildren
   '/app/employes': typeof AppEmployesRouteWithChildren
+  '/app/enquetes': typeof AppEnquetesRouteWithChildren
+  '/app/factures': typeof AppFacturesRouteWithChildren
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/app/journal-audit': typeof AppJournalAuditRoute
   '/app/laboratoires': typeof AppLaboratoiresRouteWithChildren
   '/app/panier': typeof AppPanierRouteWithChildren
+  '/app/profil': typeof AppProfilRoute
+  '/app/rapports': typeof AppRapportsRouteWithChildren
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
@@ -284,10 +351,16 @@ export interface FileRoutesByFullPath {
   '/app/demandes-integration/': typeof AppDemandesIntegrationIndexRoute
   '/app/demandes/': typeof AppDemandesIndexRoute
   '/app/employes/': typeof AppEmployesIndexRoute
+  '/app/enquetes/': typeof AppEnquetesIndexRoute
+  '/app/factures/': typeof AppFacturesIndexRoute
   '/app/laboratoires/': typeof AppLaboratoiresIndexRoute
   '/app/panier/': typeof AppPanierIndexRoute
+  '/app/rapports/': typeof AppRapportsIndexRoute
   '/app/utilisateurs/': typeof AppUtilisateursIndexRoute
   '/app/demandes/$laboratoireId/$demandeId': typeof AppDemandesLaboratoireIdDemandeIdRoute
+  '/app/enquetes/$laboratoireId/$enqueteId': typeof AppEnquetesLaboratoireIdEnqueteIdRoute
+  '/app/factures/$laboratoireId/$factureId': typeof AppFacturesLaboratoireIdFactureIdRoute
+  '/app/rapports/$laboratoireId/$rapportId': typeof AppRapportsLaboratoireIdRapportIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -304,6 +377,7 @@ export interface FileRoutesByTo {
   '/app/carte': typeof AppCarteRoute
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/app/journal-audit': typeof AppJournalAuditRoute
+  '/app/profil': typeof AppProfilRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app': typeof AppIndexRoute
@@ -318,10 +392,16 @@ export interface FileRoutesByTo {
   '/app/demandes-integration': typeof AppDemandesIntegrationIndexRoute
   '/app/demandes': typeof AppDemandesIndexRoute
   '/app/employes': typeof AppEmployesIndexRoute
+  '/app/enquetes': typeof AppEnquetesIndexRoute
+  '/app/factures': typeof AppFacturesIndexRoute
   '/app/laboratoires': typeof AppLaboratoiresIndexRoute
   '/app/panier': typeof AppPanierIndexRoute
+  '/app/rapports': typeof AppRapportsIndexRoute
   '/app/utilisateurs': typeof AppUtilisateursIndexRoute
   '/app/demandes/$laboratoireId/$demandeId': typeof AppDemandesLaboratoireIdDemandeIdRoute
+  '/app/enquetes/$laboratoireId/$enqueteId': typeof AppEnquetesLaboratoireIdEnqueteIdRoute
+  '/app/factures/$laboratoireId/$factureId': typeof AppFacturesLaboratoireIdFactureIdRoute
+  '/app/rapports/$laboratoireId/$rapportId': typeof AppRapportsLaboratoireIdRapportIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -342,10 +422,14 @@ export interface FileRoutesById {
   '/app/demandes': typeof AppDemandesRouteWithChildren
   '/app/demandes-clients': typeof AppDemandesClientsRouteWithChildren
   '/app/employes': typeof AppEmployesRouteWithChildren
+  '/app/enquetes': typeof AppEnquetesRouteWithChildren
+  '/app/factures': typeof AppFacturesRouteWithChildren
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/app/journal-audit': typeof AppJournalAuditRoute
   '/app/laboratoires': typeof AppLaboratoiresRouteWithChildren
   '/app/panier': typeof AppPanierRouteWithChildren
+  '/app/profil': typeof AppProfilRoute
+  '/app/rapports': typeof AppRapportsRouteWithChildren
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
@@ -360,10 +444,16 @@ export interface FileRoutesById {
   '/app/demandes-integration/': typeof AppDemandesIntegrationIndexRoute
   '/app/demandes/': typeof AppDemandesIndexRoute
   '/app/employes/': typeof AppEmployesIndexRoute
+  '/app/enquetes/': typeof AppEnquetesIndexRoute
+  '/app/factures/': typeof AppFacturesIndexRoute
   '/app/laboratoires/': typeof AppLaboratoiresIndexRoute
   '/app/panier/': typeof AppPanierIndexRoute
+  '/app/rapports/': typeof AppRapportsIndexRoute
   '/app/utilisateurs/': typeof AppUtilisateursIndexRoute
   '/app/demandes/$laboratoireId/$demandeId': typeof AppDemandesLaboratoireIdDemandeIdRoute
+  '/app/enquetes/$laboratoireId/$enqueteId': typeof AppEnquetesLaboratoireIdEnqueteIdRoute
+  '/app/factures/$laboratoireId/$factureId': typeof AppFacturesLaboratoireIdFactureIdRoute
+  '/app/rapports/$laboratoireId/$rapportId': typeof AppRapportsLaboratoireIdRapportIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -385,10 +475,14 @@ export interface FileRouteTypes {
     | '/app/demandes'
     | '/app/demandes-clients'
     | '/app/employes'
+    | '/app/enquetes'
+    | '/app/factures'
     | '/app/gestion-laboratoires'
     | '/app/journal-audit'
     | '/app/laboratoires'
     | '/app/panier'
+    | '/app/profil'
+    | '/app/rapports'
     | '/app/tableau-de-bord'
     | '/laboratoires/$id'
     | '/app/'
@@ -403,10 +497,16 @@ export interface FileRouteTypes {
     | '/app/demandes-integration/'
     | '/app/demandes/'
     | '/app/employes/'
+    | '/app/enquetes/'
+    | '/app/factures/'
     | '/app/laboratoires/'
     | '/app/panier/'
+    | '/app/rapports/'
     | '/app/utilisateurs/'
     | '/app/demandes/$laboratoireId/$demandeId'
+    | '/app/enquetes/$laboratoireId/$enqueteId'
+    | '/app/factures/$laboratoireId/$factureId'
+    | '/app/rapports/$laboratoireId/$rapportId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -423,6 +523,7 @@ export interface FileRouteTypes {
     | '/app/carte'
     | '/app/gestion-laboratoires'
     | '/app/journal-audit'
+    | '/app/profil'
     | '/app/tableau-de-bord'
     | '/laboratoires/$id'
     | '/app'
@@ -437,10 +538,16 @@ export interface FileRouteTypes {
     | '/app/demandes-integration'
     | '/app/demandes'
     | '/app/employes'
+    | '/app/enquetes'
+    | '/app/factures'
     | '/app/laboratoires'
     | '/app/panier'
+    | '/app/rapports'
     | '/app/utilisateurs'
     | '/app/demandes/$laboratoireId/$demandeId'
+    | '/app/enquetes/$laboratoireId/$enqueteId'
+    | '/app/factures/$laboratoireId/$factureId'
+    | '/app/rapports/$laboratoireId/$rapportId'
   id:
     | '__root__'
     | '/'
@@ -460,10 +567,14 @@ export interface FileRouteTypes {
     | '/app/demandes'
     | '/app/demandes-clients'
     | '/app/employes'
+    | '/app/enquetes'
+    | '/app/factures'
     | '/app/gestion-laboratoires'
     | '/app/journal-audit'
     | '/app/laboratoires'
     | '/app/panier'
+    | '/app/profil'
+    | '/app/rapports'
     | '/app/tableau-de-bord'
     | '/laboratoires/$id'
     | '/app/'
@@ -478,10 +589,16 @@ export interface FileRouteTypes {
     | '/app/demandes-integration/'
     | '/app/demandes/'
     | '/app/employes/'
+    | '/app/enquetes/'
+    | '/app/factures/'
     | '/app/laboratoires/'
     | '/app/panier/'
+    | '/app/rapports/'
     | '/app/utilisateurs/'
     | '/app/demandes/$laboratoireId/$demandeId'
+    | '/app/enquetes/$laboratoireId/$enqueteId'
+    | '/app/factures/$laboratoireId/$factureId'
+    | '/app/rapports/$laboratoireId/$rapportId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -629,6 +746,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEmployesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/enquetes': {
+      id: '/app/enquetes'
+      path: '/enquetes'
+      fullPath: '/app/enquetes'
+      preLoaderRoute: typeof AppEnquetesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/factures': {
+      id: '/app/factures'
+      path: '/factures'
+      fullPath: '/app/factures'
+      preLoaderRoute: typeof AppFacturesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/gestion-laboratoires': {
       id: '/app/gestion-laboratoires'
       path: '/gestion-laboratoires'
@@ -655,6 +786,20 @@ declare module '@tanstack/react-router' {
       path: '/panier'
       fullPath: '/app/panier'
       preLoaderRoute: typeof AppPanierRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/profil': {
+      id: '/app/profil'
+      path: '/profil'
+      fullPath: '/app/profil'
+      preLoaderRoute: typeof AppProfilRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/rapports': {
+      id: '/app/rapports'
+      path: '/rapports'
+      fullPath: '/app/rapports'
+      preLoaderRoute: typeof AppRapportsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/tableau-de-bord': {
@@ -727,6 +872,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEmployesNouveauRouteImport
       parentRoute: typeof AppEmployesRoute
     }
+    '/app/enquetes/': {
+      id: '/app/enquetes/'
+      path: '/'
+      fullPath: '/app/enquetes/'
+      preLoaderRoute: typeof AppEnquetesIndexRouteImport
+      parentRoute: typeof AppEnquetesRoute
+    }
+    '/app/factures/': {
+      id: '/app/factures/'
+      path: '/'
+      fullPath: '/app/factures/'
+      preLoaderRoute: typeof AppFacturesIndexRouteImport
+      parentRoute: typeof AppFacturesRoute
+    }
     '/app/laboratoires/': {
       id: '/app/laboratoires/'
       path: '/'
@@ -755,6 +914,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPanierLaboratoireIdRouteImport
       parentRoute: typeof AppPanierRoute
     }
+    '/app/rapports/': {
+      id: '/app/rapports/'
+      path: '/'
+      fullPath: '/app/rapports/'
+      preLoaderRoute: typeof AppRapportsIndexRouteImport
+      parentRoute: typeof AppRapportsRoute
+    }
     '/app/utilisateurs/': {
       id: '/app/utilisateurs/'
       path: '/utilisateurs'
@@ -775,6 +941,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/demandes/$laboratoireId/$demandeId'
       preLoaderRoute: typeof AppDemandesLaboratoireIdDemandeIdRouteImport
       parentRoute: typeof AppDemandesRoute
+    }
+    '/app/enquetes/$laboratoireId/$enqueteId': {
+      id: '/app/enquetes/$laboratoireId/$enqueteId'
+      path: '/$laboratoireId/$enqueteId'
+      fullPath: '/app/enquetes/$laboratoireId/$enqueteId'
+      preLoaderRoute: typeof AppEnquetesLaboratoireIdEnqueteIdRouteImport
+      parentRoute: typeof AppEnquetesRoute
+    }
+    '/app/factures/$laboratoireId/$factureId': {
+      id: '/app/factures/$laboratoireId/$factureId'
+      path: '/$laboratoireId/$factureId'
+      fullPath: '/app/factures/$laboratoireId/$factureId'
+      preLoaderRoute: typeof AppFacturesLaboratoireIdFactureIdRouteImport
+      parentRoute: typeof AppFacturesRoute
+    }
+    '/app/rapports/$laboratoireId/$rapportId': {
+      id: '/app/rapports/$laboratoireId/$rapportId'
+      path: '/$laboratoireId/$rapportId'
+      fullPath: '/app/rapports/$laboratoireId/$rapportId'
+      preLoaderRoute: typeof AppRapportsLaboratoireIdRapportIdRouteImport
+      parentRoute: typeof AppRapportsRoute
     }
   }
 }
@@ -831,6 +1018,36 @@ const AppEmployesRouteWithChildren = AppEmployesRoute._addFileChildren(
   AppEmployesRouteChildren,
 )
 
+interface AppEnquetesRouteChildren {
+  AppEnquetesIndexRoute: typeof AppEnquetesIndexRoute
+  AppEnquetesLaboratoireIdEnqueteIdRoute: typeof AppEnquetesLaboratoireIdEnqueteIdRoute
+}
+
+const AppEnquetesRouteChildren: AppEnquetesRouteChildren = {
+  AppEnquetesIndexRoute: AppEnquetesIndexRoute,
+  AppEnquetesLaboratoireIdEnqueteIdRoute:
+    AppEnquetesLaboratoireIdEnqueteIdRoute,
+}
+
+const AppEnquetesRouteWithChildren = AppEnquetesRoute._addFileChildren(
+  AppEnquetesRouteChildren,
+)
+
+interface AppFacturesRouteChildren {
+  AppFacturesIndexRoute: typeof AppFacturesIndexRoute
+  AppFacturesLaboratoireIdFactureIdRoute: typeof AppFacturesLaboratoireIdFactureIdRoute
+}
+
+const AppFacturesRouteChildren: AppFacturesRouteChildren = {
+  AppFacturesIndexRoute: AppFacturesIndexRoute,
+  AppFacturesLaboratoireIdFactureIdRoute:
+    AppFacturesLaboratoireIdFactureIdRoute,
+}
+
+const AppFacturesRouteWithChildren = AppFacturesRoute._addFileChildren(
+  AppFacturesRouteChildren,
+)
+
 interface AppLaboratoiresRouteChildren {
   AppLaboratoiresIdRoute: typeof AppLaboratoiresIdRoute
   AppLaboratoiresIndexRoute: typeof AppLaboratoiresIndexRoute
@@ -859,16 +1076,35 @@ const AppPanierRouteWithChildren = AppPanierRoute._addFileChildren(
   AppPanierRouteChildren,
 )
 
+interface AppRapportsRouteChildren {
+  AppRapportsIndexRoute: typeof AppRapportsIndexRoute
+  AppRapportsLaboratoireIdRapportIdRoute: typeof AppRapportsLaboratoireIdRapportIdRoute
+}
+
+const AppRapportsRouteChildren: AppRapportsRouteChildren = {
+  AppRapportsIndexRoute: AppRapportsIndexRoute,
+  AppRapportsLaboratoireIdRapportIdRoute:
+    AppRapportsLaboratoireIdRapportIdRoute,
+}
+
+const AppRapportsRouteWithChildren = AppRapportsRoute._addFileChildren(
+  AppRapportsRouteChildren,
+)
+
 interface AppRouteChildren {
   AppCarteRoute: typeof AppCarteRoute
   AppCatalogueRoute: typeof AppCatalogueRouteWithChildren
   AppDemandesRoute: typeof AppDemandesRouteWithChildren
   AppDemandesClientsRoute: typeof AppDemandesClientsRouteWithChildren
   AppEmployesRoute: typeof AppEmployesRouteWithChildren
+  AppEnquetesRoute: typeof AppEnquetesRouteWithChildren
+  AppFacturesRoute: typeof AppFacturesRouteWithChildren
   AppGestionLaboratoiresRoute: typeof AppGestionLaboratoiresRoute
   AppJournalAuditRoute: typeof AppJournalAuditRoute
   AppLaboratoiresRoute: typeof AppLaboratoiresRouteWithChildren
   AppPanierRoute: typeof AppPanierRouteWithChildren
+  AppProfilRoute: typeof AppProfilRoute
+  AppRapportsRoute: typeof AppRapportsRouteWithChildren
   AppTableauDeBordRoute: typeof AppTableauDeBordRoute
   AppIndexRoute: typeof AppIndexRoute
   AppDemandesIntegrationIdRoute: typeof AppDemandesIntegrationIdRoute
@@ -883,10 +1119,14 @@ const AppRouteChildren: AppRouteChildren = {
   AppDemandesRoute: AppDemandesRouteWithChildren,
   AppDemandesClientsRoute: AppDemandesClientsRouteWithChildren,
   AppEmployesRoute: AppEmployesRouteWithChildren,
+  AppEnquetesRoute: AppEnquetesRouteWithChildren,
+  AppFacturesRoute: AppFacturesRouteWithChildren,
   AppGestionLaboratoiresRoute: AppGestionLaboratoiresRoute,
   AppJournalAuditRoute: AppJournalAuditRoute,
   AppLaboratoiresRoute: AppLaboratoiresRouteWithChildren,
   AppPanierRoute: AppPanierRouteWithChildren,
+  AppProfilRoute: AppProfilRoute,
+  AppRapportsRoute: AppRapportsRouteWithChildren,
   AppTableauDeBordRoute: AppTableauDeBordRoute,
   AppIndexRoute: AppIndexRoute,
   AppDemandesIntegrationIdRoute: AppDemandesIntegrationIdRoute,

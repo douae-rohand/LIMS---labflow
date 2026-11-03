@@ -1,8 +1,18 @@
-import { Building2, ClipboardList, LayoutDashboard, Map, ShoppingCart } from "lucide-react";
+import {
+  Building2,
+  ClipboardCheck,
+  ClipboardList,
+  FileText,
+  LayoutDashboard,
+  Map,
+  Receipt,
+  ShoppingCart,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import type { SessionUser } from "@/api/session";
 import { EspaceShell, type EntreeNavigation } from "@/features/shell/EspaceShell";
 import { nombreTotalEssais, usePaniers } from "@/hooks/usePanier";
+import { useSyntheseClient } from "@/hooks/useSyntheseClient";
 
 /**
  * Espace client isolé : sidebar dédiée, sans Navbar/Footer publics.
@@ -21,6 +31,12 @@ export function ClientShell({
   const paniersQuery = usePaniers();
   const nombrePanier = nombreTotalEssais(paniersQuery.data);
 
+  // Une erreur de synthèse ne casse pas la navigation : `data` reste undefined
+  // et les pastilles sont simplement absentes (aucun toast déclenché ici).
+  const syntheseQuery = useSyntheseClient();
+  const facturesImpayees = syntheseQuery.data?.facturesImpayees ?? 0;
+  const enquetesEnAttente = syntheseQuery.data?.enquetesEnAttente ?? 0;
+
   const navigation: EntreeNavigation[] = [
     {
       to: "/app",
@@ -30,8 +46,25 @@ export function ClientShell({
     },
     {
       to: "/app/demandes",
-      label: "Mes commandes",
+      label: "Mes demandes",
       icon: ClipboardList,
+    },
+    {
+      to: "/app/rapports",
+      label: "Mes rapports",
+      icon: FileText,
+    },
+    {
+      to: "/app/factures",
+      label: "Mes factures",
+      icon: Receipt,
+      badge: facturesImpayees,
+    },
+    {
+      to: "/app/enquetes",
+      label: "Enquêtes",
+      icon: ClipboardCheck,
+      badge: enquetesEnAttente,
     },
     {
       to: "/app/laboratoires",

@@ -8,11 +8,13 @@ import { DemandesClientFiltres } from "@/components/demandes/client/DemandesClie
 import { DemandesClientListe } from "@/components/demandes/client/DemandesClientListe";
 import { DemandesClientPagination } from "@/components/demandes/client/DemandesClientPagination";
 import { useDemandesClient } from "@/hooks/useDemandesClient";
+import { useLaboratoiresClient } from "@/hooks/useLaboratoiresClient";
 
 export interface MesDemandesSearch {
   page: number;
   q?: string | undefined;
   statut?: StatutDemande | undefined;
+  laboratoireId?: number | undefined;
 }
 
 const PAGE_SIZE = 10;
@@ -23,6 +25,12 @@ function parsePositiveInt(v: unknown, min: number, max: number): number | undefi
   const n = Number(v);
   if (!Number.isFinite(n) || !Number.isInteger(n) || n < min || n > max) return undefined;
   return n;
+}
+
+function parseId(valeur: unknown): number | undefined {
+  if (valeur === undefined || valeur === null || valeur === "") return undefined;
+  const n = Number(valeur);
+  return Number.isInteger(n) && n > 0 ? n : undefined;
 }
 
 function normaliser(valeur: string | null): string {
@@ -54,7 +62,8 @@ export const Route = createFileRoute("/app/demandes/")({
     const statut = (STATUTS_DEMANDE as readonly string[]).includes(search["statut"] as string)
       ? (search["statut"] as StatutDemande)
       : undefined;
-    return { page, q, statut };
+    const laboratoireId = parseId(search["laboratoireId"]);
+    return { page, q, statut, laboratoireId };
   },
   component: MesDemandesPage,
 });
@@ -99,14 +108,20 @@ function MesDemandesPage() {
   const demandesQuery = useDemandesClient();
   const demandes = demandesQuery.data ?? [];
 
+  const labosQuery = useLaboratoiresClient();
+  const laboratoires = useMemo(() => {
+    return (labosQuery.data ?? []).map((lab) => ({ id: lab.id, nom: lab.raisonSociale }));
+  }, [labosQuery.data]);
+
   const filtrees = useMemo(() => {
     const recherche = normaliser(search.q ?? null).trim();
     return demandes.filter(
       (demande) =>
         correspond(demande, recherche) &&
-        (search.statut === undefined || demande.statut === search.statut),
+        (search.statut === undefined || demande.statut === search.statut) &&
+        (search.laboratoireId === undefined || demande.laboratoireId === search.laboratoireId),
     );
-  }, [demandes, search.q, search.statut]);
+  }, [demandes, search.q, search.statut, search.laboratoireId]);
 
   const totalPages = Math.max(1, Math.ceil(filtrees.length / PAGE_SIZE));
   const page = Math.min(search.page, totalPages);
@@ -124,7 +139,9 @@ function MesDemandesPage() {
   }, [search.page, totalPages]);
 
   const filtresActifs =
-    search.q !== undefined && search.q.length > 0 ? true : search.statut !== undefined;
+    (search.q !== undefined && search.q.length > 0) ||
+    search.statut !== undefined ||
+    search.laboratoireId !== undefined;
 
   function aller(partiel: Partial<MesDemandesSearch>) {
     void navigate({
@@ -140,7 +157,7 @@ function MesDemandesPage() {
       clearTimeout(debounceTimer.current);
       debounceTimer.current = null;
     }
-    aller({ q: undefined, statut: undefined, page: 1 });
+    aller({ q: undefined, statut: undefined, laboratoireId: undefined, page: 1 });
   }
 
   return (
@@ -163,6 +180,8 @@ function MesDemandesPage() {
         <DemandesClientFiltres
           inputValue={inputValue}
           statut={search.statut}
+          laboratoireId={search.laboratoireId}
+          laboratoires={laboratoires}
           filtresActifs={filtresActifs}
           onInputChange={setInputValue}
           onInputClear={() => {
@@ -170,6 +189,7 @@ function MesDemandesPage() {
             if (search.q !== undefined) aller({ q: undefined, page: 1 });
           }}
           onStatutChange={(statut) => aller({ statut, page: 1 })}
+          onLaboratoireChange={(laboratoireId) => aller({ laboratoireId, page: 1 })}
           onReinitialiser={reinitialiser}
         />
       </div>
