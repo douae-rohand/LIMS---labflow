@@ -92,7 +92,8 @@ public class PlateformeService {
                 acteurEmail,
                 null,
                 snapshotLaboratoire(labo),
-                null);
+                null,
+                labo.getId());
         log.info("Laboratoire créé : code={}, schema={}", labo.getCode(), labo.getNomSchema());
 
         return toDto(labo);
@@ -276,7 +277,8 @@ public class PlateformeService {
                 acteurEmail,
                 valeurAvant,
                 valeurApres,
-                null
+                null,
+                id
         );
         
         log.info("Laboratoire modifié : id={}, code={}, acteur={}", labo.getId(), labo.getCode(), acteurEmail);
@@ -322,7 +324,8 @@ public class PlateformeService {
                 acteurEmail,
                 valeurAvant,
                 valeurApres,
-                null
+                null,
+                labo.getId()
         );
         
         log.info("Administrateur de laboratoire modifié : userId={}, labo={}, acteur={}", admin.getId(), labo.getCode(), acteurEmail);
@@ -395,7 +398,8 @@ public class PlateformeService {
                 acteurEmail,
                 "{\"statut\":\"" + ancienStatut + "\"}",
                 "{\"statut\":\"" + nouveauStatut + "\"}",
-                motifNormalise
+                motifNormalise,
+                id
         );
         
         // Changer le statut
@@ -560,6 +564,22 @@ public class PlateformeService {
                 .cin(admin.getCin())
                 .actif(admin.isActif())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<HistoriqueStatutDto> historiqueStatut(Long laboratoireId) {
+        if (!laboratoireRepository.existsById(laboratoireId)) {
+            throw new ResourceNotFoundException("Laboratoire", "id", laboratoireId);
+        }
+        return historiqueStatutRepository.findByLaboratoire_IdOrderByDateChangementDesc(laboratoireId).stream()
+                .map(ligne -> new HistoriqueStatutDto(
+                        ligne.getId(),
+                        ligne.getAncienStatut(),
+                        ligne.getNouveauStatut(),
+                        ligne.getMotif(),
+                        ligne.getActeurEmail(),
+                        ligne.getDateChangement()))
+                .toList();
     }
 
     private static List<String> extraireTypes(String brut) {

@@ -2,17 +2,16 @@ package com.backend.modules.plateforme.controller;
 
 import com.backend.common.dto.ApiResponse;
 import com.backend.common.exception.BusinessRuleException;
-import com.backend.integration.sendgrid.EmailService;
 import com.backend.integration.sendgrid.ResultatEnvoiEmail;
-import com.backend.integration.sendgrid.SendGridProperties;
 import com.backend.modules.plateforme.dto.*;
 import com.backend.modules.plateforme.entity.StatutIntegration;
 import com.backend.modules.plateforme.entity.TypeDocumentIntegration;
 import com.backend.modules.plateforme.service.DemandeIntegrationService;
+import com.backend.modules.plateforme.service.JournalAuditConsultationService;
 import com.backend.modules.plateforme.service.LaboratoireExportService;
 import com.backend.modules.plateforme.service.LaboratoireImportService;
-import com.backend.modules.plateforme.service.JournalAuditConsultationService;
 import com.backend.modules.plateforme.service.PlateformeService;
+import com.backend.modules.plateforme.service.TableauBordService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -54,13 +53,9 @@ public class PlateformeController {
     private final LaboratoireExportService laboratoireExportService;
     private final LaboratoireImportService laboratoireImportService;
     private final JournalAuditConsultationService journalAuditConsultationService;
-    private final EmailService emailService;
-    private final SendGridProperties sendGridProperties;
+    private final TableauBordService tableauBordService;
     private final ObjectMapper objectMapper;
     private final Validator validator;
-
-    @org.springframework.beans.factory.annotation.Value("${app.frontend-url:http://localhost:5173}")
-    private String frontendUrl;
 
     // -------------------------------------------------------------------------
     // Helper pour récupérer l'acteur depuis le SecurityContext
@@ -100,6 +95,20 @@ public class PlateformeController {
     @Operation(summary = "Indicateurs de la plateforme")
     public ResponseEntity<ApiResponse<StatistiquesPlateformeDto>> statistiques() {
         return ResponseEntity.ok(ApiResponse.success(plateformeService.statistiques()));
+    }
+
+    @GetMapping("/tableau-de-bord")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Tableau de bord global, agrégats uniquement")
+    public ResponseEntity<ApiResponse<TableauBordDto>> tableauDeBord() {
+        return ResponseEntity.ok(ApiResponse.success(tableauBordService.obtenir()));
+    }
+
+    @GetMapping("/laboratoires/{id}/historique")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Historique des changements de statut d'un laboratoire")
+    public ResponseEntity<ApiResponse<java.util.List<HistoriqueStatutDto>>> historiqueLaboratoire(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(plateformeService.historiqueStatut(id)));
     }
 
     @GetMapping("/laboratoires/villes")
@@ -328,29 +337,6 @@ public class PlateformeController {
                 ? "Invitation renvoyée et acceptée par SendGrid"
                 : "Jeton régénéré mais e-mail non envoyé : " + resultat.message();
         return ResponseEntity.ok(ApiResponse.success(message, resultat));
-    }
-
-    @GetMapping("/emails/statut")
-    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
-    @Operation(summary = "État de la configuration SendGrid (sans exposer la clé)")
-    public ResponseEntity<ApiResponse<StatutSendGridDto>> statutSendGrid() {
-        return ResponseEntity.ok(ApiResponse.success(new StatutSendGridDto(
-                sendGridProperties.isEnabled(),
-                sendGridProperties.pretPourEnvoi(),
-                sendGridProperties.getFromEmail(),
-                sendGridProperties.getFromName(),
-                frontendUrl)));
-    }
-
-    @PostMapping("/emails/test")
-    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
-    @Operation(summary = "Envoyer un e-mail de test SendGrid")
-    public ResponseEntity<ApiResponse<ResultatEnvoiEmail>> testerEmail(
-            @Valid @RequestBody TesterEmailRequest request) {
-        ResultatEnvoiEmail resultat = emailService.envoyerTest(request.getDestinataire());
-        return ResponseEntity.ok(ApiResponse.success(
-                resultat.accepte() ? "E-mail de test accepté par SendGrid" : resultat.message(),
-                resultat));
     }
 
     @GetMapping("/audit")

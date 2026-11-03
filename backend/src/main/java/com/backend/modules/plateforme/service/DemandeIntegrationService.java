@@ -201,7 +201,8 @@ public class DemandeIntegrationService {
                     acteurEmail,
                     ancienStatut,
                     nouveauStatut,
-                    request.getMotifRefus()
+                    request.getMotifRefus(),
+                    demande.getLaboratoire() == null ? null : demande.getLaboratoire().getId()
             );
             
             DemandeIntegration refusee = demande;
@@ -277,7 +278,8 @@ public class DemandeIntegrationService {
                 acteurEmail,
                 remplacement ? "{\"type\":\"" + type.name() + "\"}" : null,
                 "{\"type\":\"" + type.name() + "\",\"fichier\":\"" + nomFichier + "\"}",
-                null
+                null,
+                demande.getLaboratoire() == null ? null : demande.getLaboratoire().getId()
         );
         
         log.info("Document d'intégration ajouté : demande={}, type={}, acteur={}", demandeId, type, acteurEmail);
@@ -304,7 +306,8 @@ public class DemandeIntegrationService {
                 acteurEmail,
                 null,
                 "{\"email\":\"" + admin.getEmail().replace("\"", "") + "\",\"accepte\":" + resultat.accepte() + "}",
-                null);
+                null,
+                admin.getLaboratoire() == null ? null : admin.getLaboratoire().getId());
         return resultat;
     }
 
@@ -393,7 +396,8 @@ public class DemandeIntegrationService {
                     acteurEmail,
                     StatutIntegration.EN_ATTENTE.name(),
                     StatutIntegration.ACCEPTEE.name(),
-                    null
+                    null,
+                    laboratoire.getId()
             );
             
             ApresCommit.executer(() -> {

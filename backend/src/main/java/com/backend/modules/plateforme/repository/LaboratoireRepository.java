@@ -17,6 +17,8 @@ public interface LaboratoireRepository extends JpaRepository<Laboratoire, Long> 
 
     Optional<Laboratoire> findByCode(String code);
 
+    List<Laboratoire> findAllByRaisonSocialeIgnoreCase(String raisonSociale);
+
     Optional<Laboratoire> findByNomSchema(String nomSchema);
 
     Optional<Laboratoire> findByIdAndStatut(Long id, String statut);
