@@ -32,14 +32,14 @@ public class PlanificationController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_PLANIFICATION_GERER')")
     public ResponseEntity<ApiResponse<PlanificationDto>> creer(@RequestBody PlanificationDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Planification créée", planificationService.creer(dto)));
     }
 
     @PatchMapping("/{id}/statut")
-    @PreAuthorize("hasAnyRole('TECHNICIEN','RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_PLANIFICATION_STATUT')")
     public ResponseEntity<ApiResponse<PlanificationDto>> changerStatut(
             @PathVariable Long id, @RequestParam StatutPlanification statut) {
         return ResponseEntity.ok(ApiResponse.success("Statut mis à jour",

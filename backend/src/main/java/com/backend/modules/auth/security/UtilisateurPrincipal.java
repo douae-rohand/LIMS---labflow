@@ -7,8 +7,10 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 @Getter
 @Builder
@@ -26,6 +28,10 @@ public class UtilisateurPrincipal implements UserDetails {
     private final boolean actif;
     private final boolean mustChangePassword;
     private final boolean doubleAuthentification;
+    /** Vrai seulement si un secret TOTP non vide est enregistré. Le secret lui-même n'est pas porté. */
+    private final boolean secret2faPresent;
+    /** Codes de permission effectifs, sans le préfixe PERM_. Vide pour le Super Admin et le Client. */
+    private final Set<String> permissions;
 
     public boolean isClient() {
         return role == RoleUtilisateur.CLIENT;
@@ -41,7 +47,14 @@ public class UtilisateurPrincipal implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        List<GrantedAuthority> autorites = new ArrayList<>();
+        autorites.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        if (permissions != null) {
+            for (String code : permissions) {
+                autorites.add(new SimpleGrantedAuthority("PERM_" + code));
+            }
+        }
+        return List.copyOf(autorites);
     }
 
     @Override

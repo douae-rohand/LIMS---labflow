@@ -1,6 +1,7 @@
 package com.backend.modules.notification.controller;
 
 import com.backend.common.dto.ApiResponse;
+import com.backend.common.security.SecurityUtils;
 import com.backend.modules.notification.dto.NotificationDto;
 import com.backend.modules.notification.entity.NotificationReception;
 import com.backend.modules.notification.service.NotificationService;
@@ -24,37 +25,35 @@ public class NotificationController {
     @GetMapping("/mes")
     @Operation(summary = "Mes notifications (paginées)")
     public ResponseEntity<ApiResponse<Page<NotificationReception>>> mesNotifications(
-            @RequestParam Long utilisateurId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.success(
-                notificationService.mesNotifications(utilisateurId, PageRequest.of(page, size))));
+                notificationService.mesNotifications(SecurityUtils.principalCourant().getId(), PageRequest.of(page, size))));
     }
 
     @GetMapping("/non-lues/count")
     @Operation(summary = "Nombre de notifications non lues")
-    public ResponseEntity<ApiResponse<Long>> compterNonLues(@RequestParam Long utilisateurId) {
-        return ResponseEntity.ok(ApiResponse.success(notificationService.compterNonLues(utilisateurId)));
+    public ResponseEntity<ApiResponse<Long>> compterNonLues() {
+        return ResponseEntity.ok(ApiResponse.success(
+                notificationService.compterNonLues(SecurityUtils.principalCourant().getId())));
     }
 
     @PatchMapping("/{id}/lire")
     @Operation(summary = "Marquer une notification comme lue")
-    public ResponseEntity<ApiResponse<Void>> marquerCommeLue(
-            @PathVariable Long id,
-            @RequestParam Long utilisateurId) {
-        notificationService.marquerCommeLue(id, utilisateurId);
+    public ResponseEntity<ApiResponse<Void>> marquerCommeLue(@PathVariable Long id) {
+        notificationService.marquerCommeLue(id, SecurityUtils.principalCourant().getId());
         return ResponseEntity.ok(ApiResponse.success("Notification lue", null));
     }
 
     @PatchMapping("/lire-tout")
     @Operation(summary = "Marquer toutes les notifications comme lues")
-    public ResponseEntity<ApiResponse<Void>> marquerToutesCommeLues(@RequestParam Long utilisateurId) {
-        notificationService.marquerToutesCommeLues(utilisateurId);
+    public ResponseEntity<ApiResponse<Void>> marquerToutesCommeLues() {
+        notificationService.marquerToutesCommeLues(SecurityUtils.principalCourant().getId());
         return ResponseEntity.ok(ApiResponse.success("Tout marqué comme lu", null));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('RESPONSABLE','ADMINISTRATEUR','SUPER_ADMINISTRATEUR')")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR') or hasAuthority('PERM_NOTIFICATIONS_GERER')")
     @Operation(summary = "Publier une notification manuellement")
     public ResponseEntity<ApiResponse<NotificationDto>> publier(@RequestBody NotificationDto dto) {
         return ResponseEntity.ok(ApiResponse.success("Notification publiée", notificationService.publier(dto)));

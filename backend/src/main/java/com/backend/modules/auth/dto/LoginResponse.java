@@ -1,5 +1,7 @@
 package com.backend.modules.auth.dto;
 
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -44,4 +46,7 @@ public class LoginResponse {
     private String role;
     private String tenantId;
     private boolean mustChangePassword;
+
+    /** Codes effectifs, sans préfixe. Vide tant que la session n'est pas ouverte. */
+    private List<String> permissions;
 }

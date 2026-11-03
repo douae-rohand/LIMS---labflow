@@ -5,11 +5,13 @@ import com.backend.modules.utilisateur.entity.Utilisateur;
 import com.backend.modules.utilisateur.repository.UtilisateurRepository;
 import com.warrenstrange.googleauth.GoogleAuthenticator;
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
-import com.warrenstrange.googleauth.GoogleAuthenticatorQRGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Service de gestion de l'authentification à deux facteurs TOTP (RFC 6238).
@@ -55,20 +57,28 @@ public class TwoFactorService {
      */
     @Transactional
     public String setupTotp(Utilisateur utilisateur) {
-        if (utilisateur.isDoubleAuthentification() && utilisateur.getSecret2fa() != null && !utilisateur.getSecret2fa().isBlank()) {
-            throw new BusinessRuleException("2FA_ALREADY_ACTIVE", "La double authentification est déjà activée pour ce compte.");
+        if (utilisateur.isDoubleAuthentification()) {
+            throw new BusinessRuleException("2FA_ALREADY_ACTIVE",
+                    "La double authentification est déjà activée pour ce compte.");
+        }
+        if (utilisateur.getSecret2fa() != null && !utilisateur.getSecret2fa().isBlank()) {
+            return urlTotp(utilisateur.getEmail(), utilisateur.getSecret2fa());
         }
         GoogleAuthenticatorKey credentials = googleAuthenticator.createCredentials();
         String secret = credentials.getKey();
 
         utilisateur.setSecret2fa(secret);
-        // double_authentification reste false jusqu'à la première vérification réussie
+        utilisateur.setDoubleAuthentification(false);
         utilisateurRepository.save(utilisateur);
 
-        String otpAuthUrl = GoogleAuthenticatorQRGenerator.getOtpAuthTotpURL(
-                ISSUER, utilisateur.getEmail(), credentials);
-        log.debug("Secret TOTP généré pour {} — 2FA non encore activée", utilisateur.getEmail());
-        return otpAuthUrl;
+        log.debug("Secret TOTP préparé pour userId={} — 2FA non encore activée", utilisateur.getId());
+        return urlTotp(utilisateur.getEmail(), secret);
+    }
+
+    private static String urlTotp(String email, String secret) {
+        String compte = URLEncoder.encode(email, StandardCharsets.UTF_8);
+        String emetteur = URLEncoder.encode(ISSUER, StandardCharsets.UTF_8);
+        return "otpauth://totp/" + emetteur + ":" + compte + "?secret=" + secret + "&issuer=" + emetteur;
     }
 
     // -------------------------------------------------------------------------
@@ -96,24 +106,6 @@ public class TwoFactorService {
         utilisateur.setDoubleAuthentification(true);
         utilisateurRepository.save(utilisateur);
         log.info("2FA activée pour userId={}", utilisateur.getId());
-    }
-
-    @Transactional
-    public void desactiverTotp(Utilisateur utilisateur, String code) {
-        if (!utilisateur.isDoubleAuthentification()
-                || utilisateur.getSecret2fa() == null
-                || utilisateur.getSecret2fa().isBlank()) {
-            throw new BusinessRuleException("2FA_INACTIVE",
-                    "La double authentification n'est pas activée sur ce compte.");
-        }
-        if (!verifierTotp(utilisateur.getSecret2fa(), code)) {
-            throw new BusinessRuleException("2FA_CODE_INVALID",
-                    "Code TOTP incorrect — vérifiez l'heure de votre application et réessayez.");
-        }
-        utilisateur.setDoubleAuthentification(false);
-        utilisateur.setSecret2fa(null);
-        utilisateurRepository.save(utilisateur);
-        log.info("2FA désactivée pour userId={}", utilisateur.getId());
     }
 
     // -------------------------------------------------------------------------

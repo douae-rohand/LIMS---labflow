@@ -106,7 +106,7 @@ public class SecurityConfig {
                 // Super-admin uniquement pour tous les autres endpoints plateforme
                 .requestMatchers("/api/plateforme/**").hasRole("SUPER_ADMINISTRATEUR")
                 // Catalogue d'analyses : uniquement l'admin et le responsable de leur laboratoire
-                .requestMatchers("/api/catalogue/**").hasAnyRole("ADMINISTRATEUR", "RESPONSABLE")
+                .requestMatchers("/api/catalogue/**").hasAnyAuthority("PERM_CATALOGUE_CONSULTER", "PERM_CATALOGUE_GERER")
                 // Tout le reste nécessite une authentification
                 .anyRequest().authenticated()
             )

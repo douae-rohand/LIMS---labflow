@@ -1,10 +1,10 @@
 package com.backend.modules.auth.service;
 
-import com.backend.common.audit.JournalAuditService;
 import com.backend.common.exception.BusinessRuleException;
-import com.backend.config.JwtConfig;
 import com.backend.modules.auth.dto.*;
+import com.backend.config.JwtConfig;
 import com.backend.modules.auth.security.JwtTokenProvider;
+import com.backend.modules.auth.security.ObligationDeuxFacteurs;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
 import com.backend.modules.utilisateur.entity.RoleUtilisateur;
 import com.backend.modules.utilisateur.entity.Utilisateur;
@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -37,9 +38,10 @@ public class AuthService {
     private final TwoFactorService twoFactorService;
     private final RefreshTokenService refreshTokenService;
     private final JwtConfig jwtConfig;
+    private final ObligationDeuxFacteurs obligationDeuxFacteurs;
+    private final JetonDeuxFacteursConsommation jetonDeuxFacteursConsommation;
     private final UtilisateurRepository utilisateurRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JournalAuditService journalAuditService;
 
     private final TwoFactorRateLimiter twoFactorRateLimiter;
 
@@ -104,6 +106,20 @@ public class AuthService {
                     .build();
         }
 
+        if (utilisateur.isDoubleAuthentification() && !is2faConfigured) {
+            String twoFactorToken = jwtTokenProvider.generateTwoFactorToken(principal.getEmail());
+            log.debug("2FA à réinscrire pour {}", principal.getEmail());
+            return LoginResponse.builder()
+                    .requiresTwoFactor(true)
+                    .setupRequired(true)
+                    .twoFactorToken(twoFactorToken)
+                    .userId(principal.getId())
+                    .email(principal.getEmail())
+                    .nomComplet(principal.getNomComplet())
+                    .role(principal.getRole().name())
+                    .build();
+        }
+
         // Cas (b) : 2FA obligatoire par le rôle mais non encore configuré
         if (is2faRequiredByRole) {
             String twoFactorToken = jwtTokenProvider.generateTwoFactorToken(principal.getEmail());
@@ -124,17 +140,8 @@ public class AuthService {
         return buildLoginResult(principal, httpRequest);
     }
 
-    /**
-     * Règle de décision centralisée : détermine si le 2FA est OBLIGATOIRE pour un rôle.
-     *
-     * TODO(2FA) : réactiver l'obligation pour RESPONSABLE et ADMINISTRATEUR
-     * une fois le flux 2FA finalisé côté frontend.
-     * Retirer ce TODO et remettre :
-     *   return role == RoleUtilisateur.RESPONSABLE || role == RoleUtilisateur.ADMINISTRATEUR;
-     */
     public boolean is2faRequiredForRole(RoleUtilisateur role) {
-        // Temporairement désactivé pour tous les rôles — à réactiver après finalisation du frontend 2FA
-        return false;
+        return obligationDeuxFacteurs.requise(role);
     }
 
     // -------------------------------------------------------------------------
@@ -152,6 +159,7 @@ public class AuthService {
         if (!jwtTokenProvider.validateToken(request.getTwoFactorToken(), "2fa")) {
             throw new BusinessRuleException("2FA_TOKEN_INVALID", "Token 2FA invalide ou expiré");
         }
+        jetonDeuxFacteursConsommation.verifierDisponible(request.getTwoFactorToken());
 
         String email = jwtTokenProvider.getUsernameFromToken(request.getTwoFactorToken());
 
@@ -168,13 +176,16 @@ public class AuthService {
             throw new BusinessRuleException("2FA_CODE_INVALID", "Code TOTP incorrect ou expiré");
         }
 
-        // Vérifier le code TOTP
-        if (!twoFactorService.verifierTotp(utilisateur.getSecret2fa(), request.getCode())) {
+        boolean enrolee = utilisateur.isDoubleAuthentification()
+                && utilisateur.getSecret2fa() != null
+                && !utilisateur.getSecret2fa().isBlank();
+        if (!enrolee || !twoFactorService.verifierTotp(utilisateur.getSecret2fa(), request.getCode())) {
             twoFactorRateLimiter.recordFailure(email);
             throw new BusinessRuleException("2FA_CODE_INVALID", "Code TOTP incorrect ou expiré");
         }
 
         twoFactorRateLimiter.resetAttempts(email);
+        jetonDeuxFacteursConsommation.consommer(request.getTwoFactorToken());
 
         // Charger le principal et construire la réponse complète
         UtilisateurPrincipal principal = (UtilisateurPrincipal) userDetailsService.loadUserByUsername(email);
@@ -202,7 +213,22 @@ public class AuthService {
     @Transactional
     public LoginResult activerTwoFactor(ActivateTwoFactorRequest request, UtilisateurPrincipal principal, HttpServletRequest httpRequest) {
         Utilisateur utilisateur = getUtilisateurFromRequestOrPrincipal(request != null ? request.twoFactorToken() : null, principal);
-        twoFactorService.activerTotp(utilisateur, request.code());
+        if (twoFactorRateLimiter.isBlocked(utilisateur.getEmail())) {
+            throw new BusinessRuleException("2FA_RATE_LIMIT",
+                    "Trop de tentatives échouées. Compte temporairement bloqué 5 minutes.");
+        }
+        try {
+            twoFactorService.activerTotp(utilisateur, request.code());
+        } catch (BusinessRuleException ex) {
+            if ("2FA_CODE_INVALID".equals(ex.getCode())) {
+                twoFactorRateLimiter.recordFailure(utilisateur.getEmail());
+            }
+            throw ex;
+        }
+        twoFactorRateLimiter.resetAttempts(utilisateur.getEmail());
+        if (request != null && request.twoFactorToken() != null && !request.twoFactorToken().isBlank()) {
+            jetonDeuxFacteursConsommation.consommer(request.twoFactorToken());
+        }
 
         // Si l'activation se fait pendant un enrôlement obligatoire (via twoFactorToken), émettre directement les tokens finaux
         if (request != null && request.twoFactorToken() != null && !request.twoFactorToken().isBlank()) {
@@ -216,28 +242,6 @@ public class AuthService {
         return null;
     }
 
-    @Transactional
-    public void desactiverTwoFactor(String code, UtilisateurPrincipal principal) {
-        if (principal == null || principal.getEmail() == null) {
-            throw new BusinessRuleException("AUTH_REQUIRED", "Authentification requise");
-        }
-        if (is2faRequiredForRole(principal.getRole())) {
-            throw new BusinessRuleException("2FA_OBLIGATOIRE",
-                    "La double authentification est obligatoire pour ce rôle et ne peut pas être désactivée.");
-        }
-        Utilisateur utilisateur = utilisateurRepository.findById(principal.getId())
-                .orElseThrow(() -> new BusinessRuleException("USER_NOT_FOUND", "Utilisateur introuvable"));
-        twoFactorService.desactiverTotp(utilisateur, code);
-        journalAuditService.enregistrer(
-                "DESACTIVER_2FA",
-                "Utilisateur",
-                utilisateur.getId(),
-                principal.getEmail(),
-                "{\"doubleAuthentification\":true}",
-                "{\"doubleAuthentification\":false}",
-                null);
-    }
-
     private Utilisateur getUtilisateurFromRequestOrPrincipal(String twoFactorToken, UtilisateurPrincipal principal) {
         if (twoFactorToken != null && !twoFactorToken.isBlank()) {
             if (jwtTokenProvider.validateToken(twoFactorToken, "access")) {
@@ -246,6 +250,7 @@ public class AuthService {
             if (!jwtTokenProvider.validateToken(twoFactorToken, "2fa")) {
                 throw new BusinessRuleException("2FA_TOKEN_INVALID", "Token 2FA invalide ou expiré");
             }
+            jetonDeuxFacteursConsommation.verifierDisponible(twoFactorToken);
             String email = jwtTokenProvider.getUsernameFromToken(twoFactorToken);
             return utilisateurRepository.findByEmailWithRoleAndLaboratoire(email)
                     .orElseThrow(() -> new BusinessRuleException("USER_NOT_FOUND", "Utilisateur introuvable"));
@@ -286,6 +291,11 @@ public class AuthService {
             refreshTokenService.revoquerTousParUtilisateur(principal.getId());
             throw new BusinessRuleException("REFRESH_TOKEN_INVALID", "Jeton révoqué ou invalide. Veuillez vous reconnecter.");
         }
+        if (!obligationDeuxFacteurs.accesAutorise(principal)) {
+            refreshTokenService.revoquerTousParUtilisateur(principal.getId());
+            throw new BusinessRuleException("REFRESH_TOKEN_INVALID",
+                    "Jeton révoqué ou invalide. Veuillez vous reconnecter.");
+        }
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 principal, null, principal.getAuthorities());
@@ -300,6 +310,7 @@ public class AuthService {
                 .role(principal.getRole().name())
                 .tenantId(principal.getNomSchema())
                 .mustChangePassword(principal.isMustChangePassword())
+                .permissions(principal.getPermissions() == null ? List.of() : List.copyOf(principal.getPermissions()))
                 .build();
 
         return new LoginResult(response, rotation.nouveauToken());
@@ -348,6 +359,7 @@ public class AuthService {
                 .role(principal.getRole().name())
                 .tenantId(principal.getNomSchema())
                 .mustChangePassword(principal.isMustChangePassword())
+                .permissions(principal.getPermissions() == null ? List.of() : List.copyOf(principal.getPermissions()))
                 .build();
 
         return new LoginResult(response, refreshToken);

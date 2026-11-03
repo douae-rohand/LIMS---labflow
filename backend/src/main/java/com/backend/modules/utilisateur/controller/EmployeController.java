@@ -27,7 +27,7 @@ public class EmployeController {
     private final UtilisateurService utilisateurService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYES_CONSULTER')")
     @Operation(summary = "Lister les employés du laboratoire courant avec pagination, filtres et recherche")
     public ResponseEntity<ApiResponse<PageResponse<EmployeDto>>> listerEmployes(
             @RequestParam(required = false) String q,
@@ -45,7 +45,7 @@ public class EmployeController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYES_CONSULTER')")
     @Operation(summary = "Obtenir le détail d'un employé du laboratoire courant")
     public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> trouverEmployeParId(
             @org.springframework.web.bind.annotation.PathVariable Long id) {
@@ -53,7 +53,7 @@ public class EmployeController {
     }
 
     @org.springframework.web.bind.annotation.PatchMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYES_GERER')")
     @Operation(summary = "Modifier un employé du laboratoire courant")
     public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> modifierEmploye(
             @org.springframework.web.bind.annotation.PathVariable Long id,
@@ -62,7 +62,7 @@ public class EmployeController {
     }
 
     @org.springframework.web.bind.annotation.PatchMapping("/{id}/desactiver")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYES_GERER')")
     @Operation(summary = "Désactiver un employé du laboratoire courant")
     public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> desactiverEmploye(
             @org.springframework.web.bind.annotation.PathVariable Long id) {
@@ -70,7 +70,7 @@ public class EmployeController {
     }
 
     @org.springframework.web.bind.annotation.PatchMapping("/{id}/reactiver")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYES_GERER')")
     @Operation(summary = "Réactiver un employé du laboratoire courant")
     public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> reactiverEmploye(
             @org.springframework.web.bind.annotation.PathVariable Long id) {
@@ -78,7 +78,7 @@ public class EmployeController {
     }
 
     @org.springframework.web.bind.annotation.PostMapping("/{id}/renvoyer-invitation")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYES_GERER')")
     @Operation(summary = "Renvoyer l'email d'invitation à un employé en attente d'activation")
     public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> renvoyerInvitationEmploye(
             @org.springframework.web.bind.annotation.PathVariable Long id) {

@@ -1,6 +1,7 @@
 package com.backend.modules.auth.service;
 
 import com.backend.modules.auth.dto.InscriptionRequest;
+import com.backend.modules.auth.security.MotDePasseValidator;
 import com.backend.modules.client.entity.ClientProfil;
 import com.backend.modules.client.entity.TypeClient;
 import com.backend.modules.client.repository.ClientProfilRepository;
@@ -65,6 +66,7 @@ public class InscriptionService {
      */
     @Transactional
     public void inscrire(InscriptionRequest request) {
+        MotDePasseValidator.valider(request.getMotDePasse(), null, passwordEncoder);
         // 1. Hacher AVANT de toucher à la base (timing constant quel que soit le chemin)
         String hash = passwordEncoder.encode(request.getMotDePasse());
 

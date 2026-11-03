@@ -28,4 +28,7 @@ public class Permission {
 
     @Column(length = 100)
     private String action;
+
+    @Column(length = 150)
+    private String libelle;
 }

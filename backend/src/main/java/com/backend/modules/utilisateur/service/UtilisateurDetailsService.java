@@ -1,5 +1,6 @@
 package com.backend.modules.utilisateur.service;
 
+import com.backend.modules.auth.security.AutorisationService;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
 import com.backend.modules.utilisateur.entity.RoleUtilisateur;
 import com.backend.modules.utilisateur.entity.Utilisateur;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UtilisateurDetailsService implements UserDetailsService {
 
     private final UtilisateurRepository utilisateurRepository;
+    private final AutorisationService autorisationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -25,10 +27,10 @@ public class UtilisateurDetailsService implements UserDetailsService {
         Utilisateur utilisateur = utilisateurRepository.findByEmailWithRoleAndLaboratoire(email)
                 .orElseThrow(() -> new UsernameNotFoundException(
                         "Utilisateur introuvable avec l'email : " + email));
-        return versPrincipal(utilisateur);
+        return versPrincipal(utilisateur, autorisationService.effectives(utilisateur.getId(), utilisateur.getRole().getCode()));
     }
 
-    public static UtilisateurPrincipal versPrincipal(Utilisateur utilisateur) {
+    public static UtilisateurPrincipal versPrincipal(Utilisateur utilisateur, java.util.Set<String> permissions) {
         RoleUtilisateur role = RoleUtilisateur.valueOf(utilisateur.getRole().getCode());
         Long laboratoireId = utilisateur.getLaboratoire() == null ? null : utilisateur.getLaboratoire().getId();
         String nomSchema = utilisateur.getLaboratoire() == null ? null : utilisateur.getLaboratoire().getNomSchema();
@@ -45,6 +47,8 @@ public class UtilisateurDetailsService implements UserDetailsService {
                 .actif(utilisateur.isActif())
                 .mustChangePassword(utilisateur.isMustChangePassword())
                 .doubleAuthentification(utilisateur.isDoubleAuthentification())
+                .secret2faPresent(utilisateur.getSecret2fa() != null && !utilisateur.getSecret2fa().isBlank())
+                .permissions(permissions == null ? java.util.Set.of() : permissions)
                 .build();
     }
 }

@@ -1,6 +1,7 @@
 package com.backend.modules.essai.service;
 
 import com.backend.common.exception.ResourceNotFoundException;
+import com.backend.common.security.ProprieteClient;
 import com.backend.modules.echantillon.entity.Echantillon;
 import com.backend.modules.echantillon.repository.EchantillonRepository;
 import com.backend.modules.essai.dto.EssaiDto;
@@ -25,14 +26,25 @@ public class EssaiService {
     private final LigneEssaiRepository ligneEssaiRepository;
     private final EssaiRepository essaiRepository;
     private final EchantillonRepository echantillonRepository;
+    private final ProprieteClient proprieteClient;
 
     @Transactional(readOnly = true)
     public EssaiDto trouverParId(Long id) {
-        return toDto(charger(id));
+        if (!proprieteClient.clientConnecte()) {
+            return toDto(charger(id));
+        }
+        LigneEssai ligne = ligneEssaiRepository.findById(id).orElseThrow(proprieteClient::introuvable);
+        proprieteClient.exiger(ligne.getDemande());
+        return toDto(ligne);
     }
 
     @Transactional(readOnly = true)
     public List<EssaiDto> listerParEchantillon(Long echantillonId) {
+        if (proprieteClient.clientConnecte()) {
+            Echantillon echantillon = echantillonRepository.findById(echantillonId)
+                    .orElseThrow(proprieteClient::introuvable);
+            proprieteClient.exiger(echantillon.getDemande());
+        }
         return ligneEssaiRepository.findByEchantillon_Id(echantillonId).stream().map(this::toDto).toList();
     }
 

@@ -2,6 +2,7 @@ package com.backend.modules.echantillon.service;
 
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
+import com.backend.common.security.ProprieteClient;
 import com.backend.common.security.SecurityUtils;
 import com.backend.modules.demande.entity.Demande;
 import com.backend.modules.demande.repository.DemandeRepository;
@@ -23,14 +24,21 @@ public class EchantillonService {
 
     private final EchantillonRepository echantillonRepository;
     private final DemandeRepository demandeRepository;
+    private final ProprieteClient proprieteClient;
 
     @Transactional(readOnly = true)
     public EchantillonDto trouverParId(Long id) {
-        return toDto(charger(id));
+        if (!proprieteClient.clientConnecte()) {
+            return toDto(charger(id));
+        }
+        Echantillon echantillon = echantillonRepository.findById(id).orElseThrow(proprieteClient::introuvable);
+        proprieteClient.exiger(echantillon.getDemande());
+        return toDto(echantillon);
     }
 
     @Transactional(readOnly = true)
     public Page<EchantillonDto> listerParDemande(Long demandeId, Pageable pageable) {
+        proprieteClient.exigerDemande(demandeId);
         return echantillonRepository.findByDemande_Id(demandeId, pageable).map(this::toDto);
     }
 

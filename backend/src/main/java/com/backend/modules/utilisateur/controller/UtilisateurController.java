@@ -60,7 +60,7 @@ public class UtilisateurController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','SUPER_ADMINISTRATEUR')")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR') or hasAuthority('PERM_EMPLOYES_GERER')")
     @Operation(summary = "Créer un nouvel utilisateur et envoyer l'invitation par email")
     public ResponseEntity<ApiResponse<UtilisateurDto>> creer(
             @Valid @RequestBody CreerUtilisateurRequest request) {

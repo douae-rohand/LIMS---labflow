@@ -7,8 +7,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -25,13 +23,4 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     @Modifying
     @Query("UPDATE RefreshToken rt SET rt.revoque = true WHERE rt.tokenHash = :hash AND rt.revoque = false")
     int revoquerParHash(@Param("hash") String hash);
-
-    @Query("""
-            SELECT rt FROM RefreshToken rt
-            WHERE rt.utilisateur.id = :userId
-              AND rt.revoque = false
-              AND rt.dateExpiration > :maintenant
-            ORDER BY rt.createdAt DESC
-            """)
-    List<RefreshToken> findActifs(@Param("userId") Long userId, @Param("maintenant") Instant maintenant);
 }

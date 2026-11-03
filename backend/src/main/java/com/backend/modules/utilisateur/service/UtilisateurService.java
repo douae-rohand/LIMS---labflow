@@ -7,6 +7,7 @@ import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.common.exception.TropDeRequetesException;
 import com.backend.common.tenant.TenantExecutor;
 import com.backend.modules.auth.repository.TokenActivationRepository;
+import com.backend.modules.auth.security.MotDePasseValidator;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
 import com.backend.modules.auth.service.ActivationCompteService;
 import com.backend.modules.client.service.ClientService;
@@ -57,6 +58,7 @@ public class UtilisateurService {
     private final com.backend.common.audit.JournalAuditService journalAuditService;
     private final com.backend.integration.sendgrid.EmailService emailService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final com.backend.modules.utilisateur.repository.UtilisateurPermissionRepository utilisateurPermissionRepository;
 
     /** Rôles que peut créer un ADMINISTRATEUR (les siens exclus). */
     private static final Set<RoleUtilisateur> ROLES_CREABLES_PAR_ADMIN = Set.of(
@@ -244,6 +246,14 @@ public class UtilisateurService {
 
         UtilisateurPrincipal principal = principalConnecte();
         Utilisateur utilisateur = chargerPourAppelant(id, false);
+        verifierPorteeGerer(principal, utilisateur);
+        if (principal.getRole() != RoleUtilisateur.ADMINISTRATEUR
+                && principal.getRole() != RoleUtilisateur.SUPER_ADMINISTRATEUR
+                && request.getEmail() != null
+                && !request.getEmail().trim().equalsIgnoreCase(utilisateur.getEmail())) {
+            throw new BusinessRuleException("EMAIL_RESERVE_ADMINISTRATEUR",
+                    "Seul un administrateur peut modifier l'adresse e-mail d'un compte.");
+        }
 
         Map<String, Object> avant = new LinkedHashMap<>();
         Map<String, Object> apres = new LinkedHashMap<>();
@@ -287,16 +297,30 @@ public class UtilisateurService {
         // 4. Validation et mise à jour du rôle
         if (request.getRole() != null) {
             String roleCode = request.getRole().trim().toUpperCase();
-            if (!Set.of("RESPONSABLE", "TECHNICIEN", "ACCUEIL").contains(roleCode)) {
+            Set<String> rolesAutorises = principal.getRole() == RoleUtilisateur.ADMINISTRATEUR
+                    || principal.getRole() == RoleUtilisateur.SUPER_ADMINISTRATEUR
+                    ? Set.of("RESPONSABLE", "TECHNICIEN", "ACCUEIL")
+                    : Set.of("TECHNICIEN", "ACCUEIL");
+            if (!rolesAutorises.contains(roleCode)) {
                 throw new BusinessRuleException("ROLE_INTERDIT",
-                        "Rôle invalide. Rôles autorisés : RESPONSABLE, TECHNICIEN, ACCUEIL.");
+                        principal.getRole() == RoleUtilisateur.ADMINISTRATEUR
+                                || principal.getRole() == RoleUtilisateur.SUPER_ADMINISTRATEUR
+                                ? "Rôle invalide. Rôles autorisés : RESPONSABLE, TECHNICIEN, ACCUEIL."
+                                : "Hors du rôle d'administrateur, le rôle ne peut être que technicien ou accueil.");
             }
             String roleActuel = utilisateur.getRole() != null ? utilisateur.getRole().getCode() : null;
             if (!roleCode.equalsIgnoreCase(roleActuel)) {
                 Role nouveauRole = roleRepository.findByCode(roleCode)
                         .orElseThrow(() -> new ResourceNotFoundException("Role", "code", roleCode));
+                java.util.List<String> ecarts = new java.util.ArrayList<>();
+                for (Object[] ligne : utilisateurPermissionRepository.listerEcarts(utilisateur.getId())) {
+                    ecarts.add(ligne[1] + ":" + ligne[0]);
+                }
+                utilisateurPermissionRepository.deleteByUtilisateurId(utilisateur.getId());
                 avant.put("role", roleActuel);
+                avant.put("permissionsEcarts", ecarts);
                 apres.put("role", roleCode);
+                apres.put("permissionsEcarts", java.util.List.of());
                 utilisateur.setRole(nouveauRole);
             }
         }
@@ -380,6 +404,7 @@ public class UtilisateurService {
     public com.backend.modules.utilisateur.dto.EmployeDetailDto desactiverEmploye(Long id) {
         return tenantExecutor.inCentral(() -> {
             Utilisateur utilisateur = chargerPourAppelant(id, false);
+            verifierPorteeGerer(principalConnecte(), utilisateur);
             desactiverUtilisateurInterne(utilisateur);
             return versEmployeDetailDto(utilisateur);
         });
@@ -389,6 +414,7 @@ public class UtilisateurService {
     public com.backend.modules.utilisateur.dto.EmployeDetailDto reactiverEmploye(Long id) {
         return tenantExecutor.inCentral(() -> {
             Utilisateur utilisateur = chargerPourAppelant(id, false);
+            verifierPorteeGerer(principalConnecte(), utilisateur);
             reactiverUtilisateurInterne(utilisateur);
             return versEmployeDetailDto(utilisateur);
         });
@@ -398,6 +424,7 @@ public class UtilisateurService {
     public com.backend.modules.utilisateur.dto.EmployeDetailDto renvoyerInvitationEmploye(Long id) {
         return tenantExecutor.inCentral(() -> {
             Utilisateur utilisateur = chargerPourAppelant(id, false);
+            verifierPorteeGerer(principalConnecte(), utilisateur);
             renvoyerInvitationUtilisateurInterne(utilisateur);
             return versEmployeDetailDto(utilisateur);
         });
@@ -603,6 +630,9 @@ public class UtilisateurService {
         Laboratoire laboratoire = resoudreLaboratoire(principal, request);
 
         boolean fluxInvitation = !StringUtils.hasText(request.getMotDePasse());
+        if (!fluxInvitation) {
+            MotDePasseValidator.valider(request.getMotDePasse(), null, passwordEncoder);
+        }
 
         String matricule = matriculeGeneratorService.genererMatricule(role.getCode());
 
@@ -700,6 +730,7 @@ public class UtilisateurService {
         }
 
         if (StringUtils.hasText(request.getNouveauMotDePasse())) {
+            MotDePasseValidator.valider(request.getNouveauMotDePasse(), utilisateur.getMotDePasseHash(), passwordEncoder);
             utilisateur.setMotDePasseHash(passwordEncoder.encode(request.getNouveauMotDePasse()));
         }
 
@@ -771,8 +802,27 @@ public class UtilisateurService {
             return utilisateur;
         }
 
-        // Tout autre rôle non autorisé
+        Long laboCibleId = utilisateur.getLaboratoire() != null ? utilisateur.getLaboratoire().getId() : null;
+        if (principal.getLaboratoireId() != null && principal.getLaboratoireId().equals(laboCibleId)) {
+            return utilisateur;
+        }
         throw new ResourceNotFoundException("Utilisateur", "id", id);
+    }
+
+    private static void verifierPorteeGerer(UtilisateurPrincipal principal, Utilisateur cible) {
+        if (principal.getRole() == RoleUtilisateur.ADMINISTRATEUR
+                || principal.getRole() == RoleUtilisateur.SUPER_ADMINISTRATEUR) {
+            return;
+        }
+        if (principal.getId() != null && principal.getId().equals(cible.getId())) {
+            throw new BusinessRuleException("CIBLE_NON_AUTORISEE",
+                    "Vous ne pouvez pas appliquer cette action à votre propre compte.");
+        }
+        String role = cible.getRole() == null ? "" : cible.getRole().getCode();
+        if (!"TECHNICIEN".equals(role) && !"ACCUEIL".equals(role)) {
+            throw new BusinessRuleException("CIBLE_NON_AUTORISEE",
+                    "Hors du rôle d'administrateur, cette action est limitée aux comptes technicien et accueil.");
+        }
     }
 
     /**
@@ -789,10 +839,10 @@ public class UtilisateurService {
         }
 
         // L'ADMINISTRATEUR est rattaché à son propre labo — on l'utilise automatiquement
-        if (principal.getRole() == RoleUtilisateur.ADMINISTRATEUR) {
+        if (principal.getRole() != RoleUtilisateur.SUPER_ADMINISTRATEUR) {
             if (principal.getLaboratoireId() == null) {
                 throw new BusinessRuleException("ADMIN_SANS_LABORATOIRE",
-                        "Votre compte administrateur n'est pas rattaché à un laboratoire.");
+                        "Votre compte n'est pas rattaché à un laboratoire.");
             }
             return laboratoireRepository.findById(principal.getLaboratoireId())
                     .orElseThrow(() -> new ResourceNotFoundException(
@@ -824,7 +874,10 @@ public class UtilisateurService {
             }
             return;
         }
-        throw new BusinessRuleException("ACCES_REFUSE", "Vous n'êtes pas autorisé à créer des utilisateurs.");
+        if (roleVoulu != RoleUtilisateur.TECHNICIEN && roleVoulu != RoleUtilisateur.ACCUEIL) {
+            throw new BusinessRuleException("ROLE_INTERDIT",
+                    "Hors du rôle d'administrateur, seuls les comptes technicien et accueil peuvent être créés.");
+        }
     }
 
     private static UtilisateurPrincipal principalConnecte() {

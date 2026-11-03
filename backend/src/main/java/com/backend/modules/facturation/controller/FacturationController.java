@@ -36,7 +36,7 @@ public class FacturationController {
     }
 
     @GetMapping("/client/{clientId}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','RESPONSABLE','ACCUEIL')")
+    @PreAuthorize("hasAuthority('PERM_FACTURATION_CONSULTER')")
     public ResponseEntity<ApiResponse<Page<FactureDto>>> listerParClient(
             @PathVariable Long clientId,
             @RequestParam(defaultValue = "0") int page,
@@ -46,7 +46,7 @@ public class FacturationController {
     }
 
     @PostMapping("/emettre")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','RESPONSABLE')")
+    @PreAuthorize("hasAuthority('PERM_FACTURATION_GERER')")
     public ResponseEntity<ApiResponse<FactureDto>> emettre(
             @RequestParam Long demandeId,
             @RequestParam(required = false) Long clientId,
@@ -56,7 +56,7 @@ public class FacturationController {
     }
 
     @PatchMapping("/{id}/paiement")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR','RESPONSABLE')")
+    @PreAuthorize("hasAuthority('PERM_FACTURATION_GERER')")
     public ResponseEntity<ApiResponse<FactureDto>> enregistrerPaiement(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Paiement enregistré",
                 facturationService.enregistrerPaiement(id)));

@@ -1,6 +1,7 @@
 package com.backend.modules.validation.service;
 
 import com.backend.common.exception.ResourceNotFoundException;
+import com.backend.common.security.ProprieteClient;
 import com.backend.modules.essai.entity.LigneEssai;
 import com.backend.modules.essai.repository.LigneEssaiRepository;
 import com.backend.modules.validation.dto.ValidationDto;
@@ -21,9 +22,14 @@ public class ValidationService {
 
     private final ValidationRepository validationRepository;
     private final LigneEssaiRepository ligneEssaiRepository;
+    private final ProprieteClient proprieteClient;
 
     @Transactional(readOnly = true)
     public List<ValidationDto> listerParEssai(Long essaiId) {
+        if (proprieteClient.clientConnecte()) {
+            LigneEssai ligne = ligneEssaiRepository.findById(essaiId).orElseThrow(proprieteClient::introuvable);
+            proprieteClient.exiger(ligne.getDemande());
+        }
         return validationRepository.findByLigneEssai_Id(essaiId).stream().map(this::toDto).toList();
     }
 

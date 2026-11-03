@@ -28,14 +28,14 @@ public class EssaiController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TECHNICIEN','RESPONSABLE')")
+    @PreAuthorize("hasAuthority('PERM_ESSAIS_GERER')")
     public ResponseEntity<ApiResponse<EssaiDto>> creer(@RequestBody EssaiDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Essai créé", essaiService.creer(dto)));
     }
 
     @PatchMapping("/{id}/resultat")
-    @PreAuthorize("hasAnyRole('TECHNICIEN','RESPONSABLE')")
+    @PreAuthorize("hasAuthority('PERM_ESSAIS_GERER')")
     public ResponseEntity<ApiResponse<EssaiDto>> saisirResultat(@PathVariable Long id, @RequestBody EssaiDto dto) {
         return ResponseEntity.ok(ApiResponse.success("Résultat enregistré", essaiService.saisirResultat(id, dto)));
     }

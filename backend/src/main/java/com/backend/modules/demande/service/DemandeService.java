@@ -10,6 +10,7 @@ import com.backend.common.security.SecurityUtils;
 import com.backend.common.tenant.TenantContext;
 import com.backend.common.tenant.TenantExecutor;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
+import com.backend.modules.utilisateur.entity.RoleUtilisateur;
 import com.backend.modules.client.entity.Client;
 import com.backend.modules.client.entity.ClientLaboratoire;
 import com.backend.modules.client.repository.ClientLaboratoireRepository;
@@ -371,6 +372,10 @@ public class DemandeService {
 
     @Transactional
     public DemandeDto changerStatut(Long id, StatutDemande statut) {
+        if (statut == StatutDemande.ACCEPTEE || statut == StatutDemande.REFUSEE
+                || statut == StatutDemande.EN_VALIDATION || statut == StatutDemande.TERMINEE) {
+            exigerRoleDecision();
+        }
         if (statut == StatutDemande.ACCEPTEE) {
             Demande acceptee = enregistrerAcceptation(id);
             enregistrerAuditDemande("ACCEPTATION_DEMANDE",
@@ -665,6 +670,14 @@ public class DemandeService {
     private Demande charger(Long id) {
         return demandeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", id));
+    }
+
+    private static void exigerRoleDecision() {
+        RoleUtilisateur role = SecurityUtils.principalCourant().getRole();
+        if (role != RoleUtilisateur.RESPONSABLE && role != RoleUtilisateur.ADMINISTRATEUR) {
+            throw new BusinessRuleException("DECISION_RESERVEE_AU_ROLE",
+                    "Le passage à acceptée, refusée, en validation ou terminée est réservé au responsable ou à l'administrateur.");
+        }
     }
 
     private void verifierProprieteClient(Demande demande) {

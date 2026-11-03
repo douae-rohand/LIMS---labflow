@@ -25,7 +25,7 @@ public class SatisfactionController {
     }
 
     @GetMapping("/stats/moyenne")
-    @PreAuthorize("hasAnyRole('RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_SATISFACTION_CONSULTER')")
     public ResponseEntity<ApiResponse<Double>> moyenneGlobale() {
         return ResponseEntity.ok(ApiResponse.success(satisfactionService.moyenneGlobale()));
     }

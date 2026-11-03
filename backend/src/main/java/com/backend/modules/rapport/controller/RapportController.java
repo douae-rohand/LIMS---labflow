@@ -31,7 +31,7 @@ public class RapportController {
     }
 
     @PostMapping("/generer/{demandeId}")
-    @PreAuthorize("hasAnyRole('RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_RAPPORTS_GERER')")
     public ResponseEntity<ApiResponse<RapportDto>> generer(
             @PathVariable Long demandeId, @RequestParam Long generateurId) {
         return ResponseEntity.ok(ApiResponse.success("Rapport généré", rapportService.generer(demandeId, generateurId)));

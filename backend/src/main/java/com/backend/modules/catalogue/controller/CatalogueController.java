@@ -32,13 +32,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/catalogue")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('RESPONSABLE','ADMINISTRATEUR')")
 @Tag(name = "Catalogue", description = "Catalogue des analyses du laboratoire connecté (M04)")
 public class CatalogueController {
 
     private final CatalogueService catalogueService;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('PERM_CATALOGUE_CONSULTER')")
     public ResponseEntity<ApiResponse<PageResponse<AnalyseTypeDto>>> lister(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String statut,
@@ -50,16 +50,19 @@ public class CatalogueController {
     }
 
     @GetMapping("/domaines")
+    @PreAuthorize("hasAuthority('PERM_CATALOGUE_CONSULTER')")
     public ResponseEntity<ApiResponse<List<DomaineCatalogueDto>>> domaines() {
         return ResponseEntity.ok(ApiResponse.success(catalogueService.listerDomaines()));
     }
 
     @GetMapping("/{code}")
+    @PreAuthorize("hasAuthority('PERM_CATALOGUE_CONSULTER')")
     public ResponseEntity<ApiResponse<AnalyseTypeDto>> trouverParCode(@PathVariable String code) {
         return ResponseEntity.ok(ApiResponse.success(catalogueService.trouverParCode(code)));
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_CATALOGUE_GERER')")
     public ResponseEntity<ApiResponse<AnalyseTypeDto>> creer(
             @Valid @RequestBody EnregistrerAnalyseRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -67,6 +70,7 @@ public class CatalogueController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_CATALOGUE_GERER')")
     public ResponseEntity<ApiResponse<AnalyseTypeDto>> modifier(
             @PathVariable Long id,
             @Valid @RequestBody EnregistrerAnalyseRequest request) {
@@ -74,11 +78,13 @@ public class CatalogueController {
     }
 
     @PatchMapping("/{id}/activer")
+    @PreAuthorize("hasAuthority('PERM_CATALOGUE_GERER')")
     public ResponseEntity<ApiResponse<AnalyseTypeDto>> activer(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Analyse réactivée", catalogueService.activer(id)));
     }
 
     @PatchMapping("/{id}/desactiver")
+    @PreAuthorize("hasAuthority('PERM_CATALOGUE_GERER')")
     public ResponseEntity<ApiResponse<AnalyseTypeDto>> desactiver(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Analyse retirée du catalogue", catalogueService.desactiver(id)));
     }
