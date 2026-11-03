@@ -1,12 +1,9 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { getSession } from "@/api/session";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { exigerPermission } from "@/features/shell/garde";
 
 export const Route = createFileRoute("/app/catalogue")({
   beforeLoad: () => {
-    const role = getSession()?.user.role;
-    if (role !== "ADMINISTRATEUR" && role !== "RESPONSABLE") {
-      throw redirect({ to: "/app" });
-    }
+    exigerPermission("CATALOGUE_CONSULTER");
   },
   component: CatalogueLayout,
 });

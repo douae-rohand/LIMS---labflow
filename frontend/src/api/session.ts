@@ -39,6 +39,9 @@ export interface SessionUser {
   mustChangePassword: boolean;
   email: string;
   nomComplet: string;
+  userId: number | null;
+  /** Codes effectifs renvoyés par la connexion ou le renouvellement, sans préfixe. */
+  permissions: string[];
 }
 
 /** État complet de la session. `null` = non authentifié. */
@@ -83,6 +86,13 @@ export function setSession(accessToken: string, user: SessionUser): void {
   _notify();
 }
 
+/** Remplace le jeton et le profil, y compris les permissions, puis notifie l'interface. */
+export function renouvelerSession(accessToken: string, user: SessionUser): void {
+  _session = { accessToken, user };
+  _status = 'connecté';
+  _notify();
+}
+
 /** Met à jour uniquement l'accessToken (après un refresh réussi). */
 export function updateAccessToken(accessToken: string): void {
   if (_session === null) return;
@@ -101,6 +111,11 @@ export function clearSession(): void {
 /** Retourne true si une session est active. */
 export function isAuthenticated(): boolean {
   return _session !== null;
+}
+
+/** Vrai lorsque la session contient le code de permission, par exemple CATALOGUE_CONSULTER. */
+export function peut(code: string): boolean {
+  return _session?.user.permissions.includes(code) ?? false;
 }
 
 /**

@@ -12,29 +12,31 @@ const NAV_ITEMS = [
     to: "/app/employes" as const,
     label: "Employés",
     icon: Users,
-    roles: ["ADMINISTRATEUR"] as const,
+    permission: "EMPLOYES_CONSULTER",
   },
   {
     to: "/app/demandes-clients" as const,
     label: "Demandes clients",
     icon: Inbox,
-    roles: ["ADMINISTRATEUR", "RESPONSABLE"] as const,
+    permission: "DEMANDES_CONSULTER",
   },
   {
     to: "/app/catalogue" as const,
     label: "Catalogue",
     icon: FlaskConical,
-    roles: ["ADMINISTRATEUR", "RESPONSABLE"] as const,
+    permission: "CATALOGUE_CONSULTER",
   },
 ] as const;
 
 const LIBELLE_ROLE: Partial<Record<RoleUtilisateur, string>> = {
   ADMINISTRATEUR: "Administrateur",
   RESPONSABLE: "Responsable laboratoire",
+  TECHNICIEN: "Technicien",
+  ACCUEIL: "Agent d'accueil",
 };
 
-function entreesVisibles(role: RoleUtilisateur): EntreeNavigation[] {
-  return NAV_ITEMS.filter((item) => (item.roles as readonly string[]).includes(role));
+function entreesVisibles(permissions: readonly string[]): EntreeNavigation[] {
+  return NAV_ITEMS.filter((item) => permissions.includes(item.permission));
 }
 
 // ---------------------------------------------------------------------------
@@ -50,7 +52,7 @@ export function AdminShell({
   utilisateur: SessionUser;
   onLogout: () => void;
 }) {
-  const navigation = entreesVisibles(utilisateur.role);
+  const navigation = entreesVisibles(utilisateur.permissions);
   const accueil = navigation[0]?.to ?? "/app";
   const libelleRole = LIBELLE_ROLE[utilisateur.role] ?? "Laboratoire";
 

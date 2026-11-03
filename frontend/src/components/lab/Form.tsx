@@ -45,12 +45,16 @@ export function Select({
   className,
   ...props
 }: SelectHTMLAttributes<HTMLSelectElement>) {
+  const largeur = className
+    ?.split(/\s+/)
+    .filter((classe) => /(^|:)(w-|min-w-|max-w-)/.test(classe))
+    .join(" ");
   return (
-    <div className="relative w-full">
+    <div className={cn("relative w-full shrink-0", largeur)}>
       <select
         className={cn(
           field,
-          "appearance-none pr-10", // pr-10 pour laisser de la place à l'icône
+          "w-full appearance-none pr-10",
           className
         )}
         {...props}

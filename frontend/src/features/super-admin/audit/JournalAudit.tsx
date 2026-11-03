@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Download, Eye, RefreshCw, Search, X } from "lucide-react";
+import { Download, Eye, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge, Button, Input, Select } from "@/components/lab";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -11,6 +11,7 @@ import {
   listerJournalAudit,
   type EntreeAudit,
 } from "@/api/journalAudit";
+import { BarreListe } from "../BarreListe";
 import { formaterDate, messageErreur, texte } from "../texte";
 
 export function JournalAudit() {
@@ -71,43 +72,46 @@ export function JournalAudit() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl border border-brand-900/10 bg-card p-3 sm:p-4">
-        <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
-          <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input value={acteur} onChange={(event) => setActeur(event.target.value)} placeholder="E-mail de l'acteur" aria-label="Filtrer par acteur" className="pl-10" />
-          </div>
-          <Select value={action} aria-label="Filtrer par action" onChange={(event) => setAction(event.target.value)}>
-            <option value="">Toutes les actions</option>
-            {actions.data?.map((valeur) => (
-              <option key={valeur} value={valeur}>{valeur}</option>
-            ))}
-          </Select>
-          <Select value={laboratoireId} aria-label="Filtrer par laboratoire" onChange={(event) => setLaboratoireId(event.target.value)}>
-            <option value="">Tous les laboratoires</option>
-            {laboratoires.data?.content.map((laboratoire) => (
-              <option key={laboratoire.id} value={laboratoire.id}>{laboratoire.nom}</option>
-            ))}
-          </Select>
-          <div className="flex gap-2">
-            <Input type="date" value={du} aria-label="Date de début" onChange={(event) => setDu(event.target.value)} />
-            <Input type="date" value={au} aria-label="Date de fin" onChange={(event) => setAu(event.target.value)} />
-          </div>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {filtresActifs && (
-            <Button variant="ghost" size="sm" onClick={() => { setActeur(""); setAction(""); setLaboratoireId(""); setDu(""); setAu(""); }}>
-              Réinitialiser
-            </Button>
-          )}
-          <Button variant="ghost" size="sm" icon={<RefreshCw className="size-4" aria-hidden="true" />} iconPosition="left" onClick={() => void journal.refetch()}>
-            Actualiser
-          </Button>
-          <Button variant="secondary" size="sm" icon={<Download className="size-4" aria-hidden="true" />} iconPosition="left" onClick={() => void exporter()}>
-            Exporter CSV
-          </Button>
-        </div>
-      </div>
+      <BarreListe
+        recherche={acteur}
+        onRecherche={setActeur}
+        placeholder="E-mail de l'acteur"
+        libelleRecherche="Filtrer par acteur"
+        filtresActifs={filtresActifs}
+        onReinitialiser={() => { setActeur(""); setAction(""); setLaboratoireId(""); setDu(""); setAu(""); }}
+        formatsExport={[{ icone: Download, libelle: "Exporter en CSV", onClick: () => void exporter() }]}
+        puces={[
+          ...(acteurDiffere ? [{ libelle: `Recherche : ${acteurDiffere}`, onRetirer: () => setActeur("") }] : []),
+          ...(action ? [{ libelle: action, onRetirer: () => setAction("") }] : []),
+          ...(laboratoireId ? [{
+            libelle: laboratoires.data?.content.find((laboratoire) => String(laboratoire.id) === laboratoireId)?.nom ?? "Laboratoire",
+            onRetirer: () => setLaboratoireId(""),
+          }] : []),
+          ...(du ? [{ libelle: `Du ${du}`, onRetirer: () => setDu("") }] : []),
+          ...(au ? [{ libelle: `Au ${au}`, onRetirer: () => setAu("") }] : []),
+        ]}
+        filtres={
+          <>
+            <Select value={action} aria-label="Filtrer par action" className="xl:w-48" onChange={(event) => setAction(event.target.value)}>
+              <option value="">Toutes les actions</option>
+              {actions.data?.map((valeur) => (
+                <option key={valeur} value={valeur}>{valeur}</option>
+              ))}
+            </Select>
+            <Select value={laboratoireId} aria-label="Filtrer par laboratoire" className="xl:w-52" onChange={(event) => setLaboratoireId(event.target.value)}>
+              <option value="">Tous les laboratoires</option>
+              {laboratoires.data?.content.map((laboratoire) => (
+                <option key={laboratoire.id} value={laboratoire.id}>{laboratoire.nom}</option>
+              ))}
+            </Select>
+            <Input type="date" value={du} aria-label="Date de début" className="xl:w-40" onChange={(event) => setDu(event.target.value)} />
+            <Input type="date" value={au} aria-label="Date de fin" className="xl:w-40" onChange={(event) => setAu(event.target.value)} />
+          </>
+        }
+      />
+      <p className="text-xs text-muted-foreground">
+        Le filtre inclut les actions sur le laboratoire, et les actions nouvelles sur un utilisateur ou une demande de ce laboratoire. Les lignes antérieures ne sont rattachées que lorsqu'elles portent directement sur le laboratoire.
+      </p>
 
       <div className="overflow-x-auto rounded-2xl border border-brand-900/10 bg-card">
         <table className="w-full min-w-[880px] border-separate border-spacing-0 text-left text-sm">

@@ -23,18 +23,19 @@ import {
 } from "@/api/utilisateurs";
 import type { RoleUtilisateur } from "@/api/session";
 import { ApiError } from "@/api/axios";
+import { PageComptes } from "@/features/super-admin/utilisateurs/PageComptes";
 
 export const Route = createFileRoute("/app/utilisateurs/")({
   beforeLoad: () => {
     const role = getSession()?.user.role;
-    if (role !== "ADMINISTRATEUR" && role !== "SUPER_ADMINISTRATEUR") {
+    if (role !== "SUPER_ADMINISTRATEUR" && role !== "ADMINISTRATEUR") {
       throw redirect({ to: "/app" });
     }
   },
   head: () => ({
     meta: [{ title: "Utilisateurs — LabFlow LIMS" }],
   }),
-  component: UtilisateursPage,
+  component: PageSelonRole,
 });
 
 // ---------------------------------------------------------------------------
@@ -62,6 +63,13 @@ const BADGE_ROLE: Record<string, "lime" | "mint" | "soft" | "dark" | "outline"> 
 // ---------------------------------------------------------------------------
 // Composant principal
 // ---------------------------------------------------------------------------
+
+function PageSelonRole() {
+  if (getSession()?.user.role === "SUPER_ADMINISTRATEUR") {
+    return <PageComptes />;
+  }
+  return <UtilisateursPage />;
+}
 
 function UtilisateursPage() {
   const [utilisateurs, setUtilisateurs] = useState<UtilisateurDto[]>([]);

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -9,12 +9,9 @@ import {
   FileSpreadsheet,
   FileText,
   Pencil,
-  Search,
-  Upload,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge, Button, Input, Label, Select, Textarea, Tooltip } from "@/components/lab";
+import { Badge, Button, Label, Select, Textarea, Tooltip } from "@/components/lab";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +33,7 @@ import {
   suspendreLaboratoire,
   type LaboratoireAdmin,
 } from "@/api/gestionLaboratoires";
+import { BarreListe } from "../BarreListe";
 import { formaterDate, messageErreur, texte } from "../texte";
 import { DialogueImport } from "./DialogueImport";
 import { PanneauLaboratoire } from "./PanneauLaboratoire";
@@ -57,7 +55,6 @@ const COLONNES: { cle: Tri | "coordonnees" | "administrateur" | "actions"; libel
 
 export function TableauLaboratoires() {
   const queryClient = useQueryClient();
-  const exportRef = useRef<HTMLDivElement>(null);
   const [recherche, setRecherche] = useState("");
   const [rechercheDifferee, setRechercheDifferee] = useState("");
   const [statut, setStatut] = useState<"" | "ACTIF" | "SUSPENDU" | "DESACTIVE">("");
@@ -67,7 +64,6 @@ export function TableauLaboratoires() {
   const [tri, setTri] = useState<Tri>("dateCreation");
   const [ordre, setOrdre] = useState<"asc" | "desc">("desc");
   const [portee, setPortee] = useState<"filtres" | "tous">("filtres");
-  const [exportOuvert, setExportOuvert] = useState(false);
   const [importOuvert, setImportOuvert] = useState(false);
   const [selection, setSelection] = useState<{
     laboratoire: LaboratoireAdmin;
@@ -87,15 +83,6 @@ export function TableauLaboratoires() {
   useEffect(() => {
     setPage(0);
   }, [rechercheDifferee, statut, ville, tri, ordre, taille]);
-
-  useEffect(() => {
-    if (!exportOuvert) return;
-    const fermer = (event: MouseEvent) => {
-      if (!exportRef.current?.contains(event.target as Node)) setExportOuvert(false);
-    };
-    window.addEventListener("mousedown", fermer);
-    return () => window.removeEventListener("mousedown", fermer);
-  }, [exportOuvert]);
 
   const filtre = {
     recherche: rechercheDifferee || undefined,
@@ -133,7 +120,7 @@ export function TableauLaboratoires() {
         return desactiverLaboratoire(laboratoire.id, motif as string);
       }
     },
-    onSuccess: async (misAJour, { laboratoire, action }) => {
+    onSuccess: async (misAJour, { action }) => {
       toast.success(
         action === "activer" ? "Le laboratoire a été activé." :
         action === "suspendre" ? "Le laboratoire a été suspendu." :
@@ -153,7 +140,6 @@ export function TableauLaboratoires() {
     mutationFn: (format: "pdf" | "xlsx" | "csv") => exporterLaboratoires(format, portee, filtre),
     onSuccess: () => {
       toast.success("Le fichier a été téléchargé.");
-      setExportOuvert(false);
     },
     onError: (erreur) => toast.error(messageErreur(erreur, "L'exportation a échoué.")),
   });
@@ -174,19 +160,39 @@ export function TableauLaboratoires() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl border border-brand-900/10 bg-card p-3 sm:p-4">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input
-              value={recherche}
-              onChange={(event) => setRecherche(event.target.value)}
-              placeholder="Rechercher par nom, identifiant, ville ou e-mail"
-              aria-label="Rechercher un laboratoire"
-              className="pl-10"
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:flex">
+      <BarreListe
+        recherche={recherche}
+        onRecherche={setRecherche}
+        placeholder="Rechercher par nom, identifiant, ville ou e-mail"
+        libelleRecherche="Rechercher un laboratoire"
+        filtresActifs={filtresActifs}
+        onReinitialiser={() => { setRecherche(""); setStatut(""); setVille(""); }}
+        onImporter={() => setImportOuvert(true)}
+        exportEnCours={exportMutation.isPending}
+        porteeExport={{
+          id: "portee-export",
+          valeur: portee,
+          onChange: (valeur) => setPortee(valeur as "filtres" | "tous"),
+          options: [
+            { valeur: "filtres", libelle: "Résultats filtrés" },
+            { valeur: "tous", libelle: "Tous les laboratoires" },
+          ],
+        }}
+        formatsExport={[
+          { icone: FileText, libelle: "Exporter en PDF", onClick: () => exportMutation.mutate("pdf") },
+          { icone: FileSpreadsheet, libelle: "Exporter en Excel", onClick: () => exportMutation.mutate("xlsx") },
+          { icone: Download, libelle: "Exporter en CSV", onClick: () => exportMutation.mutate("csv") },
+        ]}
+        puces={[
+          ...(rechercheDifferee ? [{ libelle: `Recherche : ${rechercheDifferee}`, onRetirer: () => setRecherche("") }] : []),
+          ...(statut ? [{
+            libelle: statut === "ACTIF" ? "Actif" : statut === "SUSPENDU" ? "Suspendu" : "Désactivé",
+            onRetirer: () => setStatut(""),
+          }] : []),
+          ...(ville ? [{ libelle: ville, onRetirer: () => setVille("") }] : []),
+        ]}
+        filtres={
+          <>
             <Select
               value={statut}
               aria-label="Filtrer par statut"
@@ -206,77 +212,12 @@ export function TableauLaboratoires() {
             >
               <option value="">Toutes les villes</option>
               {(villes.data ?? []).map((nom) => (
-                <option key={nom} value={nom}>
-                  {nom}
-                </option>
+                <option key={nom} value={nom}>{nom}</option>
               ))}
             </Select>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {filtresActifs && (
-              <Button variant="ghost" size="sm" onClick={() => { setRecherche(""); setStatut(""); setVille(""); }}>
-                Réinitialiser
-              </Button>
-            )}
-            <Button
-              size="sm"
-              icon={<Upload className="size-4" aria-hidden="true" />}
-              iconPosition="left"
-              onClick={() => setImportOuvert(true)}
-            >
-              Importer
-            </Button>
-            <div className="relative" ref={exportRef}>
-              <Button
-                variant="secondary"
-                size="sm"
-                aria-expanded={exportOuvert}
-                aria-haspopup="menu"
-                icon={<ChevronDown className="size-4" aria-hidden="true" />}
-                onClick={() => setExportOuvert((ouvert) => !ouvert)}
-              >
-                Exporter
-              </Button>
-              {exportOuvert && (
-                <div role="menu" className="absolute right-0 z-40 mt-2 w-64 rounded-2xl border border-brand-900/10 bg-card p-3 shadow-lg">
-                  <label htmlFor="portee-export" className="text-xs font-semibold text-ink-900">
-                    Étendue
-                  </label>
-                  <Select
-                    id="portee-export"
-                    className="mt-1"
-                    value={portee}
-                    onChange={(event) => setPortee(event.target.value as "filtres" | "tous")}
-                  >
-                    <option value="filtres">Résultats filtrés</option>
-                    <option value="tous">Tous les laboratoires</option>
-                  </Select>
-                  <div className="mt-3 flex flex-col gap-1">
-                    <BoutonExport icone={FileText} libelle="Exporter en PDF" onClick={() => exportMutation.mutate("pdf")} />
-                    <BoutonExport icone={FileSpreadsheet} libelle="Exporter en Excel" onClick={() => exportMutation.mutate("xlsx")} />
-                    <BoutonExport icone={Download} libelle="Exporter en CSV" onClick={() => exportMutation.mutate("csv")} />
-                  </div>
-                  {exportMutation.isPending && <p className="mt-2 text-xs text-muted-foreground">Préparation du fichier…</p>}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        {filtresActifs && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {rechercheDifferee && (
-              <FiltreActif libelle={`Recherche : ${rechercheDifferee}`} onRetirer={() => setRecherche("")} />
-            )}
-            {statut && (
-              <FiltreActif
-                libelle={statut === "ACTIF" ? "Actif" : statut === "SUSPENDU" ? "Suspendu" : "Désactivé"}
-                onRetirer={() => setStatut("")}
-              />
-            )}
-            {ville && <FiltreActif libelle={ville} onRetirer={() => setVille("")} />}
-          </div>
-        )}
-      </div>
+          </>
+        }
+      />
 
       <div className="overflow-x-auto rounded-2xl border border-brand-900/10 bg-card">
         <table className="w-full min-w-[1080px] border-separate border-spacing-0 text-left text-sm">
@@ -567,42 +508,6 @@ function DialogueStatut({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function BoutonExport({
-  icone: Icone,
-  libelle,
-  onClick,
-}: {
-  icone: typeof FileText;
-  libelle: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      className="flex items-center gap-2 rounded-xl px-2 py-2 text-left text-sm font-semibold text-ink-900 hover:bg-surface-alt focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900"
-      onClick={onClick}
-    >
-      <Icone className="size-4 text-brand-900" aria-hidden="true" />
-      {libelle}
-    </button>
-  );
-}
-
-function FiltreActif({ libelle, onRetirer }: { libelle: string; onRetirer: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onRetirer}
-      className="inline-flex items-center gap-1 rounded-full bg-surface-alt px-3 py-1 text-xs font-semibold text-brand-900"
-    >
-      {libelle}
-      <X className="size-3" aria-hidden="true" />
-      <span className="sr-only">Retirer ce filtre</span>
-    </button>
   );
 }
 

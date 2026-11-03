@@ -30,8 +30,8 @@ import { Route as AppEmployesRouteImport } from './routes/app/employes'
 import { Route as AppGestionLaboratoiresRouteImport } from './routes/app/gestion-laboratoires'
 import { Route as AppJournalAuditRouteImport } from './routes/app/journal-audit'
 import { Route as AppLaboratoiresRouteImport } from './routes/app/laboratoires'
-import { Route as AppMonCompteRouteImport } from './routes/app/mon-compte'
 import { Route as AppPanierRouteImport } from './routes/app/panier'
+import { Route as AppTableauDeBordRouteImport } from './routes/app/tableau-de-bord'
 import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/index'
 import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
 import { Route as AppCatalogueIndexRouteImport } from './routes/app/catalogue/index'
@@ -154,14 +154,14 @@ const AppLaboratoiresRoute = AppLaboratoiresRouteImport.update({
   path: '/laboratoires',
   getParentRoute: () => AppRoute,
 } as any)
-const AppMonCompteRoute = AppMonCompteRouteImport.update({
-  id: '/mon-compte',
-  path: '/mon-compte',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppPanierRoute = AppPanierRouteImport.update({
   id: '/panier',
   path: '/panier',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTableauDeBordRoute = AppTableauDeBordRouteImport.update({
+  id: '/tableau-de-bord',
+  path: '/tableau-de-bord',
   getParentRoute: () => AppRoute,
 } as any)
 const LaboratoiresIndexRoute = LaboratoiresIndexRouteImport.update({
@@ -269,8 +269,8 @@ export interface FileRoutesByFullPath {
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/app/journal-audit': typeof AppJournalAuditRoute
   '/app/laboratoires': typeof AppLaboratoiresRouteWithChildren
-  '/app/mon-compte': typeof AppMonCompteRoute
   '/app/panier': typeof AppPanierRouteWithChildren
+  '/app/tableau-de-bord': typeof AppTableauDeBordRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
@@ -304,7 +304,7 @@ export interface FileRoutesByTo {
   '/app/carte': typeof AppCarteRoute
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/app/journal-audit': typeof AppJournalAuditRoute
-  '/app/mon-compte': typeof AppMonCompteRoute
+  '/app/tableau-de-bord': typeof AppTableauDeBordRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app': typeof AppIndexRoute
   '/laboratoires': typeof LaboratoiresIndexRoute
@@ -345,8 +345,8 @@ export interface FileRoutesById {
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/app/journal-audit': typeof AppJournalAuditRoute
   '/app/laboratoires': typeof AppLaboratoiresRouteWithChildren
-  '/app/mon-compte': typeof AppMonCompteRoute
   '/app/panier': typeof AppPanierRouteWithChildren
+  '/app/tableau-de-bord': typeof AppTableauDeBordRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
@@ -388,8 +388,8 @@ export interface FileRouteTypes {
     | '/app/gestion-laboratoires'
     | '/app/journal-audit'
     | '/app/laboratoires'
-    | '/app/mon-compte'
     | '/app/panier'
+    | '/app/tableau-de-bord'
     | '/laboratoires/$id'
     | '/app/'
     | '/laboratoires/'
@@ -423,7 +423,7 @@ export interface FileRouteTypes {
     | '/app/carte'
     | '/app/gestion-laboratoires'
     | '/app/journal-audit'
-    | '/app/mon-compte'
+    | '/app/tableau-de-bord'
     | '/laboratoires/$id'
     | '/app'
     | '/laboratoires'
@@ -463,8 +463,8 @@ export interface FileRouteTypes {
     | '/app/gestion-laboratoires'
     | '/app/journal-audit'
     | '/app/laboratoires'
-    | '/app/mon-compte'
     | '/app/panier'
+    | '/app/tableau-de-bord'
     | '/laboratoires/$id'
     | '/app/'
     | '/laboratoires/'
@@ -650,18 +650,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLaboratoiresRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/mon-compte': {
-      id: '/app/mon-compte'
-      path: '/mon-compte'
-      fullPath: '/app/mon-compte'
-      preLoaderRoute: typeof AppMonCompteRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/app/panier': {
       id: '/app/panier'
       path: '/panier'
       fullPath: '/app/panier'
       preLoaderRoute: typeof AppPanierRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tableau-de-bord': {
+      id: '/app/tableau-de-bord'
+      path: '/tableau-de-bord'
+      fullPath: '/app/tableau-de-bord'
+      preLoaderRoute: typeof AppTableauDeBordRouteImport
       parentRoute: typeof AppRoute
     }
     '/laboratoires/': {
@@ -868,8 +868,8 @@ interface AppRouteChildren {
   AppGestionLaboratoiresRoute: typeof AppGestionLaboratoiresRoute
   AppJournalAuditRoute: typeof AppJournalAuditRoute
   AppLaboratoiresRoute: typeof AppLaboratoiresRouteWithChildren
-  AppMonCompteRoute: typeof AppMonCompteRoute
   AppPanierRoute: typeof AppPanierRouteWithChildren
+  AppTableauDeBordRoute: typeof AppTableauDeBordRoute
   AppIndexRoute: typeof AppIndexRoute
   AppDemandesIntegrationIdRoute: typeof AppDemandesIntegrationIdRoute
   AppUtilisateursNouveauRoute: typeof AppUtilisateursNouveauRoute
@@ -886,8 +886,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppGestionLaboratoiresRoute: AppGestionLaboratoiresRoute,
   AppJournalAuditRoute: AppJournalAuditRoute,
   AppLaboratoiresRoute: AppLaboratoiresRouteWithChildren,
-  AppMonCompteRoute: AppMonCompteRoute,
   AppPanierRoute: AppPanierRouteWithChildren,
+  AppTableauDeBordRoute: AppTableauDeBordRoute,
   AppIndexRoute: AppIndexRoute,
   AppDemandesIntegrationIdRoute: AppDemandesIntegrationIdRoute,
   AppUtilisateursNouveauRoute: AppUtilisateursNouveauRoute,

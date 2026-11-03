@@ -26,7 +26,9 @@ import axios, {
   type AxiosResponse,
   type InternalAxiosRequestConfig,
 } from 'axios';
-import { getAccessToken, updateAccessToken, clearSession } from './session';
+import { toast } from 'sonner';
+import { getAccessToken, getSession, renouvelerSession, clearSession } from './session';
+import type { RoleUtilisateur, SessionUser } from './session';
 
 // ---------------------------------------------------------------------------
 // Types internes
@@ -351,6 +353,18 @@ export class ApiClient {
           ) {
             this.onPasswordChangeRequiredCallback?.();
           }
+          if (
+            !(isErrorResponseBody(rawData) && extractErrorCode(rawData) === 'PASSWORD_CHANGE_REQUIRED') &&
+            originalConfig?.url?.includes('/auth/') !== true &&
+            getSession() !== null
+          ) {
+            try {
+              await this.doRefresh();
+              toast.error("Votre accès a changé. Les permissions de la session ont été rechargées.");
+            } catch {
+              // Le refus d'origine reste affiché par l'appelant.
+            }
+          }
           return Promise.reject(this.toApiError(error));
         }
 
@@ -397,11 +411,30 @@ export class ApiClient {
     }
 
     this.refreshPromise = this.http
-      .post<{ success: boolean; data: { accessToken: string } }>('/auth/refresh')
+      .post<{ success: boolean; data: {
+        accessToken: string;
+        role?: RoleUtilisateur;
+        tenantId?: string;
+        mustChangePassword?: boolean;
+        email?: string;
+        nomComplet?: string;
+        userId?: number;
+        permissions?: string[];
+      } }>('/auth/refresh')
       .then((response) => {
-        const newAccessToken = response.data.data.accessToken;
-        updateAccessToken(newAccessToken);
-        return newAccessToken;
+        const data = response.data.data;
+        const courant = getSession()?.user;
+        const user: SessionUser = {
+          role: data.role ?? courant?.role ?? 'CLIENT',
+          tenantId: data.tenantId ?? courant?.tenantId ?? '',
+          mustChangePassword: data.mustChangePassword ?? courant?.mustChangePassword ?? false,
+          email: data.email ?? courant?.email ?? '',
+          nomComplet: data.nomComplet ?? courant?.nomComplet ?? '',
+          userId: data.userId ?? courant?.userId ?? null,
+          permissions: data.permissions ?? courant?.permissions ?? [],
+        };
+        renouvelerSession(data.accessToken, user);
+        return data.accessToken;
       })
       .finally(() => {
         this.refreshPromise = null;

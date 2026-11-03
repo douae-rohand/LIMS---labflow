@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getSession } from "@/api/session";
+import { EnTetePage } from "@/features/super-admin/EnTetePage";
 import { ListeDemandes } from "@/features/super-admin/demandes/ListeDemandes";
-import { Indicateurs, useStatistiquesPlateforme } from "@/features/super-admin/Indicateurs";
+import { useStatistiquesPlateforme } from "@/features/super-admin/Indicateurs";
 import { TableauLaboratoires } from "@/features/super-admin/laboratoires/TableauLaboratoires";
 
 type RechercheGestion = {
@@ -37,25 +38,11 @@ function GestionLaboratoiresPage() {
 
   return (
     <div className="px-4 py-6 sm:px-6 lg:px-8">
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-ink-900 sm:text-3xl">
-            Gestion des laboratoires
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Suivez les demandes d'intégration et administrez les laboratoires déjà ouverts sur la plateforme.
-          </p>
-        </div>
-        {totaux && (
-          <p className="text-sm text-muted-foreground">
-            <span className="font-semibold text-ink-900">{totaux.totalLaboratoires}</span> laboratoire
-            {totaux.totalLaboratoires > 1 ? "s" : ""} enregistré
-            {totaux.totalLaboratoires > 1 ? "s" : ""}
-          </p>
-        )}
-      </header>
-
-      <Indicateurs statistiques={totaux} />
+      <EnTetePage
+        titre="Laboratoires"
+        description="Liste des laboratoires et demandes d'intégration. Les indicateurs de la plateforme sont sur le tableau de bord."
+        action={totaux ? <p className="text-sm text-muted-foreground"><span className="font-semibold text-ink-900">{totaux.totalLaboratoires}</span> enregistré{totaux.totalLaboratoires > 1 ? "s" : ""}</p> : undefined}
+      />
 
       <div
         className="mt-5 mb-4 inline-flex w-full gap-1 rounded-2xl border border-brand-900/10 bg-card p-1 sm:w-auto"

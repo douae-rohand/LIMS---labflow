@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getSession } from "@/api/session";
 import { JournalAudit } from "@/features/super-admin/audit/JournalAudit";
+import { EnTetePage } from "@/features/super-admin/EnTetePage";
 
 export const Route = createFileRoute("/app/journal-audit")({
   beforeLoad: () => {
@@ -17,12 +18,10 @@ export const Route = createFileRoute("/app/journal-audit")({
 function PageJournal() {
   return (
     <div className="px-4 py-6 sm:px-6 lg:px-8">
-      <header className="mb-5">
-        <h1 className="text-2xl font-extrabold tracking-tight text-ink-900 sm:text-3xl">Journal d'audit</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Consultation seule. Chaque ligne indique qui a fait quoi, quand, et les valeurs avant et après.
-        </p>
-      </header>
+      <EnTetePage
+        titre="Journal d'audit"
+        description="Consultation seule. Chaque ligne indique qui a fait quoi, quand, et les valeurs avant et après."
+      />
       <JournalAudit />
     </div>
   );

@@ -1,12 +1,12 @@
 import { Outlet, createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { logout } from "@/api/auth";
-import { clearSession, getSession, getStatus } from "@/api/session";
+import { clearSession, getSession, getStatus, useSession } from "@/api/session";
 import type { RoleUtilisateur } from "@/api/session";
 import { SuperAdminShell } from "@/features/super-admin/SuperAdminShell";
 import { AdminShell } from "@/features/admin/AdminShell";
 import { ClientShell } from "@/features/client/ClientShell";
 import { LogOut, User } from "lucide-react";
-import { Button, Card } from "@/components/lab";
+import { Button } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 
 export function cheminTableauDeBord(_role: RoleUtilisateur): "/app" {
@@ -34,10 +34,13 @@ export const Route = createFileRoute("/app")({
 
 function AppLayout() {
   const router = useRouter();
-  const session = getSession();
+  const { session } = useSession();
   const user = session?.user;
   const isSuperAdmin = user?.role === "SUPER_ADMINISTRATEUR";
-  const espaceLaboratoire = user?.role === "ADMINISTRATEUR" || user?.role === "RESPONSABLE";
+  const espaceLaboratoire = user?.role === "ADMINISTRATEUR"
+    || user?.role === "RESPONSABLE"
+    || user?.role === "TECHNICIEN"
+    || user?.role === "ACCUEIL";
 
   const handleLogout = async () => {
     try {
@@ -79,7 +82,6 @@ function AppLayout() {
     );
   }
 
-  // Autres rôles (TECHNICIEN, ACCUEIL) — layout minimal avec logout
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-background/50 backdrop-blur-md">

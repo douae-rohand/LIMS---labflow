@@ -1,7 +1,6 @@
 import type { LucideIcon } from "lucide-react";
-import { Building2, CirclePause, CircleCheck, Inbox } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { obtenirStatistiquesPlateforme, type StatistiquesPlateforme } from "@/api/gestionLaboratoires";
+import { obtenirStatistiquesPlateforme } from "@/api/gestionLaboratoires";
 
 export function useStatistiquesPlateforme() {
   return useQuery({
@@ -10,30 +9,27 @@ export function useStatistiquesPlateforme() {
   });
 }
 
-export function Indicateurs({ statistiques }: { statistiques: StatistiquesPlateforme | undefined }) {
-  const cartes: { libelle: string; valeur: number | undefined; icone: LucideIcon }[] = [
-    { libelle: "Total des laboratoires", valeur: statistiques?.totalLaboratoires, icone: Building2 },
-    { libelle: "Laboratoires actifs", valeur: statistiques?.laboratoiresActifs, icone: CircleCheck },
-    { libelle: "Laboratoires désactivés", valeur: statistiques?.laboratoiresDesactives, icone: CirclePause },
-    { libelle: "Demandes en attente", valeur: statistiques?.demandesEnAttente, icone: Inbox },
-  ];
-
+export function Indicateurs({
+  cartes,
+}: {
+  cartes: { libelle: string; valeur: number | undefined; icone: LucideIcon }[];
+}) {
   return (
-    <section aria-label="Indicateurs de la plateforme" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <section aria-label="Indicateurs de la plateforme" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
       {cartes.map((carte) => (
         <article
           key={carte.libelle}
-          className="flex items-center gap-3 rounded-2xl border border-brand-900/10 bg-card px-4 py-3"
+          className="rounded-2xl border border-brand-900/10 bg-card p-4"
         >
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-alt text-brand-900">
-            <carte.icone className="size-4" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-xs font-medium text-muted-foreground">{carte.libelle}</p>
-            <p className="text-2xl font-extrabold tracking-tight text-ink-900">
-              {carte.valeur == null ? "—" : carte.valeur}
-            </p>
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{carte.libelle}</p>
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-mint-200/80 text-brand-900">
+              <carte.icone className="size-4" aria-hidden="true" />
+            </span>
           </div>
+          <p className="mt-3 text-3xl font-extrabold tracking-tight text-ink-900 tabular-nums">
+            {carte.valeur == null ? "—" : carte.valeur}
+          </p>
         </article>
       ))}
     </section>
