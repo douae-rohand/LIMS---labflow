@@ -1,0 +1,16 @@
+package com.backend.modules.catalogue.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class DomaineDto {
+    private Long id;
+    private String code;
+    private String libelle;
+}

@@ -15,17 +15,20 @@ export function cheminTableauDeBord(_role: RoleUtilisateur): "/app" {
 
 export const Route = createFileRoute("/app")({
   head: () => ({
-    meta: [{ title: "Espace LabFlow — LabFlow LIMS" }],
+    meta: [{ title: "Espace LabFlow - LabFlow LIMS" }],
   }),
   beforeLoad: ({ location }) => {
     const status = getStatus();
     if (status === "anonyme") {
-      throw redirect({ to: "/login", search: { redirect: location.href } });
+      throw redirect({ to: "/login" });
     }
     if (status === "connecté") {
       const session = getSession();
       if (session?.user.mustChangePassword) {
         throw redirect({ to: "/changer-mot-de-passe" });
+      }
+      if (session?.user.role === "ADMINISTRATEUR" && location.pathname === "/app") {
+        throw redirect({ to: "/app/tableau-de-bord" });
       }
     }
   },
@@ -54,7 +57,6 @@ function AppLayout() {
   };
 
   if (!user) {
-    void router.navigate({ to: "/login" });
     return null;
   }
 

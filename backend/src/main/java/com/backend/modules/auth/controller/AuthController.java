@@ -275,6 +275,16 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("2FA activée avec succès", null));
     }
 
+    @PostMapping("/2fa/desactiver")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Désactive la 2FA après vérification du mot de passe et du code TOTP")
+    public ResponseEntity<ApiResponse<Void>> desactiverTwoFactor(
+            @Valid @RequestBody DisableTwoFactorRequest request,
+            @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        authService.desactiverTwoFactor(request, principal);
+        return ResponseEntity.ok(ApiResponse.success("Double authentification désactivée", null));
+    }
+
     @PostMapping("/compte/activer/verifier")
     @Operation(summary = "Vérifie un jeton d'activation de compte (public)")
     public ResponseEntity<ApiResponse<Void>> verifierActivation(

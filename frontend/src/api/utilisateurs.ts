@@ -99,6 +99,12 @@ export async function listerParRole(
   return res.data;
 }
 
+/** Obtenir le profil d'un utilisateur par identifiant. */
+export async function trouverUtilisateurParId(id: number): Promise<UtilisateurDto> {
+  const res = await apiClient.get<ApiEnvelope<UtilisateurDto>>(`/utilisateurs/${id}`);
+  return res.data;
+}
+
 /** Créer un utilisateur interne (le compte est créé inactif, email d'invitation envoyé). */
 export async function creerUtilisateur(data: CreerUtilisateurInterne): Promise<UtilisateurDto> {
   const res = await apiClient.post<ApiEnvelope<UtilisateurDto>>('/utilisateurs', data);

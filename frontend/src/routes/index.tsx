@@ -16,7 +16,7 @@ import {
 } from "@/components/landing/Sections";
 import { photos } from "@/data/images";
 import { PublicLayout } from "@/layouts/PublicLayout";
-import { redirectionClientConnecte } from "@/lib/redirect";
+import { getSession } from "@/api/session";
 
 const title = "LabFlow LIMS — Gestion de laboratoire multi-tenant";
 const description =
@@ -35,9 +35,14 @@ export const Route = createFileRoute("/")({
       { name: "twitter:image", content: photos.teamLab.src },
     ],
   }),
-  beforeLoad: ({ location }) => {
-    const cible = redirectionClientConnecte(location.href);
-    if (cible !== null) throw redirect({ href: cible });
+  beforeLoad: () => {
+    const session = getSession();
+    if (session && session.user.role === "CLIENT") {
+      if (session.user.mustChangePassword) {
+        throw redirect({ to: "/changer-mot-de-passe" });
+      }
+      throw redirect({ to: "/app" });
+    }
   },
   component: Home,
 });

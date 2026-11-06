@@ -1,14 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -19,18 +13,15 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
-import { Skeleton } from "@/components/lab";
-import { StatutEmployeBadge } from "./StatutEmployeBadge";
-import { LIBELLE_ROLE, formatDate, formatDerniereConnexion } from "./dateUtils";
-import { EmployeInvitation } from "./EmployeInvitation";
-import { EmployeForm } from "./EmployeForm";
 import { schemaEmployeForm, type EmployeFormValues } from "./employeSchemas";
-import { EmployeActions } from "./EmployeActions";
 import { useEmployeMutations } from "./useEmployeMutations";
-import { trouverEmploye, messageErreurApi } from "@/api/employes";
+import { trouverEmploye } from "@/api/employes";
 import { ApiError } from "@/api/axios";
-import { AlertCircle, RefreshCw, X, AlertTriangle } from "lucide-react";
+import { getSession } from "@/api/session";
+import { AlertTriangle } from "lucide-react";
 import type { ModifierEmployePayload, EmployeDetailDto } from "@/api/employes";
+import { EmployePanneauContenu } from "./EmployePanneauContenu";
+import { useEmployeCooldown } from "./useEmployeCooldown";
 
 interface EmployePanneauProps {
   employeId: number | undefined;
@@ -39,51 +30,13 @@ interface EmployePanneauProps {
 
 export function EmployePanneau({ employeId, onClose }: EmployePanneauProps) {
   const estOuvert = employeId !== undefined;
+  const administrateurConnecte = getSession()?.user.role === "ADMINISTRATEUR";
 
   // Modale d'abandon des modifications non sauvegardées
   const [modalAbandonOuverte, setModalAbandonOuverte] = useState(false);
+  const [permissionsModifiees, setPermissionsModifiees] = useState(false);
 
-  // Compte à rebours 60s pour le renvoi d'invitation (local au panneau, lié à employeId)
-  const [cooldownRenvoi, setCooldownRenvoi] = useState<number>(0);
-  const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Remise à zéro du compte à rebours au changement d'employé
-  useEffect(() => {
-    if (cooldownTimerRef.current !== null) {
-      clearInterval(cooldownTimerRef.current);
-      cooldownTimerRef.current = null;
-    }
-    setCooldownRenvoi(0);
-  }, [employeId]);
-
-  // Nettoyage de l'intervalle au démontage
-  useEffect(() => {
-    return () => {
-      if (cooldownTimerRef.current !== null) {
-        clearInterval(cooldownTimerRef.current);
-        cooldownTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  const lancerCooldown = (secondes: number) => {
-    if (cooldownTimerRef.current !== null) {
-      clearInterval(cooldownTimerRef.current);
-    }
-    setCooldownRenvoi(secondes);
-    cooldownTimerRef.current = setInterval(() => {
-      setCooldownRenvoi((prev) => {
-        if (prev <= 1) {
-          if (cooldownTimerRef.current !== null) {
-            clearInterval(cooldownTimerRef.current);
-            cooldownTimerRef.current = null;
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
+  const { cooldownRenvoi, lancerCooldown } = useEmployeCooldown(employeId);
 
   // Requête du détail de l'employé
   const query = useQuery({
@@ -176,7 +129,7 @@ export function EmployePanneau({ employeId, onClose }: EmployePanneauProps) {
   // Interception de la fermeture pour vérifier isDirty
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      if (form.formState.isDirty) {
+      if (form.formState.isDirty || permissionsModifiees) {
         // Formulaire modifié -> afficher confirmation d'abandon au lieu de fermer
         setModalAbandonOuverte(true);
       } else {
@@ -187,6 +140,7 @@ export function EmployePanneau({ employeId, onClose }: EmployePanneauProps) {
 
   const handleConfirmerAbandon = () => {
     setModalAbandonOuverte(false);
+    setPermissionsModifiees(false);
     if (emp) {
       form.reset({
         prenom: emp.prenom ?? "",
@@ -216,139 +170,25 @@ export function EmployePanneau({ employeId, onClose }: EmployePanneauProps) {
             }
           }}
         >
-          {/* État de chargement initial avec SheetTitle accessible sr-only */}
-          {query.isLoading && (
-            <div aria-live="polite" className="space-y-6">
-              <SheetHeader className="text-left space-y-2">
-                <SheetTitle className="sr-only">Chargement des données de l'employé</SheetTitle>
-                <SheetDescription className="sr-only">Veuillez patienter...</SheetDescription>
-                <Skeleton className="h-7 w-3/4" />
-                <Skeleton className="h-4 w-1/3" />
-              </SheetHeader>
-              <div className="space-y-4 pt-4">
-                <Skeleton className="h-6 w-24" />
-                <div className="grid grid-cols-2 gap-4">
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                </div>
-                <Skeleton className="h-20 w-full rounded-xl" />
-              </div>
-            </div>
-          )}
-
-          {/* État d'erreur */}
-          {query.isError && (
-            <div aria-live="assertive" className="flex flex-col items-center py-12 text-center">
-              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-100 text-red-600">
-                <AlertCircle className="size-6" aria-hidden="true" />
-              </div>
-              <SheetHeader className="text-center">
-                <SheetTitle className="text-lg font-bold text-ink-900">
-                  {is404 ? "Employé introuvable" : "Erreur de chargement"}
-                </SheetTitle>
-                <SheetDescription className="text-sm text-muted-foreground mt-1">
-                  {messageErreurApi(query.error)}
-                </SheetDescription>
-              </SheetHeader>
-              <div className="mt-6 flex items-center gap-3">
-                {is404 ? (
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="inline-flex items-center gap-2 rounded-full border border-brand-900/20 px-5 py-2 text-sm font-semibold text-brand-900 hover:bg-surface-card"
-                  >
-                    <X className="size-4" aria-hidden="true" />
-                    Fermer
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => void query.refetch()}
-                      className="inline-flex items-center gap-2 rounded-full bg-brand-900 px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-brand-900/90"
-                    >
-                      <RefreshCw className="size-4" aria-hidden="true" />
-                      Réessayer
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="inline-flex items-center gap-2 rounded-full border border-brand-900/20 px-5 py-2 text-sm font-semibold text-brand-900 hover:bg-surface-card"
-                    >
-                      Fermer
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Détail, Modification et Actions */}
-          {!query.isLoading && !query.isError && emp && (
-            <div className="space-y-6">
-              <SheetHeader className="text-left space-y-1 pr-6">
-                <SheetTitle className="text-xl font-bold text-ink-900">
-                  {emp.nomComplet}
-                </SheetTitle>
-                <SheetDescription className="font-mono text-xs text-muted-foreground">
-                  Matricule : {emp.matricule}
-                </SheetDescription>
-              </SheetHeader>
-
-              {/* Statut & Fonction */}
-              <div className="flex flex-wrap items-center gap-3 border-b border-brand-900/10 pb-4">
-                <StatutEmployeBadge statut={emp.statut} />
-                <span className="text-xs font-medium text-muted-foreground bg-surface-card px-2.5 py-1 rounded-full border border-brand-900/10">
-                  {LIBELLE_ROLE[emp.role] ?? emp.role}
-                </span>
-              </div>
-
-              {/* Métadonnées de dates */}
-              <div className="grid grid-cols-2 gap-3 rounded-2xl border border-brand-900/10 bg-surface-card/40 p-4 text-xs text-muted-foreground">
-                <div>
-                  <span className="block text-[11px]">Dernière connexion</span>
-                  <span className="font-medium text-ink-900">
-                    {formatDerniereConnexion(emp.derniereConnexion)}
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-[11px]">Créé le</span>
-                  <span className="font-medium text-ink-900">
-                    {formatDate(emp.dateCreation)}
-                  </span>
-                </div>
-              </div>
-
-              {/* État de l'invitation (si EN_ATTENTE) */}
-              <EmployeInvitation employe={emp} />
-
-              {/* Formulaire de modification */}
-              <div className="border-t border-brand-900/10 pt-4">
-                <EmployeForm
-                  key={emp.id}
-                  employe={emp}
-                  form={form}
-                  onSubmitModif={handleModifier}
-                  isSubmitting={mutations.mutationModifier.isPending}
-                  erreurModification={mutations.mutationModifier.error}
-                  isMutatingGlobale={mutations.isMutating}
-                />
-              </div>
-
-              {/* Actions de statut */}
-              <EmployeActions
-                employe={emp}
-                isDirty={form.formState.isDirty}
-                isMutatingGlobale={mutations.isMutating}
-                cooldownRenvoi={cooldownRenvoi}
-                onDesactiver={handleDesactiver}
-                onReactiver={handleReactiver}
-                onRenvoyerInvitation={handleRenvoyerInvitation}
-              />
-            </div>
-          )}
+          <EmployePanneauContenu
+            chargement={query.isLoading}
+            erreur={query.error}
+            estEnErreur={query.isError}
+            est404={is404}
+            employe={emp}
+            form={form}
+            mutations={mutations}
+            cooldownRenvoi={cooldownRenvoi}
+            administrateurConnecte={administrateurConnecte}
+            permissionsModifiees={permissionsModifiees}
+            onFermer={onClose}
+            onReessayer={() => void query.refetch()}
+            onModifier={handleModifier}
+            onDesactiver={handleDesactiver}
+            onReactiver={handleReactiver}
+            onRenvoyerInvitation={handleRenvoyerInvitation}
+            onPermissionsModifiees={setPermissionsModifiees}
+          />
         </SheetContent>
       </Sheet>
 
@@ -366,7 +206,7 @@ export function EmployePanneau({ employeId, onClose }: EmployePanneauProps) {
               Abandonner les modifications ?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground">
-              Des informations ont été modifiées. Si vous fermez le panneau maintenant, vos modifications non enregistrées seront perdues.
+              Des informations ou permissions ont été modifiées. Si vous fermez le panneau maintenant, vos modifications non enregistrées seront perdues.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -99,6 +99,11 @@ export interface TwoFactorSetupResponse {
   otpAuthUrl: string;
 }
 
+export interface TwoFactorDesactiverBody {
+  motDePasse: string;
+  code: string;
+}
+
 export interface ChangerMotDePasseBody {
   ancienMotDePasse: string;
   nouveauMotDePasse: string;
@@ -146,9 +151,13 @@ export async function setup2FA(body: TwoFactorSetupBody = {}): Promise<TwoFactor
   return res.data;
 }
 
-export async function activer2FA(body: TwoFactorActiverBody): Promise<LoginResponse> {
-  const res = await apiClient.post<ApiResponse<LoginResponse>>('/auth/2fa/activer', body);
+export async function activer2FA(body: TwoFactorActiverBody): Promise<LoginResponse | null> {
+  const res = await apiClient.post<ApiResponse<LoginResponse | null>>('/auth/2fa/activer', body);
   return res.data;
+}
+
+export async function desactiver2FA(body: TwoFactorDesactiverBody): Promise<void> {
+  await apiClient.post<ApiResponse<null>>('/auth/2fa/desactiver', body);
 }
 
 /**

@@ -33,13 +33,20 @@ public class JournalAuditConsultationService {
     public Page<JournalAuditDto> rechercher(String acteur, String action, Long laboratoireId,
                                             LocalDate du, LocalDate au,
                                             int page, int size, String tri, String ordre) {
+        String nomSchema = null;
+        if (laboratoireId != null) {
+            nomSchema = laboratoireId.toString();
+        }
         return journalAuditRepository.rechercher(
                         like(acteur),
-                        texte(action),
-                        objetLaboratoire(laboratoireId),
-                        laboratoireId,
+                null,
+                texte(action),
+                null,
+                        nomSchema,
+                        null,
                         debut(du),
                         fin(au),
+                        null,
                         page(page, size, tri, ordre))
                 .map(this::versDto);
     }
@@ -51,13 +58,20 @@ public class JournalAuditConsultationService {
 
     @Transactional(readOnly = true)
     public byte[] exporterCsv(String acteur, String action, Long laboratoireId, LocalDate du, LocalDate au) {
+        String nomSchema = null;
+        if (laboratoireId != null) {
+            nomSchema = laboratoireId.toString();
+        }
         Page<JournalAuditDto> page = journalAuditRepository.rechercher(
                         like(acteur),
-                        texte(action),
-                        objetLaboratoire(laboratoireId),
-                        laboratoireId,
+                null,
+                texte(action),
+                null,
+                        nomSchema,
+                        null,
                         debut(du),
                         fin(au),
+                        null,
                         PageRequest.of(0, EXPORT_MAX, Sort.by(Sort.Direction.DESC, "dateAction")))
                 .map(this::versDto);
         if (page.getTotalElements() > EXPORT_MAX) {

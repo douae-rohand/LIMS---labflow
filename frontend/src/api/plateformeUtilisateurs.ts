@@ -143,6 +143,7 @@ export interface LignePermission {
   action: string;
   libelle: string;
   parDefaut: boolean;
+  deleguable: boolean;
   ecart: "AJOUT" | "RETRAIT" | null;
   effective: boolean;
 }

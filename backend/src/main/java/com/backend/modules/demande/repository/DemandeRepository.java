@@ -1,6 +1,7 @@
 package com.backend.modules.demande.repository;
 
 import com.backend.modules.demande.entity.Demande;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Lock;
 
 import java.util.Collection;
 import java.util.List;
@@ -25,6 +27,10 @@ public interface DemandeRepository extends JpaRepository<Demande, Long> {
     java.util.List<Demande> findByClient_UtilisateurId(Long utilisateurId);
 
     Optional<Demande> findByIdAndClient_UtilisateurId(Long id, Long utilisateurId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT d FROM Demande d WHERE d.id = :id")
+    Optional<Demande> findByIdForUpdate(@Param("id") Long id);
 
     Page<Demande> findByStatut(String statut, Pageable pageable);
 
@@ -94,4 +100,17 @@ public interface DemandeRepository extends JpaRepository<Demande, Long> {
     int annulerSiNouvelle(@Param("id") Long id,
                           @Param("motif") String motif,
                           @Param("statutsNouveau") Collection<String> statutsNouveau);
+
+    @Query("SELECT COUNT(d) FROM Demande d WHERE d.dateSoumission BETWEEN :debut AND :fin")
+    Long countByDateSoumissionBetween(@Param("debut") java.time.Instant debut,
+                                      @Param("fin") java.time.Instant fin);
+
+    @Query("SELECT d.statut, COUNT(d) FROM Demande d GROUP BY d.statut")
+    List<Object[]> countByStatut();
+
+    @Query("SELECT YEAR(d.dateSoumission), MONTH(d.dateSoumission), COUNT(d) FROM Demande d GROUP BY YEAR(d.dateSoumission), MONTH(d.dateSoumission) ORDER BY YEAR(d.dateSoumission), MONTH(d.dateSoumission)")
+    List<Object[]> countByMonth();
+
+    @Query("SELECT d.id, d.numero, d.titre, d.statut, d.dateSoumission, c.raisonSociale FROM Demande d LEFT JOIN d.client c ORDER BY d.dateSoumission DESC")
+    org.springframework.data.domain.Page<Object[]> listerPourExport(org.springframework.data.domain.Pageable pageable);
 }

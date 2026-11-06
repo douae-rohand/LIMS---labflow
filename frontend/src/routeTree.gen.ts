@@ -22,19 +22,25 @@ import { Route as MotDePasseOublieRouteImport } from './routes/mot-de-passe-oubl
 import { Route as ReinitialiserMotDePasseRouteImport } from './routes/reinitialiser-mot-de-passe'
 import { Route as UiKitRouteImport } from './routes/ui-kit'
 import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as AppAuditRouteImport } from './routes/app/audit'
 import { Route as AppCarteRouteImport } from './routes/app/carte'
 import { Route as AppCatalogueRouteImport } from './routes/app/catalogue'
 import { Route as AppDemandesRouteImport } from './routes/app/demandes'
 import { Route as AppDemandesClientsRouteImport } from './routes/app/demandes-clients'
 import { Route as AppEmployesRouteImport } from './routes/app/employes'
 import { Route as AppEnquetesRouteImport } from './routes/app/enquetes'
+import { Route as AppExportsRouteImport } from './routes/app/exports'
+import { Route as AppFacturationRouteImport } from './routes/app/facturation'
 import { Route as AppFacturesRouteImport } from './routes/app/factures'
 import { Route as AppGestionLaboratoiresRouteImport } from './routes/app/gestion-laboratoires'
 import { Route as AppJournalAuditRouteImport } from './routes/app/journal-audit'
 import { Route as AppLaboratoiresRouteImport } from './routes/app/laboratoires'
 import { Route as AppPanierRouteImport } from './routes/app/panier'
+import { Route as AppParametresRouteImport } from './routes/app/parametres'
 import { Route as AppProfilRouteImport } from './routes/app/profil'
 import { Route as AppRapportsRouteImport } from './routes/app/rapports'
+import { Route as AppSatisfactionRouteImport } from './routes/app/satisfaction'
+import { Route as AppStockRouteImport } from './routes/app/stock'
 import { Route as AppTableauDeBordRouteImport } from './routes/app/tableau-de-bord'
 import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/index'
 import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
@@ -46,12 +52,15 @@ import { Route as AppDemandesIndexRouteImport } from './routes/app/demandes/inde
 import { Route as AppEmployesIndexRouteImport } from './routes/app/employes/index'
 import { Route as AppEmployesNouveauRouteImport } from './routes/app/employes/nouveau'
 import { Route as AppEnquetesIndexRouteImport } from './routes/app/enquetes/index'
+import { Route as AppFacturationIndexRouteImport } from './routes/app/facturation/index'
 import { Route as AppFacturesIndexRouteImport } from './routes/app/factures/index'
 import { Route as AppLaboratoiresIndexRouteImport } from './routes/app/laboratoires/index'
 import { Route as AppLaboratoiresIdRouteImport } from './routes/app/laboratoires/$id'
 import { Route as AppPanierIndexRouteImport } from './routes/app/panier/index'
 import { Route as AppPanierLaboratoireIdRouteImport } from './routes/app/panier/$laboratoireId'
 import { Route as AppRapportsIndexRouteImport } from './routes/app/rapports/index'
+import { Route as AppStockIndexRouteImport } from './routes/app/stock/index'
+import { Route as AppStockProduitIdRouteImport } from './routes/app/stock/$produitId'
 import { Route as AppUtilisateursIndexRouteImport } from './routes/app/utilisateurs/index'
 import { Route as AppUtilisateursNouveauRouteImport } from './routes/app/utilisateurs/nouveau'
 import { Route as AppDemandesLaboratoireIdDemandeIdRouteImport } from './routes/app/demandes/$laboratoireId.$demandeId'
@@ -124,6 +133,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAuditRoute = AppAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCarteRoute = AppCarteRouteImport.update({
   id: '/carte',
   path: '/carte',
@@ -154,6 +168,16 @@ const AppEnquetesRoute = AppEnquetesRouteImport.update({
   path: '/enquetes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppExportsRoute = AppExportsRouteImport.update({
+  id: '/exports',
+  path: '/exports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFacturationRoute = AppFacturationRouteImport.update({
+  id: '/facturation',
+  path: '/facturation',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppFacturesRoute = AppFacturesRouteImport.update({
   id: '/factures',
   path: '/factures',
@@ -179,6 +203,11 @@ const AppPanierRoute = AppPanierRouteImport.update({
   path: '/panier',
   getParentRoute: () => AppRoute,
 } as any)
+const AppParametresRoute = AppParametresRouteImport.update({
+  id: '/parametres',
+  path: '/parametres',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProfilRoute = AppProfilRouteImport.update({
   id: '/profil',
   path: '/profil',
@@ -187,6 +216,16 @@ const AppProfilRoute = AppProfilRouteImport.update({
 const AppRapportsRoute = AppRapportsRouteImport.update({
   id: '/rapports',
   path: '/rapports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSatisfactionRoute = AppSatisfactionRouteImport.update({
+  id: '/satisfaction',
+  path: '/satisfaction',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStockRoute = AppStockRouteImport.update({
+  id: '/stock',
+  path: '/stock',
   getParentRoute: () => AppRoute,
 } as any)
 const AppTableauDeBordRoute = AppTableauDeBordRouteImport.update({
@@ -246,6 +285,11 @@ const AppEnquetesIndexRoute = AppEnquetesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppEnquetesRoute,
 } as any)
+const AppFacturationIndexRoute = AppFacturationIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppFacturationRoute,
+} as any)
 const AppFacturesIndexRoute = AppFacturesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -275,6 +319,16 @@ const AppRapportsIndexRoute = AppRapportsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRapportsRoute,
+} as any)
+const AppStockIndexRoute = AppStockIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppStockRoute,
+} as any)
+const AppStockProduitIdRoute = AppStockProduitIdRouteImport.update({
+  id: '/$produitId',
+  path: '/$produitId',
+  getParentRoute: () => AppStockRoute,
 } as any)
 const AppUtilisateursIndexRoute = AppUtilisateursIndexRouteImport.update({
   id: '/utilisateurs/',
@@ -324,19 +378,25 @@ export interface FileRoutesByFullPath {
   '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
+  '/app/audit': typeof AppAuditRoute
   '/app/carte': typeof AppCarteRoute
   '/app/catalogue': typeof AppCatalogueRouteWithChildren
   '/app/demandes': typeof AppDemandesRouteWithChildren
   '/app/demandes-clients': typeof AppDemandesClientsRouteWithChildren
   '/app/employes': typeof AppEmployesRouteWithChildren
   '/app/enquetes': typeof AppEnquetesRouteWithChildren
+  '/app/exports': typeof AppExportsRoute
+  '/app/facturation': typeof AppFacturationRouteWithChildren
   '/app/factures': typeof AppFacturesRouteWithChildren
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/app/journal-audit': typeof AppJournalAuditRoute
   '/app/laboratoires': typeof AppLaboratoiresRouteWithChildren
   '/app/panier': typeof AppPanierRouteWithChildren
+  '/app/parametres': typeof AppParametresRoute
   '/app/profil': typeof AppProfilRoute
   '/app/rapports': typeof AppRapportsRouteWithChildren
+  '/app/satisfaction': typeof AppSatisfactionRoute
+  '/app/stock': typeof AppStockRouteWithChildren
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
@@ -345,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/app/employes/nouveau': typeof AppEmployesNouveauRoute
   '/app/laboratoires/$id': typeof AppLaboratoiresIdRoute
   '/app/panier/$laboratoireId': typeof AppPanierLaboratoireIdRoute
+  '/app/stock/$produitId': typeof AppStockProduitIdRoute
   '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
   '/app/catalogue/': typeof AppCatalogueIndexRoute
   '/app/demandes-clients/': typeof AppDemandesClientsIndexRoute
@@ -352,10 +413,12 @@ export interface FileRoutesByFullPath {
   '/app/demandes/': typeof AppDemandesIndexRoute
   '/app/employes/': typeof AppEmployesIndexRoute
   '/app/enquetes/': typeof AppEnquetesIndexRoute
+  '/app/facturation/': typeof AppFacturationIndexRoute
   '/app/factures/': typeof AppFacturesIndexRoute
   '/app/laboratoires/': typeof AppLaboratoiresIndexRoute
   '/app/panier/': typeof AppPanierIndexRoute
   '/app/rapports/': typeof AppRapportsIndexRoute
+  '/app/stock/': typeof AppStockIndexRoute
   '/app/utilisateurs/': typeof AppUtilisateursIndexRoute
   '/app/demandes/$laboratoireId/$demandeId': typeof AppDemandesLaboratoireIdDemandeIdRoute
   '/app/enquetes/$laboratoireId/$enqueteId': typeof AppEnquetesLaboratoireIdEnqueteIdRoute
@@ -374,10 +437,14 @@ export interface FileRoutesByTo {
   '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
+  '/app/audit': typeof AppAuditRoute
   '/app/carte': typeof AppCarteRoute
+  '/app/exports': typeof AppExportsRoute
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/app/journal-audit': typeof AppJournalAuditRoute
+  '/app/parametres': typeof AppParametresRoute
   '/app/profil': typeof AppProfilRoute
+  '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app': typeof AppIndexRoute
@@ -386,6 +453,7 @@ export interface FileRoutesByTo {
   '/app/employes/nouveau': typeof AppEmployesNouveauRoute
   '/app/laboratoires/$id': typeof AppLaboratoiresIdRoute
   '/app/panier/$laboratoireId': typeof AppPanierLaboratoireIdRoute
+  '/app/stock/$produitId': typeof AppStockProduitIdRoute
   '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
   '/app/catalogue': typeof AppCatalogueIndexRoute
   '/app/demandes-clients': typeof AppDemandesClientsIndexRoute
@@ -393,10 +461,12 @@ export interface FileRoutesByTo {
   '/app/demandes': typeof AppDemandesIndexRoute
   '/app/employes': typeof AppEmployesIndexRoute
   '/app/enquetes': typeof AppEnquetesIndexRoute
+  '/app/facturation': typeof AppFacturationIndexRoute
   '/app/factures': typeof AppFacturesIndexRoute
   '/app/laboratoires': typeof AppLaboratoiresIndexRoute
   '/app/panier': typeof AppPanierIndexRoute
   '/app/rapports': typeof AppRapportsIndexRoute
+  '/app/stock': typeof AppStockIndexRoute
   '/app/utilisateurs': typeof AppUtilisateursIndexRoute
   '/app/demandes/$laboratoireId/$demandeId': typeof AppDemandesLaboratoireIdDemandeIdRoute
   '/app/enquetes/$laboratoireId/$enqueteId': typeof AppEnquetesLaboratoireIdEnqueteIdRoute
@@ -417,19 +487,25 @@ export interface FileRoutesById {
   '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
+  '/app/audit': typeof AppAuditRoute
   '/app/carte': typeof AppCarteRoute
   '/app/catalogue': typeof AppCatalogueRouteWithChildren
   '/app/demandes': typeof AppDemandesRouteWithChildren
   '/app/demandes-clients': typeof AppDemandesClientsRouteWithChildren
   '/app/employes': typeof AppEmployesRouteWithChildren
   '/app/enquetes': typeof AppEnquetesRouteWithChildren
+  '/app/exports': typeof AppExportsRoute
+  '/app/facturation': typeof AppFacturationRouteWithChildren
   '/app/factures': typeof AppFacturesRouteWithChildren
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/app/journal-audit': typeof AppJournalAuditRoute
   '/app/laboratoires': typeof AppLaboratoiresRouteWithChildren
   '/app/panier': typeof AppPanierRouteWithChildren
+  '/app/parametres': typeof AppParametresRoute
   '/app/profil': typeof AppProfilRoute
   '/app/rapports': typeof AppRapportsRouteWithChildren
+  '/app/satisfaction': typeof AppSatisfactionRoute
+  '/app/stock': typeof AppStockRouteWithChildren
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
@@ -438,6 +514,7 @@ export interface FileRoutesById {
   '/app/employes/nouveau': typeof AppEmployesNouveauRoute
   '/app/laboratoires/$id': typeof AppLaboratoiresIdRoute
   '/app/panier/$laboratoireId': typeof AppPanierLaboratoireIdRoute
+  '/app/stock/$produitId': typeof AppStockProduitIdRoute
   '/app/utilisateurs/nouveau': typeof AppUtilisateursNouveauRoute
   '/app/catalogue/': typeof AppCatalogueIndexRoute
   '/app/demandes-clients/': typeof AppDemandesClientsIndexRoute
@@ -445,10 +522,12 @@ export interface FileRoutesById {
   '/app/demandes/': typeof AppDemandesIndexRoute
   '/app/employes/': typeof AppEmployesIndexRoute
   '/app/enquetes/': typeof AppEnquetesIndexRoute
+  '/app/facturation/': typeof AppFacturationIndexRoute
   '/app/factures/': typeof AppFacturesIndexRoute
   '/app/laboratoires/': typeof AppLaboratoiresIndexRoute
   '/app/panier/': typeof AppPanierIndexRoute
   '/app/rapports/': typeof AppRapportsIndexRoute
+  '/app/stock/': typeof AppStockIndexRoute
   '/app/utilisateurs/': typeof AppUtilisateursIndexRoute
   '/app/demandes/$laboratoireId/$demandeId': typeof AppDemandesLaboratoireIdDemandeIdRoute
   '/app/enquetes/$laboratoireId/$enqueteId': typeof AppEnquetesLaboratoireIdEnqueteIdRoute
@@ -470,19 +549,25 @@ export interface FileRouteTypes {
     | '/mot-de-passe-oublie'
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
+    | '/app/audit'
     | '/app/carte'
     | '/app/catalogue'
     | '/app/demandes'
     | '/app/demandes-clients'
     | '/app/employes'
     | '/app/enquetes'
+    | '/app/exports'
+    | '/app/facturation'
     | '/app/factures'
     | '/app/gestion-laboratoires'
     | '/app/journal-audit'
     | '/app/laboratoires'
     | '/app/panier'
+    | '/app/parametres'
     | '/app/profil'
     | '/app/rapports'
+    | '/app/satisfaction'
+    | '/app/stock'
     | '/app/tableau-de-bord'
     | '/laboratoires/$id'
     | '/app/'
@@ -491,6 +576,7 @@ export interface FileRouteTypes {
     | '/app/employes/nouveau'
     | '/app/laboratoires/$id'
     | '/app/panier/$laboratoireId'
+    | '/app/stock/$produitId'
     | '/app/utilisateurs/nouveau'
     | '/app/catalogue/'
     | '/app/demandes-clients/'
@@ -498,10 +584,12 @@ export interface FileRouteTypes {
     | '/app/demandes/'
     | '/app/employes/'
     | '/app/enquetes/'
+    | '/app/facturation/'
     | '/app/factures/'
     | '/app/laboratoires/'
     | '/app/panier/'
     | '/app/rapports/'
+    | '/app/stock/'
     | '/app/utilisateurs/'
     | '/app/demandes/$laboratoireId/$demandeId'
     | '/app/enquetes/$laboratoireId/$enqueteId'
@@ -520,10 +608,14 @@ export interface FileRouteTypes {
     | '/mot-de-passe-oublie'
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
+    | '/app/audit'
     | '/app/carte'
+    | '/app/exports'
     | '/app/gestion-laboratoires'
     | '/app/journal-audit'
+    | '/app/parametres'
     | '/app/profil'
+    | '/app/satisfaction'
     | '/app/tableau-de-bord'
     | '/laboratoires/$id'
     | '/app'
@@ -532,6 +624,7 @@ export interface FileRouteTypes {
     | '/app/employes/nouveau'
     | '/app/laboratoires/$id'
     | '/app/panier/$laboratoireId'
+    | '/app/stock/$produitId'
     | '/app/utilisateurs/nouveau'
     | '/app/catalogue'
     | '/app/demandes-clients'
@@ -539,10 +632,12 @@ export interface FileRouteTypes {
     | '/app/demandes'
     | '/app/employes'
     | '/app/enquetes'
+    | '/app/facturation'
     | '/app/factures'
     | '/app/laboratoires'
     | '/app/panier'
     | '/app/rapports'
+    | '/app/stock'
     | '/app/utilisateurs'
     | '/app/demandes/$laboratoireId/$demandeId'
     | '/app/enquetes/$laboratoireId/$enqueteId'
@@ -562,19 +657,25 @@ export interface FileRouteTypes {
     | '/mot-de-passe-oublie'
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
+    | '/app/audit'
     | '/app/carte'
     | '/app/catalogue'
     | '/app/demandes'
     | '/app/demandes-clients'
     | '/app/employes'
     | '/app/enquetes'
+    | '/app/exports'
+    | '/app/facturation'
     | '/app/factures'
     | '/app/gestion-laboratoires'
     | '/app/journal-audit'
     | '/app/laboratoires'
     | '/app/panier'
+    | '/app/parametres'
     | '/app/profil'
     | '/app/rapports'
+    | '/app/satisfaction'
+    | '/app/stock'
     | '/app/tableau-de-bord'
     | '/laboratoires/$id'
     | '/app/'
@@ -583,6 +684,7 @@ export interface FileRouteTypes {
     | '/app/employes/nouveau'
     | '/app/laboratoires/$id'
     | '/app/panier/$laboratoireId'
+    | '/app/stock/$produitId'
     | '/app/utilisateurs/nouveau'
     | '/app/catalogue/'
     | '/app/demandes-clients/'
@@ -590,10 +692,12 @@ export interface FileRouteTypes {
     | '/app/demandes/'
     | '/app/employes/'
     | '/app/enquetes/'
+    | '/app/facturation/'
     | '/app/factures/'
     | '/app/laboratoires/'
     | '/app/panier/'
     | '/app/rapports/'
+    | '/app/stock/'
     | '/app/utilisateurs/'
     | '/app/demandes/$laboratoireId/$demandeId'
     | '/app/enquetes/$laboratoireId/$enqueteId'
@@ -711,6 +815,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/audit': {
+      id: '/app/audit'
+      path: '/audit'
+      fullPath: '/app/audit'
+      preLoaderRoute: typeof AppAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/carte': {
       id: '/app/carte'
       path: '/carte'
@@ -753,6 +864,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEnquetesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/exports': {
+      id: '/app/exports'
+      path: '/exports'
+      fullPath: '/app/exports'
+      preLoaderRoute: typeof AppExportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/facturation': {
+      id: '/app/facturation'
+      path: '/facturation'
+      fullPath: '/app/facturation'
+      preLoaderRoute: typeof AppFacturationRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/factures': {
       id: '/app/factures'
       path: '/factures'
@@ -788,6 +913,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPanierRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/parametres': {
+      id: '/app/parametres'
+      path: '/parametres'
+      fullPath: '/app/parametres'
+      preLoaderRoute: typeof AppParametresRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/profil': {
       id: '/app/profil'
       path: '/profil'
@@ -800,6 +932,20 @@ declare module '@tanstack/react-router' {
       path: '/rapports'
       fullPath: '/app/rapports'
       preLoaderRoute: typeof AppRapportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/satisfaction': {
+      id: '/app/satisfaction'
+      path: '/satisfaction'
+      fullPath: '/app/satisfaction'
+      preLoaderRoute: typeof AppSatisfactionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/stock': {
+      id: '/app/stock'
+      path: '/stock'
+      fullPath: '/app/stock'
+      preLoaderRoute: typeof AppStockRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/tableau-de-bord': {
@@ -879,6 +1025,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEnquetesIndexRouteImport
       parentRoute: typeof AppEnquetesRoute
     }
+    '/app/facturation/': {
+      id: '/app/facturation/'
+      path: '/'
+      fullPath: '/app/facturation/'
+      preLoaderRoute: typeof AppFacturationIndexRouteImport
+      parentRoute: typeof AppFacturationRoute
+    }
     '/app/factures/': {
       id: '/app/factures/'
       path: '/'
@@ -920,6 +1073,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/rapports/'
       preLoaderRoute: typeof AppRapportsIndexRouteImport
       parentRoute: typeof AppRapportsRoute
+    }
+    '/app/stock/': {
+      id: '/app/stock/'
+      path: '/'
+      fullPath: '/app/stock/'
+      preLoaderRoute: typeof AppStockIndexRouteImport
+      parentRoute: typeof AppStockRoute
+    }
+    '/app/stock/$produitId': {
+      id: '/app/stock/$produitId'
+      path: '/$produitId'
+      fullPath: '/app/stock/$produitId'
+      preLoaderRoute: typeof AppStockProduitIdRouteImport
+      parentRoute: typeof AppStockRoute
     }
     '/app/utilisateurs/': {
       id: '/app/utilisateurs/'
@@ -1033,6 +1200,18 @@ const AppEnquetesRouteWithChildren = AppEnquetesRoute._addFileChildren(
   AppEnquetesRouteChildren,
 )
 
+interface AppFacturationRouteChildren {
+  AppFacturationIndexRoute: typeof AppFacturationIndexRoute
+}
+
+const AppFacturationRouteChildren: AppFacturationRouteChildren = {
+  AppFacturationIndexRoute: AppFacturationIndexRoute,
+}
+
+const AppFacturationRouteWithChildren = AppFacturationRoute._addFileChildren(
+  AppFacturationRouteChildren,
+)
+
 interface AppFacturesRouteChildren {
   AppFacturesIndexRoute: typeof AppFacturesIndexRoute
   AppFacturesLaboratoireIdFactureIdRoute: typeof AppFacturesLaboratoireIdFactureIdRoute
@@ -1091,20 +1270,40 @@ const AppRapportsRouteWithChildren = AppRapportsRoute._addFileChildren(
   AppRapportsRouteChildren,
 )
 
+interface AppStockRouteChildren {
+  AppStockProduitIdRoute: typeof AppStockProduitIdRoute
+  AppStockIndexRoute: typeof AppStockIndexRoute
+}
+
+const AppStockRouteChildren: AppStockRouteChildren = {
+  AppStockProduitIdRoute: AppStockProduitIdRoute,
+  AppStockIndexRoute: AppStockIndexRoute,
+}
+
+const AppStockRouteWithChildren = AppStockRoute._addFileChildren(
+  AppStockRouteChildren,
+)
+
 interface AppRouteChildren {
+  AppAuditRoute: typeof AppAuditRoute
   AppCarteRoute: typeof AppCarteRoute
   AppCatalogueRoute: typeof AppCatalogueRouteWithChildren
   AppDemandesRoute: typeof AppDemandesRouteWithChildren
   AppDemandesClientsRoute: typeof AppDemandesClientsRouteWithChildren
   AppEmployesRoute: typeof AppEmployesRouteWithChildren
   AppEnquetesRoute: typeof AppEnquetesRouteWithChildren
+  AppExportsRoute: typeof AppExportsRoute
+  AppFacturationRoute: typeof AppFacturationRouteWithChildren
   AppFacturesRoute: typeof AppFacturesRouteWithChildren
   AppGestionLaboratoiresRoute: typeof AppGestionLaboratoiresRoute
   AppJournalAuditRoute: typeof AppJournalAuditRoute
   AppLaboratoiresRoute: typeof AppLaboratoiresRouteWithChildren
   AppPanierRoute: typeof AppPanierRouteWithChildren
+  AppParametresRoute: typeof AppParametresRoute
   AppProfilRoute: typeof AppProfilRoute
   AppRapportsRoute: typeof AppRapportsRouteWithChildren
+  AppSatisfactionRoute: typeof AppSatisfactionRoute
+  AppStockRoute: typeof AppStockRouteWithChildren
   AppTableauDeBordRoute: typeof AppTableauDeBordRoute
   AppIndexRoute: typeof AppIndexRoute
   AppDemandesIntegrationIdRoute: typeof AppDemandesIntegrationIdRoute
@@ -1114,19 +1313,25 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAuditRoute: AppAuditRoute,
   AppCarteRoute: AppCarteRoute,
   AppCatalogueRoute: AppCatalogueRouteWithChildren,
   AppDemandesRoute: AppDemandesRouteWithChildren,
   AppDemandesClientsRoute: AppDemandesClientsRouteWithChildren,
   AppEmployesRoute: AppEmployesRouteWithChildren,
   AppEnquetesRoute: AppEnquetesRouteWithChildren,
+  AppExportsRoute: AppExportsRoute,
+  AppFacturationRoute: AppFacturationRouteWithChildren,
   AppFacturesRoute: AppFacturesRouteWithChildren,
   AppGestionLaboratoiresRoute: AppGestionLaboratoiresRoute,
   AppJournalAuditRoute: AppJournalAuditRoute,
   AppLaboratoiresRoute: AppLaboratoiresRouteWithChildren,
   AppPanierRoute: AppPanierRouteWithChildren,
+  AppParametresRoute: AppParametresRoute,
   AppProfilRoute: AppProfilRoute,
   AppRapportsRoute: AppRapportsRouteWithChildren,
+  AppSatisfactionRoute: AppSatisfactionRoute,
+  AppStockRoute: AppStockRouteWithChildren,
   AppTableauDeBordRoute: AppTableauDeBordRoute,
   AppIndexRoute: AppIndexRoute,
   AppDemandesIntegrationIdRoute: AppDemandesIntegrationIdRoute,

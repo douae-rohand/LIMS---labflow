@@ -209,6 +209,29 @@
   }
 }
 
+.form-scrollbar {
+  scrollbar-color: var(--brand-900) transparent;
+  scrollbar-width: thin;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border: 2px solid white;
+    border-radius: 9999px;
+    background: var(--brand-900);
+  }
+
+  &::-webkit-scrollbar-button {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * Service de gestion de l'authentification à deux facteurs TOTP (RFC 6238).
@@ -41,6 +42,7 @@ public class TwoFactorService {
 
     private final GoogleAuthenticator googleAuthenticator;
     private final UtilisateurRepository utilisateurRepository;
+    private final PasswordEncoder passwordEncoder;
 
     // -------------------------------------------------------------------------
     // Enrôlement — Setup
@@ -96,6 +98,26 @@ public class TwoFactorService {
         utilisateur.setDoubleAuthentification(true);
         utilisateurRepository.save(utilisateur);
         log.info("2FA activée pour userId={}", utilisateur.getId());
+    }
+
+    @Transactional
+    public void desactiverTotp(Utilisateur utilisateur, String motDePasse, String code) {
+        if (!utilisateur.isDoubleAuthentification()
+                || utilisateur.getSecret2fa() == null
+                || utilisateur.getSecret2fa().isBlank()) {
+            throw new BusinessRuleException("2FA_NOT_ACTIVE",
+                    "La double authentification n'est pas activée pour ce compte.");
+        }
+        if (!passwordEncoder.matches(motDePasse, utilisateur.getMotDePasseHash())) {
+            throw new BusinessRuleException("PASSWORD_INVALID", "Mot de passe incorrect.");
+        }
+        if (!verifierTotp(utilisateur.getSecret2fa(), code)) {
+            throw new BusinessRuleException("2FA_CODE_INVALID", "Code TOTP incorrect.");
+        }
+        utilisateur.setDoubleAuthentification(false);
+        utilisateur.setSecret2fa(null);
+        utilisateurRepository.save(utilisateur);
+        log.info("2FA désactivée pour userId={}", utilisateur.getId());
     }
 
     // -------------------------------------------------------------------------

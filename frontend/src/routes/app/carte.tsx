@@ -11,9 +11,9 @@ export const Route = createFileRoute("/app/carte")({
   head: () => ({
     meta: [{ title: "Carte des laboratoires — LabFlow LIMS" }],
   }),
-  beforeLoad: ({ location }) => {
+  beforeLoad: () => {
     if (getStatus() === "anonyme") {
-      throw redirect({ to: "/login", search: { redirect: location.href } });
+      throw redirect({ to: "/login" });
     }
     if (getSession()?.user.role !== "CLIENT") {
       throw redirect({ to: "/app" });

@@ -13,4 +13,6 @@ public interface ExigenceEchantillonRepository extends JpaRepository<ExigenceEch
     List<ExigenceEchantillon> findByEssai_Id(Long essaiId);
 
     List<ExigenceEchantillon> findByEssai_IdIn(Collection<Long> essaiIds);
+
+    boolean existsByEssai_IdAndNature(Long essaiId, String nature);
 }

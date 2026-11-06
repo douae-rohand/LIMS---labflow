@@ -1,6 +1,7 @@
 package com.backend.modules.facturation.repository;
 
 import com.backend.modules.facturation.entity.Facture;
+import com.backend.modules.facturation.dto.DemandeFacturableDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -47,4 +48,68 @@ public interface FactureRepository extends JpaRepository<Facture, Long> {
             """)
     Optional<Facture> findVisibleClientParId(@Param("factureId") Long factureId,
                                              @Param("utilisateurId") Long utilisateurId);
+
+    boolean existsByDemandeId(Long demandeId);
+
+    @Query("""
+            SELECT new com.backend.modules.facturation.dto.DemandeFacturableDto(
+                d.id, d.numero, d.titre, c.raisonSociale, d.statut, d.dateSoumission,
+                COALESCE(SUM(le.montant), 0))
+            FROM Demande d
+            LEFT JOIN d.client c
+            LEFT JOIN LigneEssai le ON le.demande = d
+            WHERE d.statut IN :statuts
+              AND NOT EXISTS (
+                  SELECT f.id FROM Facture f WHERE f.demande = d
+              )
+            GROUP BY d.id, d.numero, d.titre, c.raisonSociale, d.statut, d.dateSoumission
+            ORDER BY d.dateSoumission DESC
+            """)
+    List<DemandeFacturableDto> listerDemandesFacturables(
+            @Param("statuts") List<String> statuts, Pageable pageable);
+
+    @Query("""
+            SELECT f FROM Facture f
+            JOIN f.demande d
+            LEFT JOIN d.client c
+            WHERE (:statut IS NULL OR f.statut = :statut)
+              AND (:debut IS NULL OR f.dateFacture >= :debut)
+              AND (:fin IS NULL OR f.dateFacture <= :fin)
+              AND (:clientId IS NULL OR c.id = :clientId)
+              AND (:q IS NULL OR :q = '' OR
+                   LOWER(f.numero) LIKE LOWER(CONCAT('%', :q, '%')) ESCAPE '!' OR
+                   LOWER(d.numero) LIKE LOWER(CONCAT('%', :q, '%')) ESCAPE '!' OR
+                   LOWER(c.raisonSociale) LIKE LOWER(CONCAT('%', :q, '%')) ESCAPE '!')
+            """)
+    Page<Facture> rechercher(@Param("statut") String statut,
+                             @Param("debut") java.time.LocalDate debut,
+                             @Param("fin") java.time.LocalDate fin,
+                             @Param("clientId") Long clientId,
+                             @Param("q") String q,
+                             Pageable pageable);
+
+    @Query("SELECT SUM(f.montantHt) FROM Facture f WHERE f.dateFacture BETWEEN :debut AND :fin")
+    java.math.BigDecimal sumMontantHtBetween(@Param("debut") java.time.LocalDate debut,
+                                            @Param("fin") java.time.LocalDate fin);
+
+    @Query("SELECT SUM(p.montant) FROM Paiement p WHERE p.datePaiement BETWEEN :debut AND :fin")
+    java.math.BigDecimal sumMontantBetween(@Param("debut") java.time.LocalDate debut,
+                                          @Param("fin") java.time.LocalDate fin);
+
+    @Query("SELECT SUM(f.montantHt - COALESCE((SELECT SUM(p.montant) FROM Paiement p WHERE p.facture.id = f.id), 0)) FROM Facture f WHERE f.dateFacture BETWEEN :debut AND :fin")
+    java.math.BigDecimal sumImpayeBetween(@Param("debut") java.time.LocalDate debut,
+                                         @Param("fin") java.time.LocalDate fin);
+
+    @Query("SELECT COUNT(f) FROM Facture f WHERE f.dateFacture BETWEEN :debut AND :fin AND f.statut != 'PAYEE'")
+    Long countImpayeesBetween(@Param("debut") java.time.LocalDate debut,
+                              @Param("fin") java.time.LocalDate fin);
+
+    @Query("SELECT COUNT(f) FROM Facture f WHERE f.statut != 'PAYEE' AND f.dateEcheance < :date")
+    Long countEnRetardBefore(@Param("date") java.time.LocalDate date);
+
+    @Query("SELECT MAX(CAST(SUBSTRING(f.numero, 12, 3) AS integer)) FROM Facture f WHERE YEAR(f.dateFacture) = :annee AND MONTH(f.dateFacture) = :mois")
+    Integer maxNumeroDuMois(@Param("annee") int annee, @Param("mois") int mois);
+
+    @Query("SELECT SUM(f.montantHt) FROM Facture f WHERE YEAR(f.dateFacture) = :annee AND MONTH(f.dateFacture) = :mois")
+    java.math.BigDecimal sumMontantHtByMonth(@Param("annee") int annee, @Param("mois") int mois);
 }

@@ -18,6 +18,6 @@ public interface UtilisateurMapper {
     @Mapping(target = "role", expression = "java(utilisateur.getRole() == null ? null : com.backend.modules.utilisateur.entity.RoleUtilisateur.valueOf(utilisateur.getRole().getCode()))")
     @Mapping(target = "deuxFacteursActif", source = "doubleAuthentification")
     @Mapping(target = "compteConfirme", source = "compteConfirme")
-    @Mapping(target = "dateCreation", ignore = true)
+    @Mapping(target = "dateCreation", source = "dateCreation")
     UtilisateurDto toDto(Utilisateur utilisateur);
 }

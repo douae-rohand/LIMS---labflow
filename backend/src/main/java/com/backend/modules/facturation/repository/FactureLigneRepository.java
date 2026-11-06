@@ -10,4 +10,6 @@ import java.util.List;
 public interface FactureLigneRepository extends JpaRepository<FactureLigne, Long> {
 
     List<FactureLigne> findByFacture_IdOrderByIdAsc(Long factureId);
+
+    List<FactureLigne> findByFactureId(Long factureId);
 }

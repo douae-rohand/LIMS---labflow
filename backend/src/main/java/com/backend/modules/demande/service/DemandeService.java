@@ -41,6 +41,7 @@ import com.backend.modules.essai.entity.Essai;
 import com.backend.modules.essai.entity.LigneEssai;
 import com.backend.modules.essai.repository.EssaiRepository;
 import com.backend.modules.essai.repository.LigneEssaiRepository;
+import com.backend.modules.facturation.service.FacturationAdminService;
 import com.backend.modules.panier.entity.LignePanier;
 import com.backend.modules.panier.entity.Panier;
 import com.backend.modules.panier.repository.LignePanierRepository;
@@ -53,6 +54,7 @@ import com.backend.modules.utilisateur.repository.UtilisateurRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -99,6 +101,7 @@ public class DemandeService {
     private final EssaiRepository essaiRepository;
     private final JournalAuditService journalAuditService;
     private final JournalAuditRepository journalAuditRepository;
+    private final FacturationAdminService facturationAdminService;
 
     private static final String STATUT_LABORATOIRE_ACTIF = "ACTIF";
     private static final int MOTIF_MIN = 5;
@@ -374,13 +377,14 @@ public class DemandeService {
     public DemandeDto changerStatut(Long id, StatutDemande statut) {
         if (statut == StatutDemande.ACCEPTEE || statut == StatutDemande.REFUSEE
                 || statut == StatutDemande.EN_VALIDATION || statut == StatutDemande.TERMINEE) {
-            exigerRoleDecision();
+            exigerRoleDecision(statut);
         }
         if (statut == StatutDemande.ACCEPTEE) {
             Demande acceptee = enregistrerAcceptation(id);
             enregistrerAuditDemande("ACCEPTATION_DEMANDE",
                     TenantContext.getCurrentTenant(), id,
                     StatutDemande.NOUVEAU.name(), StatutDemande.ACCEPTEE.name(), null);
+            planifierFacturationAutomatique(id);
             return toDto(acceptee, TenantContext.getCurrentTenant(), null, null, null);
         }
         if (statut == StatutDemande.REFUSEE) {
@@ -393,15 +397,23 @@ public class DemandeService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<DemandeResumeDto> listerPourLaboratoire(String q, String statut, int page, int size) {
+    public PageResponse<DemandeResumeDto> listerPourLaboratoire(
+            String q, String statut, String tri, String direction, int page, int size) {
         String recherche = normaliserRecherche(q);
         StatutDemande statutFiltre = normaliserStatutFiltre(statut);
         boolean filtrerStatut = statutFiltre != null;
         List<String> statuts = filtrerStatut ? statutFiltre.aliasesPersistés() : List.of("_");
         int pageSafe = Math.max(page, 0);
         int sizeSafe = size < 1 ? 20 : Math.min(size, PAGE_SIZE_MAX);
-        Pageable pageable = PageRequest.of(pageSafe, sizeSafe,
-                Sort.by(Sort.Direction.DESC, "dateSoumission"));
+        String proprieteTri = switch (tri) {
+            case "reference" -> "numero";
+            case "dateSoumission" -> "dateSoumission";
+            default -> "dateSoumission";
+        };
+        Sort.Direction sensTri = "asc".equalsIgnoreCase(direction)
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(pageSafe, sizeSafe, Sort.by(sensTri, proprieteTri));
         Page<DemandeResumeDto> resultat = demandeRepository.rechercher(recherche, filtrerStatut, statuts, pageable)
                 .map(this::toResume);
         return PageResponse.from(resultat);
@@ -425,15 +437,18 @@ public class DemandeService {
 
     @Transactional
     public DemandeLaboratoireDto accepter(Long id) {
+        exigerRoleDecision(StatutDemande.ACCEPTEE);
         Demande demande = enregistrerAcceptation(id);
         enregistrerAuditDemande("ACCEPTATION_DEMANDE",
                 TenantContext.getCurrentTenant(), id,
                 StatutDemande.NOUVEAU.name(), StatutDemande.ACCEPTEE.name(), null);
+        planifierFacturationAutomatique(id);
         return construireDetail(demandeRepository.save(demande));
     }
 
     @Transactional
     public DemandeLaboratoireDto refuser(Long id, String motif) {
+        exigerRoleDecision(StatutDemande.REFUSEE);
         Demande demande = charger(id);
         exigerNouvelle(demande);
         appliquerDecision(demande, StatutDemande.REFUSEE, validerMotif(motif));
@@ -449,6 +464,36 @@ public class DemandeService {
         exigerNouvelle(demande);
         appliquerDecision(demande, StatutDemande.ACCEPTEE, null);
         return demandeRepository.save(demande);
+    }
+
+    private void planifierFacturationAutomatique(Long demandeId) {
+        UtilisateurPrincipal acteur = SecurityUtils.principalCourant();
+        String nomSchema = TenantContext.getCurrentTenant();
+        Runnable emission = () -> {
+            try {
+                facturationAdminService.emettrePourDemande(
+                        demandeId, null, acteur, nomSchema, true);
+            } catch (BusinessRuleException ex) {
+                if ("FACTURE_DEJA_EMISE".equals(ex.getCode())
+                        || "DEMANDE_SANS_MONTANT".equals(ex.getCode())) {
+                    return;
+                }
+                log.warn("Émission automatique ignorée demandeId={} code={}", demandeId, ex.getCode());
+            } catch (Exception ex) {
+                log.warn("Émission automatique ignorée demandeId={} code=ERREUR_TECHNIQUE", demandeId);
+            }
+        };
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    emission.run();
+                }
+            });
+        } else {
+            emission.run();
+        }
     }
 
     private void exigerNouvelle(Demande demande) {
@@ -672,8 +717,14 @@ public class DemandeService {
                 .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", id));
     }
 
-    private static void exigerRoleDecision() {
+    private static void exigerRoleDecision(StatutDemande statut) {
         RoleUtilisateur role = SecurityUtils.principalCourant().getRole();
+        if (statut == StatutDemande.ACCEPTEE || statut == StatutDemande.REFUSEE) {
+            if (role != RoleUtilisateur.RESPONSABLE) {
+                throw new AccessDeniedException("Seul le responsable peut accepter ou refuser une demande.");
+            }
+            return;
+        }
         if (role != RoleUtilisateur.RESPONSABLE && role != RoleUtilisateur.ADMINISTRATEUR) {
             throw new BusinessRuleException("DECISION_RESERVEE_AU_ROLE",
                     "Le passage à acceptée, refusée, en validation ou terminée est réservé au responsable ou à l'administrateur.");

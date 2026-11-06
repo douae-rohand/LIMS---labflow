@@ -44,21 +44,4 @@ public class FacturationController {
         return ResponseEntity.ok(ApiResponse.success(
                 facturationService.listerParClient(clientId, PageRequest.of(page, size))));
     }
-
-    @PostMapping("/emettre")
-    @PreAuthorize("hasAuthority('PERM_FACTURATION_GERER')")
-    public ResponseEntity<ApiResponse<FactureDto>> emettre(
-            @RequestParam Long demandeId,
-            @RequestParam(required = false) Long clientId,
-            @RequestParam BigDecimal montantHt) {
-        return ResponseEntity.ok(ApiResponse.success("Facture émise",
-                facturationService.emettre(demandeId, clientId, montantHt)));
-    }
-
-    @PatchMapping("/{id}/paiement")
-    @PreAuthorize("hasAuthority('PERM_FACTURATION_GERER')")
-    public ResponseEntity<ApiResponse<FactureDto>> enregistrerPaiement(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success("Paiement enregistré",
-                facturationService.enregistrerPaiement(id)));
-    }
 }

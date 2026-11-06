@@ -27,4 +27,14 @@ public interface UtilisateurPermissionRepository extends JpaRepository<Utilisate
     @Modifying
     @Query("delete from UtilisateurPermission up where up.utilisateurId = :utilisateurId")
     void deleteByUtilisateurId(Long utilisateurId);
+
+    @Modifying
+    @Query("""
+            delete from UtilisateurPermission up
+            where up.utilisateurId = :utilisateurId
+              and up.permissionId in :permissionIds
+            """)
+    void deleteByUtilisateurIdAndPermissionIdIn(
+            @Param("utilisateurId") Long utilisateurId,
+            @Param("permissionIds") Collection<Long> permissionIds);
 }

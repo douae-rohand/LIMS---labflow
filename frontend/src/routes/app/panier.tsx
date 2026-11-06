@@ -10,9 +10,9 @@ export const Route = createFileRoute("/app/panier")({
   head: () => ({
     meta: [{ title: "Mon panier — LabFlow LIMS" }],
   }),
-  beforeLoad: ({ location }) => {
+  beforeLoad: () => {
     if (getStatus() === "anonyme") {
-      throw redirect({ to: "/login", search: { redirect: location.href } });
+      throw redirect({ to: "/login" });
     }
     if (getSession()?.user.role !== "CLIENT") {
       throw redirect({ to: "/app" });

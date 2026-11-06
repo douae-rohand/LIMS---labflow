@@ -62,4 +62,40 @@ public interface EnqueteSatisfactionRepository extends JpaRepository<EnqueteSati
                               @Param("noteClarte") Integer noteClarte,
                               @Param("noteRelation") Integer noteRelation,
                               @Param("commentaire") String commentaire);
+
+    @Query("SELECT COUNT(e) FROM EnqueteSatisfaction e WHERE e.dateEnvoi BETWEEN :debut AND :fin")
+    Long countEnvoyeesBetween(@Param("debut") Instant debut, @Param("fin") Instant fin);
+
+    @Query("SELECT COUNT(e) FROM EnqueteSatisfaction e WHERE e.dateReponse IS NOT NULL AND e.dateReponse BETWEEN :debut AND :fin")
+    Long countReponduesBetween(@Param("debut") Instant debut, @Param("fin") Instant fin);
+
+    @Query("SELECT AVG(e.noteGlobale) FROM EnqueteSatisfaction e WHERE e.dateReponse IS NOT NULL")
+    Double moyenneGlobaleRepondues();
+
+    @Query("SELECT AVG(e.noteDelai) FROM EnqueteSatisfaction e WHERE e.dateReponse IS NOT NULL")
+    Double moyenneDelai();
+
+    @Query("SELECT AVG(e.noteClarte) FROM EnqueteSatisfaction e WHERE e.dateReponse IS NOT NULL")
+    Double moyenneClarte();
+
+    @Query("SELECT AVG(e.noteRelation) FROM EnqueteSatisfaction e WHERE e.dateReponse IS NOT NULL")
+    Double moyenneRelation();
+
+    @Query("SELECT e.noteGlobale, COUNT(e) FROM EnqueteSatisfaction e WHERE e.dateReponse IS NOT NULL GROUP BY e.noteGlobale")
+    List<Object[]> countByNoteGlobale();
+
+    @Query("SELECT YEAR(e.dateReponse), MONTH(e.dateReponse), AVG(e.noteGlobale) FROM EnqueteSatisfaction e WHERE e.dateReponse IS NOT NULL GROUP BY YEAR(e.dateReponse), MONTH(e.dateReponse) ORDER BY YEAR(e.dateReponse), MONTH(e.dateReponse)")
+    List<Object[]> moyenneByMonth();
+
+    @Query("""
+            SELECT e.id, e.code, e.dateEnvoi, e.dateReponse, e.noteGlobale,
+                   e.noteDelai, e.noteClarte, e.noteRelation, e.commentaire,
+                   d.numero, c.raisonSociale
+            FROM EnqueteSatisfaction e
+            JOIN e.demande d
+            LEFT JOIN d.client c
+            WHERE e.dateReponse IS NOT NULL
+            ORDER BY e.dateReponse DESC
+            """)
+    org.springframework.data.domain.Page<Object[]> listerPourExport(org.springframework.data.domain.Pageable pageable);
 }

@@ -11,11 +11,14 @@ import { DemandesTable } from "@/components/demandes/DemandesTable";
 import { DemandesPagination } from "@/components/demandes/DemandesPagination";
 import { IndicateursDemandesCartes } from "@/components/demandes/IndicateursDemandes";
 import { DemandePanneau } from "@/components/demandes/DemandePanneau";
+import { ExportButton } from "@/components/admin/exports/ExportButton";
 
 export interface DemandesSearch {
   page: number;
   q?: string | undefined;
   statut?: StatutDemande | undefined;
+  tri: "reference" | "dateSoumission";
+  direction: "asc" | "desc";
   demande?: number | undefined;
 }
 
@@ -37,8 +40,13 @@ export const Route = createFileRoute("/app/demandes-clients/")({
     const statut = (STATUTS_DEMANDE as readonly string[]).includes(search["statut"] as string)
       ? (search["statut"] as StatutDemande)
       : undefined;
+    const tris = ["reference", "dateSoumission"] as const;
+    const tri = tris.includes(search["tri"] as (typeof tris)[number])
+      ? (search["tri"] as (typeof tris)[number])
+      : "dateSoumission";
+    const direction = search["direction"] === "asc" ? "asc" : "desc";
     const demande = parsePositiveInt(search["demande"], 1, Number.MAX_SAFE_INTEGER);
-    return { page, q, statut, demande };
+    return { page, q, statut, tri, direction, demande };
   },
   component: DemandesClientsPage,
 });
@@ -87,11 +95,16 @@ function DemandesClientsPage() {
   const page0 = search.page - 1;
 
   const liste = useQuery({
-    queryKey: ["demandes-laboratoire", { q: search.q, statut: search.statut, page: page0 }],
+    queryKey: [
+      "demandes-laboratoire",
+      { q: search.q, statut: search.statut, tri: search.tri, direction: search.direction, page: page0 },
+    ],
     queryFn: () =>
       listerDemandesLaboratoire({
         q: search.q,
         statut: search.statut,
+        tri: search.tri,
+        direction: search.direction,
         page: page0,
         size: PAGE_SIZE,
       }),
@@ -144,18 +157,21 @@ function DemandesClientsPage() {
 
   return (
     <Container className="py-8">
-      <div className="mb-6 flex items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-900/10 text-brand-900">
-          <Inbox className="size-5" aria-hidden="true" />
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-900/10 text-brand-900">
+            <Inbox className="size-5" aria-hidden="true" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-ink-900">Demandes clients</h1>
+            <p aria-live="polite" className="text-sm text-muted-foreground">
+              {liste.data !== undefined
+                ? `${liste.data.totalElements} demande${liste.data.totalElements !== 1 ? "s" : ""}`
+                : "\u00A0"}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-ink-900">Demandes clients</h1>
-          <p aria-live="polite" className="text-sm text-muted-foreground">
-            {liste.data !== undefined
-              ? `${liste.data.totalElements} demande${liste.data.totalElements !== 1 ? "s" : ""}`
-              : "\u00A0"}
-          </p>
-        </div>
+        <ExportButton jeu="demandes" disabled={liste.isLoading} />
       </div>
 
       <div className="mb-6">
@@ -196,6 +212,15 @@ function DemandesClientsPage() {
         }
         onReinitialiser={reinitialiser}
         onReessayer={() => void liste.refetch()}
+        tri={search.tri}
+        direction={search.direction}
+        onTriChange={(tri) =>
+          aller({
+            tri,
+            direction: search.tri === tri && search.direction === "asc" ? "desc" : "asc",
+            page: 1,
+          })
+        }
       />
 
       {liste.data !== undefined && liste.data.totalElements > 0 && (

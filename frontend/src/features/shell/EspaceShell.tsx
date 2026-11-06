@@ -3,7 +3,6 @@ import { LogOut } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/lab";
-import { Toaster } from "@/components/ui/sonner";
 import type { SessionUser } from "@/api/session";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +26,7 @@ function getInitiales(nomComplet: string): string {
 /** Chemins d'entrée de la sidebar (espace connecté `/app`). */
 export type CheminEspace =
   | "/app"
+  | "/app/tableau-de-bord"
   | "/app/demandes"
   | "/app/catalogue"
   | "/app/demandes-clients"
@@ -35,8 +35,14 @@ export type CheminEspace =
   | "/app/laboratoires"
   | "/app/carte"
   | "/app/rapports"
+  | "/app/facturation"
   | "/app/factures"
   | "/app/enquetes"
+  | "/app/stock"
+  | "/app/satisfaction"
+  | "/app/audit"
+  | "/app/exports"
+  | "/app/parametres"
   | "/app/profil";
 
 export type EntreeNavigation = {
@@ -115,8 +121,6 @@ export function EspaceShell({
 
   return (
     <div className="min-h-screen bg-surface-alt flex flex-col">
-      <Toaster />
-
       {/* Layout principal : sidebar + contenu */}
       <div className="flex flex-1 min-h-screen">
         {/* -------- Sidebar -------- */}

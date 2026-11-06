@@ -119,6 +119,8 @@ export interface DemandeLaboratoire {
 export interface ListerDemandesParams {
   q?: string | undefined;
   statut?: StatutDemande | undefined;
+  tri?: "reference" | "dateSoumission" | undefined;
+  direction?: "asc" | "desc" | undefined;
   page?: number | undefined;
   size?: number | undefined;
 }
@@ -160,6 +162,8 @@ export async function listerDemandesLaboratoire(
   if (params?.statut) {
     queryParams["statut"] = params.statut;
   }
+  if (params?.tri) queryParams["tri"] = params.tri;
+  if (params?.direction) queryParams["direction"] = params.direction;
   if (params?.page !== undefined && params.page >= 0) {
     queryParams["page"] = params.page;
   }

@@ -36,10 +36,12 @@ public class DemandeController {
     public ResponseEntity<ApiResponse<PageResponse<DemandeResumeDto>>> listerPourLaboratoire(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String statut,
+            @RequestParam(defaultValue = "dateSoumission") String tri,
+            @RequestParam(defaultValue = "desc") String direction,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.success(
-                demandeService.listerPourLaboratoire(q, statut, page, size)));
+                demandeService.listerPourLaboratoire(q, statut, tri, direction, page, size)));
     }
 
     @GetMapping("/laboratoire/indicateurs")
@@ -55,14 +57,14 @@ public class DemandeController {
     }
 
     @PostMapping("/laboratoire/{id}/accepter")
-    @PreAuthorize("hasAnyRole('RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasRole('RESPONSABLE')")
     public ResponseEntity<ApiResponse<DemandeLaboratoireDto>> accepter(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Demande acceptée", demandeService.accepter(id)));
     }
 
     @PostMapping("/laboratoire/{id}/refuser")
-    @PreAuthorize("hasAnyRole('RESPONSABLE','ADMINISTRATEUR')")
+    @PreAuthorize("hasRole('RESPONSABLE')")
     public ResponseEntity<ApiResponse<DemandeLaboratoireDto>> refuser(
             @PathVariable Long id,
             @Valid @RequestBody RefuserDemandeRequest request) {
@@ -95,7 +97,7 @@ public class DemandeController {
     }
 
     @PatchMapping("/{id}/statut")
-    @PreAuthorize("hasAuthority('PERM_DEMANDES_STATUT')")
+    @PreAuthorize("((#p1 == T(com.backend.modules.demande.entity.StatutDemande).ACCEPTEE or #p1 == T(com.backend.modules.demande.entity.StatutDemande).REFUSEE) ? hasRole('RESPONSABLE') : hasAuthority('PERM_DEMANDES_STATUT'))")
     public ResponseEntity<ApiResponse<DemandeDto>> changerStatut(
             @PathVariable Long id, @RequestParam StatutDemande statut) {
         return ResponseEntity.ok(ApiResponse.success("Statut mis à jour",

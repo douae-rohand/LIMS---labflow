@@ -54,6 +54,10 @@ public class GlobalExceptionHandler {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(ApiResponse.error("[" + ex.getCode() + "] " + ex.getMessage()));
         }
+        if ("PERMISSION_INCONNUE".equals(ex.getCode())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("[" + ex.getCode() + "] " + ex.getMessage()));
+        }
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(ApiResponse.error("[" + ex.getCode() + "] " + ex.getMessage()));
     }
