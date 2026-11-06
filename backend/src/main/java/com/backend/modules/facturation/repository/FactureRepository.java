@@ -1,6 +1,7 @@
 package com.backend.modules.facturation.repository;
 
 import com.backend.modules.facturation.entity.Facture;
+import com.backend.modules.facturation.dto.DemandeFacturableDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -51,13 +52,27 @@ public interface FactureRepository extends JpaRepository<Facture, Long> {
     boolean existsByDemandeId(Long demandeId);
 
     @Query("""
+            SELECT new com.backend.modules.facturation.dto.DemandeFacturableDto(
+                d.id, d.numero, d.titre, c.raisonSociale, d.statut, d.dateSoumission,
+                COALESCE(SUM(le.montant), 0))
+            FROM Demande d
+            LEFT JOIN d.client c
+            LEFT JOIN LigneEssai le ON le.demande = d
+            WHERE d.statut IN :statuts
+              AND NOT EXISTS (
+                  SELECT f.id FROM Facture f WHERE f.demande = d
+              )
+            GROUP BY d.id, d.numero, d.titre, c.raisonSociale, d.statut, d.dateSoumission
+            ORDER BY d.dateSoumission DESC
+            """)
+    List<DemandeFacturableDto> listerDemandesFacturables(
+            @Param("statuts") List<String> statuts, Pageable pageable);
+
+    @Query("""
             SELECT f FROM Facture f
             JOIN f.demande d
             LEFT JOIN d.client c
-            WHERE (:statutPayee IS NULL OR
-                   (CASE WHEN :statutPayee = true THEN f.statut = 'PAYEE' ELSE f.statut != 'PAYEE' END))
-              AND (:echeanceDepassee IS NULL OR
-                   (CASE WHEN :echeanceDepassee = true THEN f.dateEcheance < CURRENT_DATE ELSE true END))
+            WHERE (:statut IS NULL OR f.statut = :statut)
               AND (:debut IS NULL OR f.dateFacture >= :debut)
               AND (:fin IS NULL OR f.dateFacture <= :fin)
               AND (:clientId IS NULL OR c.id = :clientId)
@@ -66,8 +81,7 @@ public interface FactureRepository extends JpaRepository<Facture, Long> {
                    LOWER(d.numero) LIKE LOWER(CONCAT('%', :q, '%')) ESCAPE '!' OR
                    LOWER(c.raisonSociale) LIKE LOWER(CONCAT('%', :q, '%')) ESCAPE '!')
             """)
-    Page<Facture> rechercher(@Param("statutPayee") Boolean statutPayee,
-                             @Param("echeanceDepassee") Boolean echeanceDepassee,
+    Page<Facture> rechercher(@Param("statut") String statut,
                              @Param("debut") java.time.LocalDate debut,
                              @Param("fin") java.time.LocalDate fin,
                              @Param("clientId") Long clientId,

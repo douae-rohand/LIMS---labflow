@@ -1,8 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { EmployeCreationModal } from "@/components/employes/EmployeCreationModal";
+import { exigerPermission } from "@/features/shell/garde";
 
 export const Route = createFileRoute("/app/employes/nouveau")({
+  beforeLoad: () => {
+    exigerPermission("EMPLOYES_GERER");
+  },
   head: () => ({
     meta: [{ title: "Nouvel employé — LabFlow LIMS" }],
   }),

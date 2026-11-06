@@ -11,6 +11,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 
 @RestController
 @RequestMapping("/api/satisfaction")
@@ -21,23 +23,39 @@ public class SatisfactionAdminController {
     private final SatisfactionAdminService satisfactionAdminService;
 
     @GetMapping("/stats")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_SATISFACTION_CONSULTER')")
     public ResponseEntity<ApiResponse<SatisfactionStatsDto>> getStats(
-            @RequestParam(required = false) Instant debut,
-            @RequestParam(required = false) Instant fin) {
-        return ResponseEntity.ok(ApiResponse.success(satisfactionAdminService.getStats(debut, fin)));
+            @RequestParam(required = false) String debut,
+            @RequestParam(required = false) String fin) {
+        Instant debutInstant = null;
+        Instant finInstant = null;
+        if (debut != null) {
+            debutInstant = LocalDate.parse(debut).atStartOfDay(ZoneId.systemDefault()).toInstant();
+        }
+        if (fin != null) {
+            finInstant = LocalDate.parse(fin).atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant();
+        }
+        return ResponseEntity.ok(ApiResponse.success(satisfactionAdminService.getStats(debutInstant, finInstant)));
     }
 
     @GetMapping("/enquetes")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_SATISFACTION_CONSULTER')")
     public ResponseEntity<ApiResponse<Page<Object[]>>> listerEnquetes(
-            @RequestParam(required = false) Instant debut,
-            @RequestParam(required = false) Instant fin,
+            @RequestParam(required = false) String debut,
+            @RequestParam(required = false) String fin,
             @RequestParam(required = false) Integer note,
             @RequestParam(required = false) Boolean avecCommentaire,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(ApiResponse.success(satisfactionAdminService.listerEnquetesRepondues(debut, fin, note, avecCommentaire,
+        Instant debutInstant = null;
+        Instant finInstant = null;
+        if (debut != null) {
+            debutInstant = LocalDate.parse(debut).atStartOfDay(ZoneId.systemDefault()).toInstant();
+        }
+        if (fin != null) {
+            finInstant = LocalDate.parse(fin).atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant();
+        }
+        return ResponseEntity.ok(ApiResponse.success(satisfactionAdminService.listerEnquetesRepondues(debutInstant, finInstant, note, avecCommentaire,
                 org.springframework.data.domain.PageRequest.of(page, size))));
     }
 }

@@ -4,6 +4,7 @@ import com.backend.common.audit.JournalAudit;
 import com.backend.common.audit.JournalAuditRepository;
 import com.backend.common.audit.dto.AuditEntryDto;
 import com.backend.common.security.SecurityUtils;
+import com.backend.common.tenant.TenantExecutor;
 import com.backend.modules.plateforme.entity.Laboratoire;
 import com.backend.modules.plateforme.repository.LaboratoireRepository;
 import com.backend.modules.utilisateur.entity.Utilisateur;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +23,7 @@ public class AuditAdminService {
 
     private final JournalAuditRepository journalAuditRepository;
     private final LaboratoireRepository laboratoireRepository;
+    private final TenantExecutor tenantExecutor;
 
     private static final List<String> ACTIONS_AUTORISEES = List.of(
             "CREATION_ESSAI", "MODIFICATION_ESSAI", "DESACTIVATION_ESSAI", "SUPPRESSION_ESSAI",
@@ -32,41 +35,48 @@ public class AuditAdminService {
     );
 
     @Transactional(readOnly = true)
-    public Page<AuditEntryDto> lister(String action, String typeObjet, String acteur,
+    public Page<AuditEntryDto> lister(String action, String typeObjet, String acteur, String role,
                                           java.time.Instant debut, java.time.Instant fin,
                                           String q, org.springframework.data.domain.Pageable pageable) {
-        Long laboratoireId = SecurityUtils.principalCourant().getLaboratoireId();
-        if (laboratoireId == null) {
-            throw new RuntimeException("Administrateur sans laboratoire");
-        }
+        return tenantExecutor.inCentral(() -> {
+            Long laboratoireId = SecurityUtils.principalCourant().getLaboratoireId();
+            if (laboratoireId == null) {
+                throw new RuntimeException("Administrateur sans laboratoire");
+            }
 
-        Laboratoire laboratoire = laboratoireRepository.findById(laboratoireId)
-                .orElseThrow(() -> new RuntimeException("Laboratoire non trouvé"));
-        String nomSchema = laboratoire.getNomSchema();
-        String laboratoireIdStr = laboratoireId.toString();
+            Laboratoire laboratoire = laboratoireRepository.findById(laboratoireId)
+                    .orElseThrow(() -> new RuntimeException("Laboratoire non trouvé"));
+            String nomSchema = laboratoire.getNomSchema();
+            String laboratoireIdStr = laboratoireId.toString();
+            String roleFiltre = role == null || role.isBlank()
+                    ? null
+                    : role.trim().toUpperCase(Locale.ROOT);
 
-        Page<JournalAudit> page = journalAuditRepository.rechercher(
-                acteur, action, typeObjet, nomSchema, laboratoireIdStr, debut, fin, q, pageable);
+            Page<JournalAudit> page = journalAuditRepository.rechercher(
+                    acteur, roleFiltre, action, typeObjet, nomSchema, laboratoireIdStr, debut, fin, q, pageable);
 
-        return page.map(this::toDto);
+            return page.map(this::toDto);
+        });
     }
 
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<AuditEntryDto> toutesEntries(org.springframework.data.domain.Pageable pageable) {
-        Long laboratoireId = SecurityUtils.principalCourant().getLaboratoireId();
-        if (laboratoireId == null) {
-            throw new RuntimeException("Administrateur sans laboratoire");
-        }
+        return tenantExecutor.inCentral(() -> {
+            Long laboratoireId = SecurityUtils.principalCourant().getLaboratoireId();
+            if (laboratoireId == null) {
+                throw new RuntimeException("Administrateur sans laboratoire");
+            }
 
-        Laboratoire laboratoire = laboratoireRepository.findById(laboratoireId)
-                .orElseThrow(() -> new RuntimeException("Laboratoire non trouvé"));
-        String nomSchema = laboratoire.getNomSchema();
-        String laboratoireIdStr = laboratoireId.toString();
+            Laboratoire laboratoire = laboratoireRepository.findById(laboratoireId)
+                    .orElseThrow(() -> new RuntimeException("Laboratoire non trouvé"));
+            String nomSchema = laboratoire.getNomSchema();
+            String laboratoireIdStr = laboratoireId.toString();
 
-        Page<JournalAudit> page = journalAuditRepository.rechercher(
-                null, null, null, nomSchema, laboratoireIdStr, null, null, null, pageable);
+            Page<JournalAudit> page = journalAuditRepository.rechercher(
+                    null, null, null, null, nomSchema, laboratoireIdStr, null, null, null, pageable);
 
-        return page.map(this::toDto);
+            return page.map(this::toDto);
+        });
     }
 
     private AuditEntryDto toDto(JournalAudit audit) {

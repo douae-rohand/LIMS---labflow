@@ -39,8 +39,9 @@ public class JournalAuditConsultationService {
         }
         return journalAuditRepository.rechercher(
                         like(acteur),
-                        texte(action),
-                        null,
+                null,
+                texte(action),
+                null,
                         nomSchema,
                         null,
                         debut(du),
@@ -63,8 +64,9 @@ public class JournalAuditConsultationService {
         }
         Page<JournalAuditDto> page = journalAuditRepository.rechercher(
                         like(acteur),
-                        texte(action),
-                        null,
+                null,
+                texte(action),
+                null,
                         nomSchema,
                         null,
                         debut(du),

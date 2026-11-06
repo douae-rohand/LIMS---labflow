@@ -6,7 +6,6 @@ import com.backend.common.security.SecurityUtils;
 import com.backend.common.tenant.TenantContext;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
 import com.backend.modules.demande.entity.Demande;
-import com.backend.modules.demande.repository.DemandeRepository;
 import com.backend.modules.facturation.dto.FactureDto;
 import com.backend.modules.facturation.entity.Facture;
 import com.backend.modules.facturation.entity.Paiement;
@@ -19,9 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.UUID;
 
 @Service
@@ -30,7 +27,6 @@ public class FacturationService {
 
     private final FactureRepository factureRepository;
     private final PaiementRepository paiementRepository;
-    private final DemandeRepository demandeRepository;
 
     @Transactional(readOnly = true)
     public FactureDto trouverParId(Long id) {
@@ -53,25 +49,9 @@ public class FacturationService {
     }
 
     @Transactional
-    public FactureDto emettre(Long demandeId, Long clientIdIgnore, BigDecimal montantHt) {
-        Demande demande = demandeRepository.findById(demandeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", demandeId));
-        Facture facture = Facture.builder()
-                .numero("FAC-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-                .demande(demande)
-                .montantHt(montantHt)
-                .statut(StatutFacture.EMISE.name())
-                .dateFacture(LocalDate.now())
-                .dateEcheance(LocalDate.now().plusDays(30))
-                .build();
-        return toDto(factureRepository.save(facture), TenantContext.getCurrentTenant());
-    }
-
-    @Transactional
     public FactureDto enregistrerPaiement(Long id) {
         Facture facture = charger(id);
         facture.setStatut(StatutFacture.PAYEE.name());
-        factureRepository.save(facture);
         paiementRepository.save(Paiement.builder()
                 .code("PAY-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                 .datePaiement(Instant.now())

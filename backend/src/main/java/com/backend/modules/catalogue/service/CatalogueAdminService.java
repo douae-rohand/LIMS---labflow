@@ -4,7 +4,7 @@ import com.backend.common.audit.JournalAuditService;
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.common.security.SecurityUtils;
-import com.backend.common.tenant.TenantContext;
+import com.backend.common.tenant.TenantExecutor;
 import com.backend.modules.catalogue.dto.*;
 import com.backend.modules.domaine.entity.Domaine;
 import com.backend.modules.domaine.repository.DomaineRepository;
@@ -37,17 +37,22 @@ public class CatalogueAdminService {
     private final ExigenceEchantillonRepository exigenceEchantillonRepository;
     private final LigneEssaiRepository ligneEssaiRepository;
     private final PanierRepository panierRepository;
+    private final TenantExecutor tenantExecutor;
     private final JournalAuditService journalAuditService;
 
     @Transactional(readOnly = true)
     public Page<EssaiAdminDto> listerEssais(Long domaineId, Boolean actif, String q, Pageable pageable) {
         Page<Essai> page;
         if (domaineId != null) {
-            page = essaiRepository.findByDomaine_IdAndActif(domaineId, actif != null ? actif : true, pageable);
+            page = actif == null
+                    ? essaiRepository.findByDomaine_Id(domaineId, pageable)
+                    : essaiRepository.findByDomaine_IdAndActif(domaineId, actif, pageable);
         } else if (q != null && !q.isBlank()) {
             page = essaiRepository.rechercher(q, actif != null, actif != null ? actif : true, pageable);
+        } else if (actif == null) {
+            page = essaiRepository.findAll(pageable);
         } else {
-            page = essaiRepository.findByActif(actif != null ? actif : true, pageable);
+            page = essaiRepository.findByActif(actif, pageable);
         }
         return page.map(this::toEssaiAdminDto);
     }
@@ -115,8 +120,16 @@ public class CatalogueAdminService {
         Essai essai = essaiRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Essai", "id", id));
 
-        String valeurAvant = "{\"tarif\": " + essai.getTarif() + ", \"actif\": " + essai.getActif() + "}";
+        String valeurAvant = "{\"code\": \"" + essai.getCode() + "\", \"tarif\": " + essai.getTarif() + ", \"actif\": " + essai.getActif() + "}";
 
+        if (request.getCode() != null) {
+            String code = request.getCode().trim().toUpperCase();
+            if (essaiRepository.existsByCodeIgnoreCaseAndIdNot(code, id)) {
+                throw new BusinessRuleException("ESSAI_CODE_EXISTANT",
+                        "Un essai avec ce code existe déjà");
+            }
+            essai.setCode(code);
+        }
         if (request.getDesignation() != null) essai.setDesignation(request.getDesignation());
         if (request.getDescription() != null) essai.setDescription(request.getDescription());
         if (request.getMethode() != null) essai.setMethode(request.getMethode());
@@ -135,7 +148,7 @@ public class CatalogueAdminService {
 
         essai = essaiRepository.save(essai);
 
-        String valeurApres = "{\"tarif\": " + essai.getTarif() + ", \"actif\": " + essai.getActif() + "}";
+        String valeurApres = "{\"code\": \"" + essai.getCode() + "\", \"tarif\": " + essai.getTarif() + ", \"actif\": " + essai.getActif() + "}";
 
         journalAuditService.enregistrer("MODIFICATION_ESSAI", "Essai", essai.getId(),
                 SecurityUtils.principalCourant().getEmail(), valeurAvant, valeurApres, null);
@@ -190,7 +203,7 @@ public class CatalogueAdminService {
                     "Cet essai est utilisé dans des lignes d'essai et ne peut être supprimé");
         }
 
-        if (panierRepository.existsByEssaiId(id)) {
+        if (tenantExecutor.inCentral(() -> panierRepository.existsByEssaiId(id))) {
             throw new BusinessRuleException("ESSAI_UTILISE",
                     "Cet essai est utilisé dans des paniers et ne peut être supprimé");
         }
@@ -276,15 +289,26 @@ public class CatalogueAdminService {
     @Transactional(readOnly = true)
     public List<ExigenceEchantillonDto> listerExigences(Long essaiId) {
         return exigenceEchantillonRepository.findByEssai_Id(essaiId).stream()
-                .map(e -> ExigenceEchantillonDto.builder()
-                        .id(e.getId())
-                        .essaiId(e.getEssai().getId())
-                        .nature(e.getNature())
-                        .etatConservation(e.getEtatConservation())
-                        .quantiteMinimale(e.getQuantiteMinimale())
-                        .unite(e.getUnite())
-                        .build())
+                .map(this::toExigenceEchantillonDto)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExigenceEchantillonDto> suggestionsExigences() {
+        return exigenceEchantillonRepository.findAll().stream()
+                .map(this::toExigenceEchantillonDto)
+                .collect(Collectors.toList());
+    }
+
+    private ExigenceEchantillonDto toExigenceEchantillonDto(ExigenceEchantillon exigence) {
+        return ExigenceEchantillonDto.builder()
+                .id(exigence.getId())
+                .essaiId(exigence.getEssai().getId())
+                .nature(exigence.getNature())
+                .etatConservation(exigence.getEtatConservation())
+                .quantiteMinimale(exigence.getQuantiteMinimale())
+                .unite(exigence.getUnite())
+                .build();
     }
 
     @Transactional

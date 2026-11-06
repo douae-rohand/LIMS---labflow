@@ -41,9 +41,9 @@ export function EmployesFiltres({
   onReinitialiser,
 }: EmployesFiltresProps) {
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
       {/* Champ de recherche */}
-      <div className="relative min-w-56 flex-1">
+      <div className="relative min-w-0 flex-1">
         <Label htmlFor="employes-recherche" className="sr-only">
           Rechercher un employé
         </Label>
@@ -74,7 +74,7 @@ export function EmployesFiltres({
       </div>
 
       {/* Filtre Statut */}
-      <div className="relative">
+      <div className="relative w-full sm:w-52 lg:w-auto">
         <Label htmlFor="employes-statut" className="sr-only">
           Filtrer par statut
         </Label>
@@ -85,7 +85,7 @@ export function EmployesFiltres({
             const v = e.target.value as StatutEmploye | "";
             onStatutChange(v === "" ? undefined : v);
           }}
-          className="h-11 appearance-none rounded-2xl border border-input bg-card pl-4 pr-9 text-sm font-medium text-ink-900 transition-colors duration-200 focus:border-brand-600 focus:outline-none"
+          className="h-11 w-full appearance-none rounded-2xl border border-input bg-card pl-4 pr-9 text-sm font-medium text-ink-900 transition-colors duration-200 focus:border-brand-600 focus:outline-none lg:w-48"
         >
           <option value="">Tous les statuts</option>
           <option value="ACTIF">Actif</option>
@@ -99,7 +99,7 @@ export function EmployesFiltres({
       </div>
 
       {/* Filtre Fonction */}
-      <div className="relative">
+      <div className="relative w-full sm:w-56 lg:w-auto">
         <Label htmlFor="employes-role" className="sr-only">
           Filtrer par fonction
         </Label>
@@ -110,7 +110,7 @@ export function EmployesFiltres({
             const v = e.target.value as RoleEmploye | "";
             onRoleChange(v === "" ? undefined : v);
           }}
-          className="h-11 appearance-none rounded-2xl border border-input bg-card pl-4 pr-9 text-sm font-medium text-ink-900 transition-colors duration-200 focus:border-brand-600 focus:outline-none"
+          className="h-11 w-full appearance-none rounded-2xl border border-input bg-card pl-4 pr-9 text-sm font-medium text-ink-900 transition-colors duration-200 focus:border-brand-600 focus:outline-none lg:w-56"
         >
           <option value="">Toutes les fonctions</option>
           {(Object.entries(LIBELLE_ROLE) as [RoleEmploye, string][]).map(([k, l]) => (

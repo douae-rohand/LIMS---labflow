@@ -76,6 +76,8 @@ public interface EssaiRepository extends JpaRepository<Essai, Long> {
 
     Page<Essai> findByDomaine_IdAndActif(Long domaineId, Boolean actif, Pageable pageable);
 
+    Page<Essai> findByDomaine_Id(Long domaineId, Pageable pageable);
+
     long countByActifTrue();
 
     long countByDomaine_IdAndActifTrue(Long domaineId);

@@ -87,6 +87,15 @@ public interface EnqueteSatisfactionRepository extends JpaRepository<EnqueteSati
     @Query("SELECT YEAR(e.dateReponse), MONTH(e.dateReponse), AVG(e.noteGlobale) FROM EnqueteSatisfaction e WHERE e.dateReponse IS NOT NULL GROUP BY YEAR(e.dateReponse), MONTH(e.dateReponse) ORDER BY YEAR(e.dateReponse), MONTH(e.dateReponse)")
     List<Object[]> moyenneByMonth();
 
-    @Query("SELECT e.id, e.code, e.dateEnvoi, e.dateReponse, e.noteGlobale, e.noteDelai, e.noteClarte, e.noteRelation, e.commentaire FROM EnqueteSatisfaction e WHERE e.dateReponse IS NOT NULL ORDER BY e.dateReponse DESC")
+    @Query("""
+            SELECT e.id, e.code, e.dateEnvoi, e.dateReponse, e.noteGlobale,
+                   e.noteDelai, e.noteClarte, e.noteRelation, e.commentaire,
+                   d.numero, c.raisonSociale
+            FROM EnqueteSatisfaction e
+            JOIN e.demande d
+            LEFT JOIN d.client c
+            WHERE e.dateReponse IS NOT NULL
+            ORDER BY e.dateReponse DESC
+            """)
     org.springframework.data.domain.Page<Object[]> listerPourExport(org.springframework.data.domain.Pageable pageable);
 }

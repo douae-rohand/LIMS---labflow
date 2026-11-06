@@ -1,6 +1,7 @@
 package com.backend.modules.catalogue.dto;
 
 import jakarta.validation.constraints.*;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -48,5 +49,5 @@ public class CreerEssaiRequest {
     @NotNull(message = "Le domaine est obligatoire")
     private Long domaineId;
 
-    private List<CreerExigenceRequest> exigences;
+    private List<@Valid CreerExigenceRequest> exigences;
 }

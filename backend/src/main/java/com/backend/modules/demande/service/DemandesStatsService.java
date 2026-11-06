@@ -8,8 +8,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,8 +33,11 @@ public class DemandesStatsService {
             fin = LocalDate.now();
         }
 
+        Instant debutInstant = debut.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        Instant finInstant = fin.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant();
+
         Long total = demandeRepository.count();
-        Long nombreSurPeriode = demandeRepository.countByDateSoumissionBetween(debut, fin);
+        Long nombreSurPeriode = demandeRepository.countByDateSoumissionBetween(debutInstant, finInstant);
 
         Map<String, Long> parStatut = new HashMap<>();
         List<Object[]> counts = demandeRepository.countByStatut();

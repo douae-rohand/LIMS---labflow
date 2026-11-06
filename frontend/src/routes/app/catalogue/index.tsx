@@ -1,223 +1,99 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
-import { FlaskConical, Plus } from "lucide-react";
+import { FlaskConical } from "lucide-react";
 import { Container } from "@/components/layout/Container";
-import { Button } from "@/components/lab";
+import { Button, Select } from "@/components/lab";
 import { getSession } from "@/api/session";
-import { listerCatalogue, listerDomainesCatalogue, type AnalyseCatalogue, type StatutCatalogue } from "@/api/catalogue";
-import { CatalogueFiltres } from "@/components/catalogue/CatalogueFiltres";
-import { CatalogueTable } from "@/components/catalogue/CatalogueTable";
-import { CataloguePagination } from "@/components/catalogue/CataloguePagination";
-import { CatalogueFormulaire } from "@/components/catalogue/CatalogueFormulaire";
+import { EssaisTab } from "@/components/admin/catalogue/EssaisTab";
+import { DomainesTab } from "@/components/admin/catalogue/DomainesTab";
+import { ExigencesTab } from "@/components/admin/catalogue/ExigencesTab";
+import * as catalogueAdmin from "@/api/catalogueAdmin";
 
-export interface CatalogueSearch {
-  page: number;
-  q?: string | undefined;
-  statut: StatutCatalogue;
-}
-
-const STATUTS: StatutCatalogue[] = ["TOUS", "ACTIF", "INACTIF"];
-
-function parsePositiveInt(v: unknown, min: number, max: number): number | undefined {
-  if (v === undefined || v === null || v === "") return undefined;
-  const n = Number(v);
-  if (!Number.isFinite(n) || !Number.isInteger(n) || n < min || n > max) return undefined;
-  return n;
-}
+type Tab = "essais" | "domaines" | "exigences";
 
 export const Route = createFileRoute("/app/catalogue/")({
-  head: () => ({
-    meta: [{ title: "Catalogue des analyses — LabFlow LIMS" }],
-  }),
-  validateSearch: (search: Record<string, unknown>): CatalogueSearch => {
-    const page = parsePositiveInt(search["page"], 1, 10_000) ?? 1;
-    const q =
-      typeof search["q"] === "string" && search["q"].length <= 100 ? search["q"] : undefined;
-    const statut = STATUTS.includes(search["statut"] as StatutCatalogue)
-      ? (search["statut"] as StatutCatalogue)
-      : "TOUS";
-    return { page, q, statut };
+  head: () => ({ meta: [{ title: "Catalogue — LabFlow LIMS" }] }),
+  beforeLoad: () => {
+    const session = getSession();
+    if (!session) throw redirect({ to: "/login" });
+    if (!session.user.permissions.includes("CATALOGUE_GERER")) throw redirect({ to: "/app" });
   },
   component: CataloguePage,
 });
 
-const PAGE_SIZE = 10;
-const DEBOUNCE_MS = 400;
-const Q_MIN_LEN = 2;
-
 function CataloguePage() {
-  const navigate = useNavigate();
-  const search = Route.useSearch();
-  const laboratoire = getSession()?.user.tenantId;
-  const [inputValue, setInputValue] = useState(search.q ?? "");
-  const [edition, setEdition] = useState<AnalyseCatalogue | null | undefined>(undefined);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isDebouncing = useRef(false);
+  const [tab, setTab] = useState<Tab>("essais");
+  const [selectedEssaiId, setSelectedEssaiId] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (debounceTimer.current !== null) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => {
-      debounceTimer.current = null;
-      const trimmed = inputValue.trim();
-      const qUrl = trimmed.length >= Q_MIN_LEN ? trimmed : undefined;
-      if (qUrl !== search.q) {
-        isDebouncing.current = true;
-        void navigate({
-          to: "/app/catalogue",
-          search: (prev: CatalogueSearch) => ({ ...prev, q: qUrl, page: 1 }),
-          replace: true,
-        });
-      }
-    }, DEBOUNCE_MS);
-    return () => {
-      if (debounceTimer.current !== null) clearTimeout(debounceTimer.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputValue]);
-
-  useEffect(() => {
-    if (isDebouncing.current) {
-      isDebouncing.current = false;
-      return;
-    }
-    setInputValue(search.q ?? "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search.q]);
-
-  const page0 = search.page - 1;
-
-  const liste = useQuery({
-    queryKey: ["catalogue", { q: search.q, statut: search.statut, page: page0 }],
-    queryFn: () =>
-      listerCatalogue({
-        q: search.q,
-        statut: search.statut,
-        page: page0,
-        size: PAGE_SIZE,
-      }),
-    placeholderData: (prev) => prev,
-    staleTime: 15_000,
-    refetchOnWindowFocus: false,
+  const essais = useQuery({
+    queryKey: ["catalogue-admin-essais-select"],
+    queryFn: () => catalogueAdmin.listerEssais({ page: 0, size: 50, actif: true }),
   });
 
-  const domaines = useQuery({
-    queryKey: ["catalogue-domaines"],
-    queryFn: listerDomainesCatalogue,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-  });
+  const ouvrirOngletExigences = () => {
+    setSelectedEssaiId((current) => current ?? essais.data?.content[0]?.id ?? null);
+    setTab("exigences");
+  };
 
   useEffect(() => {
-    if (
-      liste.data !== undefined &&
-      !liste.isFetching &&
-      liste.data.totalPages > 0 &&
-      search.page > liste.data.totalPages
-    ) {
-      void navigate({
-        to: "/app/catalogue",
-        search: (prev: CatalogueSearch) => ({ ...prev, page: liste.data!.totalPages }),
-        replace: true,
-      });
+    if (tab === "exigences" && selectedEssaiId === null && essais.data?.content[0]) {
+      setSelectedEssaiId(essais.data.content[0].id);
+    } else if (selectedEssaiId !== null && essais.data && !essais.data.content.some((essai) => essai.id === selectedEssaiId)) {
+      setSelectedEssaiId(essais.data.content[0]?.id ?? null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liste.data, liste.isFetching, search.page]);
-
-  const filtresActifs = (search.q !== undefined && search.q.length > 0) || search.statut !== "TOUS";
-
-  function aller(partiel: Partial<CatalogueSearch>) {
-    void navigate({
-      to: "/app/catalogue",
-      search: (prev: CatalogueSearch) => ({ ...prev, ...partiel }),
-      replace: true,
-    });
-  }
-
-  function reinitialiser() {
-    setInputValue("");
-    if (debounceTimer.current !== null) {
-      clearTimeout(debounceTimer.current);
-      debounceTimer.current = null;
-    }
-    aller({ q: undefined, statut: "TOUS", page: 1 });
-  }
+  }, [essais.data, selectedEssaiId, tab]);
 
   return (
     <Container className="py-8">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-900/10 text-brand-900">
-            <FlaskConical className="size-5" aria-hidden="true" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-ink-900">Catalogue des analyses</h1>
-            <p className="text-sm text-muted-foreground">
-              {laboratoire
-                ? `Analyses de votre laboratoire (${laboratoire}) uniquement.`
-                : "Analyses de votre laboratoire uniquement."}
-              {liste.data !== undefined
-                ? ` ${liste.data.totalElements} analyse${liste.data.totalElements !== 1 ? "s" : ""}.`
-                : ""}
-            </p>
-          </div>
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex size-10 items-center justify-center rounded-lg bg-brand-900/10 text-brand-900">
+          <FlaskConical className="size-5" aria-hidden="true" />
         </div>
-        <Button
-          type="button"
-          icon={<Plus className="size-4" aria-hidden="true" />}
-          iconPosition="left"
-          onClick={() => setEdition(null)}
-        >
-          Nouvelle analyse
+        <div>
+          <h1 className="text-2xl font-bold text-ink-900">Catalogue</h1>
+          <p className="text-sm text-muted-foreground">Gestion des essais, domaines et exigences</p>
+        </div>
+      </div>
+
+      <div className="flex gap-2 mb-6">
+        <Button variant={tab === "essais" ? "primary" : "ghost"} size="sm" onClick={() => setTab("essais")}>
+          Essais
+        </Button>
+        <Button variant={tab === "domaines" ? "primary" : "ghost"} size="sm" onClick={() => setTab("domaines")}>
+          Domaines
+        </Button>
+        <Button variant={tab === "exigences" ? "primary" : "ghost"} size="sm" onClick={ouvrirOngletExigences}>
+          Exigences
         </Button>
       </div>
 
-      <div className="mb-4">
-        <CatalogueFiltres
-          inputValue={inputValue}
-          statut={search.statut}
-          filtresActifs={filtresActifs}
-          onInputChange={setInputValue}
-          onInputClear={() => {
-            setInputValue("");
-            if (search.q !== undefined) aller({ q: undefined, page: 1 });
-          }}
-          onStatutChange={(statut) => aller({ statut, page: 1 })}
-          onReinitialiser={reinitialiser}
-        />
-      </div>
-
-      <CatalogueTable
-        analyses={liste.data?.content}
-        isLoading={liste.isLoading}
-        isError={liste.isError}
-        error={liste.error}
-        filtresActifs={filtresActifs}
-        onModifier={(analyse) => setEdition(analyse)}
-        onReinitialiser={reinitialiser}
-        onReessayer={() => void liste.refetch()}
-      />
-
-      {liste.data !== undefined && liste.data.totalElements > 0 && (
-        <CataloguePagination
-          data={liste.data}
-          onPrecedent={() => {
-            if (search.page > 1) aller({ page: search.page - 1 });
-          }}
-          onSuivant={() => {
-            if (liste.data && search.page < liste.data.totalPages) aller({ page: search.page + 1 });
-          }}
-        />
+      {tab === "essais" && <EssaisTab />}
+      {tab === "domaines" && <DomainesTab />}
+      {tab === "exigences" && (
+        selectedEssaiId ? (
+          <>
+            <label htmlFor="exigences-essai" className="mb-3 block max-w-md text-sm font-medium">
+              Essai
+              <Select
+                id="exigences-essai"
+                className="mt-1"
+                value={selectedEssaiId}
+                onChange={(event) => setSelectedEssaiId(Number(event.target.value))}
+              >
+                {essais.data?.content.map((essai) => (
+                  <option key={essai.id} value={essai.id}>{essai.code} — {essai.designation}</option>
+                ))}
+              </Select>
+            </label>
+            <ExigencesTab essaiId={selectedEssaiId} />
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {essais.isLoading ? "Chargement des essais..." : essais.isError ? "Impossible de charger les essais." : "Créez un essai pour gérer ses exigences."}
+          </p>
+        )
       )}
-
-      <CatalogueFormulaire
-        open={edition !== undefined}
-        analyse={edition ?? null}
-        domaines={domaines.data ?? []}
-        onOpenChange={(open) => {
-          if (!open) setEdition(undefined);
-        }}
-      />
     </Container>
   );
 }

@@ -150,10 +150,17 @@ export function useSession(): { session: Session | null; status: SessionStatus }
   );
 
   useEffect(() => {
-    // Synchroniser si l'état a changé entre le rendu initial et le montage
-    setState({ session: _session, status: _status });
-    const unsub = subscribeSession((s) => {
-      setState({ session: s, status: _status });
+    const syncState = () => {
+      setState((prev) => {
+        const next = { session: _session, status: _status };
+        return prev.session === next.session && prev.status === next.status ? prev : next;
+      });
+    };
+
+    syncState();
+
+    const unsub = subscribeSession(() => {
+      syncState();
     });
     return unsub;
   }, []);

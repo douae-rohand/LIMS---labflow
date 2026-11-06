@@ -13,6 +13,9 @@ import com.backend.modules.auth.service.ActivationCompteService;
 import com.backend.modules.client.service.ClientService;
 import com.backend.modules.plateforme.entity.Laboratoire;
 import com.backend.modules.plateforme.repository.LaboratoireRepository;
+import com.backend.modules.plateforme.dto.PermissionsCompteDto;
+import com.backend.modules.plateforme.dto.RemplacerEcartsRequest;
+import com.backend.modules.plateforme.service.PermissionCompteService;
 import com.backend.modules.utilisateur.dto.CreerUtilisateurRequest;
 import com.backend.modules.utilisateur.dto.ModifierUtilisateurRequest;
 import com.backend.modules.utilisateur.dto.UtilisateurDto;
@@ -59,6 +62,7 @@ public class UtilisateurService {
     private final com.backend.integration.sendgrid.EmailService emailService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final com.backend.modules.utilisateur.repository.UtilisateurPermissionRepository utilisateurPermissionRepository;
+    private final PermissionCompteService permissionCompteService;
 
     /** Rôles que peut créer un ADMINISTRATEUR (les siens exclus). */
     private static final Set<RoleUtilisateur> ROLES_CREABLES_PAR_ADMIN = Set.of(
@@ -232,6 +236,33 @@ public class UtilisateurService {
         return tenantExecutor.inCentral(() -> {
             Utilisateur u = chargerPourAppelant(id, false);
             return versEmployeDetailDto(u);
+        });
+    }
+
+    @Transactional(readOnly = true)
+    public PermissionsCompteDto lirePermissionsEmploye(Long id) {
+        return tenantExecutor.inCentral(() -> {
+            UtilisateurPrincipal appelant = principalConnecte();
+            Utilisateur cible = chargerCiblePermissions(id, appelant);
+            return permissionCompteService.lirePourEmploye(cible);
+        });
+    }
+
+    @Transactional
+    public PermissionsCompteDto remplacerPermissionsEmploye(Long id, RemplacerEcartsRequest request) {
+        return tenantExecutor.inCentral(() -> {
+            UtilisateurPrincipal appelant = principalConnecte();
+            Utilisateur cible = chargerCiblePermissions(id, appelant);
+            return permissionCompteService.remplacerPourEmploye(cible, request, appelant);
+        });
+    }
+
+    @Transactional
+    public PermissionsCompteDto retablirPermissionsEmploye(Long id) {
+        return tenantExecutor.inCentral(() -> {
+            UtilisateurPrincipal appelant = principalConnecte();
+            Utilisateur cible = chargerCiblePermissions(id, appelant);
+            return permissionCompteService.retablirPourEmploye(cible, appelant);
         });
     }
 
@@ -807,6 +838,17 @@ public class UtilisateurService {
             return utilisateur;
         }
         throw new ResourceNotFoundException("Utilisateur", "id", id);
+    }
+
+    private Utilisateur chargerCiblePermissions(Long id, UtilisateurPrincipal appelant) {
+        Utilisateur cible = chargerPourAppelant(id, false);
+        String role = cible.getRole() == null ? null : cible.getRole().getCode();
+        if ((appelant.getId() != null && appelant.getId().equals(cible.getId()))
+                || role == null
+                || !Set.of("RESPONSABLE", "TECHNICIEN", "ACCUEIL").contains(role)) {
+            throw new ResourceNotFoundException("Utilisateur", "id", id);
+        }
+        return cible;
     }
 
     private static void verifierPorteeGerer(UtilisateurPrincipal principal, Utilisateur cible) {

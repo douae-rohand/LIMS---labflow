@@ -180,6 +180,17 @@ public class AuthService {
         return null;
     }
 
+    @Transactional
+    public void desactiverTwoFactor(DisableTwoFactorRequest request, UtilisateurPrincipal principal) {
+        if (principal == null || principal.getId() == null) {
+            throw new BusinessRuleException("AUTH_REQUIRED",
+                    "Authentification d'accès requise pour désactiver la double authentification.");
+        }
+        Utilisateur utilisateur = utilisateurRepository.findById(principal.getId())
+                .orElseThrow(() -> new BusinessRuleException("USER_NOT_FOUND", "Utilisateur introuvable"));
+        twoFactorService.desactiverTotp(utilisateur, request.motDePasse(), request.code());
+    }
+
     private Utilisateur getUtilisateurFromRequestOrPrincipal(String twoFactorToken, UtilisateurPrincipal principal) {
         if (twoFactorToken != null && !twoFactorToken.isBlank()) {
             if (jwtTokenProvider.validateToken(twoFactorToken, "access")) {

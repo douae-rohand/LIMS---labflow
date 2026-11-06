@@ -97,7 +97,7 @@ public class StockAdminService {
 
         if (lotRepository.existsByProduitId(id)) {
             throw new BusinessRuleException("PRODUIT_AVEC_LOTS",
-                    "Ce produit a des lots et ne peut être supprimé (désactivez-le à la place)");
+                    "Ce produit possède des lots et ne peut pas être supprimé.");
         }
 
         produitRepository.delete(produit);
@@ -183,7 +183,7 @@ public class StockAdminService {
 
         return Map.of(
                 "sousSeuil", sousSeuil.stream().map(this::toProduitDto).collect(Collectors.toList()),
-                "enRupture", enRupture.stream().map(this::toProduitDto).collect(Collectors.toList()),
+                "rupture", enRupture.stream().map(this::toProduitDto).collect(Collectors.toList()),
                 "perimes", perimes.stream().map(this::toLotDto).collect(Collectors.toList()),
                 "peremptionProche", peremptionProcheLots.stream().map(this::toLotDto).collect(Collectors.toList())
         );

@@ -20,13 +20,13 @@ public class LaboratoireParametresController {
     private final LaboratoireParametresService laboratoireParametresService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_PARAMETRES_LABORATOIRE_GERER')")
     public ResponseEntity<ApiResponse<LaboratoireParametresDto>> getParametres() {
         return ResponseEntity.ok(ApiResponse.success(laboratoireParametresService.getParametres()));
     }
 
     @PatchMapping
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_PARAMETRES_LABORATOIRE_GERER')")
     public ResponseEntity<ApiResponse<LaboratoireParametresDto>> modifierParametres(
             @Valid @RequestBody ModifierLaboratoireParametresRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Paramètres modifiés", laboratoireParametresService.modifierParametres(request)));

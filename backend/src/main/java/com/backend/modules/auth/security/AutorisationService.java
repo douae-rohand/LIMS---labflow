@@ -23,8 +23,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Défauts de rôle chargés une fois au démarrage. Les écarts d'un utilisateur
- * sont relus à chaque appel, sans cache.
+ * Les défauts de rôle et les écarts individuels sont relus à chaque appel.
  */
 @Service
 @RequiredArgsConstructor
@@ -40,7 +39,10 @@ public class AutorisationService {
             "PLANIFICATION_GERER", "PLANIFICATION_STATUT",
             "STOCK_CONSULTER", "STOCK_GERER",
             "CONFORMITE_CONSULTER", "CONFORMITE_DECLARER", "CONFORMITE_GERER",
-            "IA_GERER", "SATISFACTION_CONSULTER", "NOTIFICATIONS_GERER");
+            "IA_GERER", "SATISFACTION_CONSULTER", "NOTIFICATIONS_GERER",
+            "FACTURATION_PAYER", "PARAMETRES_LABORATOIRE_GERER", "AUDIT_CONSULTER",
+            "INDICATEURS_CONSULTER", "EXPORT_DEMANDES", "EXPORT_ENQUETES",
+            "EXPORT_FACTURES", "EXPORT_PRODUITS", "EXPORT_EMPLOYES", "EXPORT_AUDIT");
 
     private static final Map<String, String> EXIGE = Map.of(
             "EMPLOYES_GERER", "EMPLOYES_CONSULTER",
@@ -55,18 +57,11 @@ public class AutorisationService {
     private final UtilisateurPermissionRepository utilisateurPermissionRepository;
     private final PermissionRepository permissionRepository;
 
-    private final Map<String, Set<String>> defautsParRole = new HashMap<>();
     private final Map<String, String> libelles = new HashMap<>();
 
     @EventListener(ApplicationReadyEvent.class)
     @Transactional(readOnly = true)
-    public void chargerDefauts() {
-        Map<String, Set<String>> construit = new HashMap<>();
-        for (Object[] ligne : rolePermissionRepository.listerCodesParRole()) {
-            construit.computeIfAbsent((String) ligne[0], cle -> new HashSet<>()).add((String) ligne[1]);
-        }
-        defautsParRole.clear();
-        construit.forEach((role, codes) -> defautsParRole.put(role, Set.copyOf(codes)));
+    public void verifierCatalogue() {
         libelles.clear();
         for (Permission permission : permissionRepository.findAll()) {
             libelles.put(permission.getCode(), permission.getLibelle());
@@ -81,7 +76,7 @@ public class AutorisationService {
             throw new IllegalStateException(
                     "Catalogue de permissions incomplet. Permissions absentes : "
                             + String.join(", ", manquantes)
-                            + ". Appliquez la migration V35 avant de démarrer.");
+                            + ". Appliquez la migration V37 avant de démarrer.");
         }
     }
 
@@ -94,7 +89,7 @@ public class AutorisationService {
         if (role == null || !personnalisable(RoleUtilisateur.valueOf(role))) {
             return Set.of();
         }
-        Set<String> effectives = new HashSet<>(defautsParRole.getOrDefault(role, Set.of()));
+        Set<String> effectives = new HashSet<>(rolePermissionRepository.listerCodesParRole(role));
         for (Object[] ecart : utilisateurPermissionRepository.listerEcarts(utilisateurId)) {
             String code = (String) ecart[1];
             if (ecart[0] == EffetPermission.AJOUT) {
@@ -106,10 +101,12 @@ public class AutorisationService {
         return Set.copyOf(effectives);
     }
 
+    @Transactional(readOnly = true)
     public Set<String> defauts(String role) {
-        return defautsParRole.getOrDefault(role, Set.of());
+        return Set.copyOf(rolePermissionRepository.listerCodesParRole(role));
     }
 
+    @Transactional(readOnly = true)
     public List<Permission> catalogue() {
         return permissionRepository.findAll();
     }

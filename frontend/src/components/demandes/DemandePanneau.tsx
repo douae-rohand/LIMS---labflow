@@ -1,7 +1,18 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertCircle, FileText, RefreshCw } from "lucide-react";
+import {
+  AlertCircle,
+  ClipboardList,
+  FileText,
+  FlaskConical,
+  RefreshCw,
+  TestTube,
+  UserRound,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+import type { ReactNode } from "react";
 import {
   Sheet,
   SheetContent,
@@ -21,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button, Skeleton } from "@/components/lab";
 import { ApiError } from "@/api/axios";
+import { getSession } from "@/api/session";
 import {
   accepterDemande,
   detailDemandeLaboratoire,
@@ -71,33 +83,65 @@ function formatTaille(octets: number | null): string {
   return `${(octets / (1024 * 1024)).toFixed(1)} Mo`;
 }
 
-function messageStatut(statut: StatutDemande): string | null {
-  switch (statut) {
-    case "NOUVEAU":
-      return null;
-    case "EN_VALIDATION":
-      return "Cette demande est en validation.";
-    case "REFUSEE":
-      return "Cette demande a été refusée.";
-    case "ACCEPTEE":
-      return "Cette demande a été acceptée.";
-    case "EN_COURS":
-      return "Cette demande est déjà en cours de traitement.";
-    case "TERMINEE":
-      return "Cette demande est terminée.";
-    case "ANNULEE":
-      return "Cette demande a été annulée.";
-    default:
-      return "Cette demande ne peut plus être acceptée ou refusée.";
-  }
-}
-
 function Ligne({ label, valeur }: { label: string; valeur: string | null | undefined }) {
   return (
     <div>
       <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 text-sm text-ink-900">{valeur && valeur.trim().length > 0 ? valeur : "—"}</dd>
     </div>
+  );
+}
+
+const TONS_SECTION = {
+  brand: {
+    carte: "border-brand-900/15 bg-mint-200/20",
+    icone: "bg-mint-200 text-brand-900",
+  },
+  info: {
+    carte: "border-sky-200 bg-sky-50/70",
+    icone: "bg-sky-500/10 text-sky-700",
+  },
+  warning: {
+    carte: "border-amber-200 bg-amber-50/70",
+    icone: "bg-amber-500/10 text-amber-700",
+  },
+  success: {
+    carte: "border-emerald-200 bg-emerald-50/70",
+    icone: "bg-emerald-500/10 text-emerald-700",
+  },
+  violet: {
+    carte: "border-violet-200 bg-violet-50/70",
+    icone: "bg-violet-500/10 text-violet-700",
+  },
+  rose: {
+    carte: "border-rose-200 bg-rose-50/70",
+    icone: "bg-rose-500/10 text-rose-700",
+  },
+} as const;
+
+function SectionDetail({
+  titre,
+  icone: Icone,
+  ton,
+  children,
+}: {
+  titre: string;
+  icone: LucideIcon;
+  ton: keyof typeof TONS_SECTION;
+  children: ReactNode;
+}) {
+  const couleurs = TONS_SECTION[ton];
+
+  return (
+    <section className={`space-y-4 rounded-2xl border p-4 shadow-sm ${couleurs.carte}`}>
+      <div className="flex items-center gap-3">
+        <span className={`flex size-9 items-center justify-center rounded-xl ${couleurs.icone}`}>
+          <Icone className="size-4" aria-hidden="true" />
+        </span>
+        <h3 className="text-sm font-bold text-ink-900">{titre}</h3>
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -108,6 +152,7 @@ interface DemandePanneauProps {
 
 export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
   const estOuvert = demandeId !== undefined;
+  const peutDecider = getSession()?.user.role === "RESPONSABLE";
   const queryClient = useQueryClient();
   const [confirmationOuverte, setConfirmationOuverte] = useState(false);
   const [refusOuvert, setRefusOuvert] = useState(false);
@@ -157,7 +202,6 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
   });
 
   const demande = query.data;
-  const message = demande ? messageStatut(demande.statut) : null;
 
   return (
     <>
@@ -207,10 +251,9 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
                   <StatutDemandeBadge statut={demande.statut} />
                 </div>
 
-                <section className="space-y-3">
-                  <h3 className="text-sm font-bold text-ink-900">Demande</h3>
+                <SectionDetail titre="Demande" icone={ClipboardList} ton="brand">
                   <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <Ligne label="Objet" valeur={demande.objet} />
+                    <Ligne label="Intitulé" valeur={demande.objet} />
                     <Ligne label="Soumise le" valeur={formatDateTime(demande.dateSoumission)} />
                     <div className="sm:col-span-2">
                       <Ligne label="Objectif" valeur={demande.objectif} />
@@ -225,10 +268,9 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
                       </div>
                     )}
                   </dl>
-                </section>
+                </SectionDetail>
 
-                <section className="space-y-3">
-                  <h3 className="text-sm font-bold text-ink-900">Client</h3>
+                <SectionDetail titre="Client" icone={Users} ton="info">
                   {demande.client ? (
                     <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <Ligne label="Raison sociale" valeur={demande.client.raisonSociale} />
@@ -244,11 +286,10 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
                   ) : (
                     <p className="text-sm text-muted-foreground">Aucun client n'est rattaché à cette demande.</p>
                   )}
-                </section>
+                </SectionDetail>
 
                 {demande.patient && (
-                  <section className="space-y-3">
-                    <h3 className="text-sm font-bold text-ink-900">Patient</h3>
+                  <SectionDetail titre="Patient" icone={UserRound} ton="warning">
                     <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <Ligne label="Nom" valeur={demande.patient.nomComplet} />
                       <Ligne label="Code" valeur={demande.patient.code} />
@@ -259,11 +300,10 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
                       <Ligne label="Téléphone" valeur={demande.patient.telephone} />
                       <Ligne label="E-mail" valeur={demande.patient.email} />
                     </dl>
-                  </section>
+                  </SectionDetail>
                 )}
 
-                <section className="space-y-3">
-                  <h3 className="text-sm font-bold text-ink-900">Analyses demandées</h3>
+                <SectionDetail titre="Analyses demandées" icone={FlaskConical} ton="success">
                   {demande.analyses.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Aucune analyse n'est associée à cette demande.</p>
                   ) : (
@@ -283,11 +323,10 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
                       ))}
                     </ul>
                   )}
-                </section>
+                </SectionDetail>
 
                 {demande.echantillons.length > 0 && (
-                  <section className="space-y-3">
-                    <h3 className="text-sm font-bold text-ink-900">Échantillons</h3>
+                  <SectionDetail titre="Échantillons" icone={TestTube} ton="violet">
                     <ul className="space-y-2">
                       {demande.echantillons.map((echantillon) => (
                         <li key={echantillon.id} className="rounded-2xl border border-brand-900/10 px-4 py-3 text-sm">
@@ -298,11 +337,10 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
                         </li>
                       ))}
                     </ul>
-                  </section>
+                  </SectionDetail>
                 )}
 
-                <section className="space-y-3">
-                  <h3 className="text-sm font-bold text-ink-900">Documents</h3>
+                <SectionDetail titre="Documents" icone={FileText} ton="rose">
                   {demande.documents.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Aucun document n'est joint à cette demande.</p>
                   ) : (
@@ -324,11 +362,8 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
                       ))}
                     </ul>
                   )}
-                </section>
+                </SectionDetail>
 
-                {message && (
-                  <p className="rounded-2xl bg-surface-card px-4 py-3 text-sm text-ink-900">{message}</p>
-                )}
                 {erreurAction && !refusOuvert && !confirmationOuverte && (
                   <p className="text-sm text-red-600">{erreurAction}</p>
                 )}
@@ -336,7 +371,7 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
             )}
           </div>
 
-          {demande?.decisionPossible && (
+          {demande?.decisionPossible && peutDecider && (
             <div className="sticky bottom-0 mt-6 flex flex-col gap-2 border-t border-brand-900/10 bg-card py-4 sm:flex-row sm:justify-end">
               <Button
                 type="button"

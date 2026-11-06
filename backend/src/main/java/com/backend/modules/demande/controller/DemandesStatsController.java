@@ -20,7 +20,7 @@ public class DemandesStatsController {
     private final DemandesStatsService demandesStatsService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_INDICATEURS_CONSULTER')")
     public ResponseEntity<ApiResponse<DemandesStatsDto>> getStats(
             @RequestParam(required = false) LocalDate debut,
             @RequestParam(required = false) LocalDate fin) {

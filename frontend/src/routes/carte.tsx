@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { PageCarte } from "@/components/laboratoires/PageCarte";
 import { PublicLayout } from "@/layouts/PublicLayout";
-import { redirectionClientConnecte } from "@/lib/redirect";
+import { getSession } from "@/api/session";
 
 export const Route = createFileRoute("/carte")({
   head: () => ({
@@ -15,9 +15,14 @@ export const Route = createFileRoute("/carte")({
       { property: "og:type", content: "website" },
     ],
   }),
-  beforeLoad: ({ location }) => {
-    const cible = redirectionClientConnecte(location.href);
-    if (cible !== null) throw redirect({ href: cible });
+  beforeLoad: () => {
+    const session = getSession();
+    if (session && session.user.role === "CLIENT") {
+      if (session.user.mustChangePassword) {
+        throw redirect({ to: "/changer-mot-de-passe" });
+      }
+      throw redirect({ to: "/app/carte" });
+    }
   },
   component: CartePage,
 });

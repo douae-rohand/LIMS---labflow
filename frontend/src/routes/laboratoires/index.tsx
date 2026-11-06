@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { PageAnnuaire } from "@/components/laboratoires/PageAnnuaire";
 import { PublicLayout } from "@/layouts/PublicLayout";
-import { redirectionClientConnecte } from "@/lib/redirect";
+import { getSession } from "@/api/session";
 
 export const Route = createFileRoute("/laboratoires/")({
   head: () => ({
@@ -15,9 +15,14 @@ export const Route = createFileRoute("/laboratoires/")({
       { property: "og:type", content: "website" },
     ],
   }),
-  beforeLoad: ({ location }) => {
-    const cible = redirectionClientConnecte(location.href);
-    if (cible !== null) throw redirect({ href: cible });
+  beforeLoad: () => {
+    const session = getSession();
+    if (session && session.user.role === "CLIENT") {
+      if (session.user.mustChangePassword) {
+        throw redirect({ to: "/changer-mot-de-passe" });
+      }
+      throw redirect({ to: "/app/laboratoires" });
+    }
   },
   component: LaboratoiresPage,
 });

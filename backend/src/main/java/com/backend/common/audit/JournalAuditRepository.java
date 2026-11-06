@@ -28,7 +28,10 @@ public interface JournalAuditRepository extends JpaRepository<JournalAudit, Long
             value = """
                     SELECT j FROM JournalAudit j
                     JOIN FETCH j.utilisateur u
-                    WHERE (:acteur IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :acteur, '%')) ESCAPE '\\')
+                    JOIN u.role r
+                    WHERE (:acteur IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :acteur, '%')) ESCAPE '\\'
+                           OR LOWER(CONCAT(u.prenom, ' ', u.nom)) LIKE LOWER(CONCAT('%', :acteur, '%')) ESCAPE '\\')
+                      AND (:role IS NULL OR r.code = :role)
                       AND (:action IS NULL OR j.action = :action)
                       AND (:typeObjet IS NULL OR j.objet LIKE CONCAT(:typeObjet, '#%'))
                       AND (:laboratoireId IS NULL OR j.objet LIKE CONCAT(:nomSchema, '/%') OR j.laboratoire.id = :laboratoireId)
@@ -39,7 +42,10 @@ public interface JournalAuditRepository extends JpaRepository<JournalAudit, Long
             countQuery = """
                     SELECT COUNT(j) FROM JournalAudit j
                     JOIN j.utilisateur u
-                    WHERE (:acteur IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :acteur, '%')) ESCAPE '\\')
+                    JOIN u.role r
+                    WHERE (:acteur IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :acteur, '%')) ESCAPE '\\'
+                           OR LOWER(CONCAT(u.prenom, ' ', u.nom)) LIKE LOWER(CONCAT('%', :acteur, '%')) ESCAPE '\\')
+                      AND (:role IS NULL OR r.code = :role)
                       AND (:action IS NULL OR j.action = :action)
                       AND (:typeObjet IS NULL OR j.objet LIKE CONCAT(:typeObjet, '#%'))
                       AND (:laboratoireId IS NULL OR j.objet LIKE CONCAT(:nomSchema, '/%') OR j.laboratoire.id = :laboratoireId)
@@ -49,6 +55,7 @@ public interface JournalAuditRepository extends JpaRepository<JournalAudit, Long
                     """)
     Page<JournalAudit> rechercher(
             @Param("acteur") String acteur,
+            @Param("role") String role,
             @Param("action") String action,
             @Param("typeObjet") String typeObjet,
             @Param("nomSchema") String nomSchema,

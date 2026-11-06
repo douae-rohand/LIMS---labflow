@@ -31,4 +31,8 @@ public class Permission {
 
     @Column(length = 150)
     private String libelle;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean deleguable = true;
 }

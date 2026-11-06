@@ -14,6 +14,10 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ModifierEssaiRequest {
+    @Size(max = 50, message = "Le code ne peut pas dépasser 50 caractères")
+    @Pattern(regexp = "^[A-Z0-9_-]+$", message = "Le code doit être en majuscules, alphanumérique avec tirets et underscores")
+    private String code;
+
     @Size(max = 255, message = "La désignation ne peut pas dépasser 255 caractères")
     private String designation;
 

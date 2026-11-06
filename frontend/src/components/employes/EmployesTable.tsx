@@ -81,7 +81,7 @@ export function EmployesTable({
   onReessayer,
 }: EmployesTableProps) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-brand-900/10">
+    <div className="overflow-x-auto rounded-2xl border border-brand-900/10 bg-card shadow-sm">
       <table className="w-full min-w-[700px] text-left text-sm">
         <thead className="bg-surface-card text-brand-900">
           <tr>
@@ -92,8 +92,8 @@ export function EmployesTable({
                 aria-sort={ariaSort(col.triKey, tri, direction)}
                 className={
                   col.triKey
-                    ? "cursor-pointer select-none px-4 py-3 font-semibold hover:bg-brand-900/5"
-                    : "px-4 py-3 font-semibold"
+                    ? "cursor-pointer select-none px-5 py-3.5 font-semibold hover:bg-brand-900/5"
+                    : "px-5 py-3.5 font-semibold"
                 }
                 onClick={col.triKey ? () => onTriChange(col.triKey!) : undefined}
               >
@@ -114,7 +114,7 @@ export function EmployesTable({
               {Array.from({ length: 10 }).map((_, i) => (
                 <tr key={i} className="border-t border-brand-900/10">
                   {COLONNES.map((col) => (
-                    <td key={col.label} className="px-4 py-3">
+                    <td key={col.label} className="px-5 py-3">
                       <Skeleton className="h-4 w-full" />
                     </td>
                   ))}
@@ -156,10 +156,10 @@ export function EmployesTable({
                         : "hover:bg-surface-card/60"
                     } ${onSelectEmploye ? "cursor-pointer" : ""}`}
                   >
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                    <td className="px-5 py-3.5 font-mono text-xs text-muted-foreground">
                       {emp.matricule}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-3.5">
                       {onSelectEmploye ? (
                         <button
                           type="button"
@@ -178,16 +178,16 @@ export function EmployesTable({
                       )}
                       <p className="text-xs text-muted-foreground">{emp.email}</p>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="px-5 py-3.5 text-muted-foreground">
                       {LIBELLE_ROLE[emp.role] ?? emp.role}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-3.5">
                       <StatutEmployeBadge statut={emp.statut} />
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="px-5 py-3.5 text-muted-foreground">
                       {formatDerniereConnexion(emp.derniereConnexion)}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="px-5 py-3.5 text-muted-foreground">
                       {formatDate(emp.dateCreation)}
                     </td>
                   </tr>

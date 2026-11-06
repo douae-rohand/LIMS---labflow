@@ -1,10 +1,12 @@
 package com.backend.modules.facturation.service;
 
+import com.backend.common.audit.JournalAudit;
 import com.backend.common.audit.JournalAuditService;
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.common.security.SecurityUtils;
-import com.backend.common.tenant.TenantContext;
+import com.backend.common.tenant.TenantExecutor;
+import com.backend.modules.auth.security.UtilisateurPrincipal;
 import com.backend.modules.demande.entity.Demande;
 import com.backend.modules.demande.entity.StatutDemande;
 import com.backend.modules.demande.repository.DemandeRepository;
@@ -18,19 +20,27 @@ import com.backend.modules.facturation.repository.FactureRepository;
 import com.backend.modules.facturation.repository.PaiementRepository;
 import com.backend.modules.essai.entity.LigneEssai;
 import com.backend.modules.essai.repository.LigneEssaiRepository;
+import com.backend.modules.utilisateur.entity.Utilisateur;
+import com.backend.modules.utilisateur.repository.UtilisateurRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
@@ -44,43 +54,86 @@ public class FacturationAdminService {
     private final DemandeRepository demandeRepository;
     private final LigneEssaiRepository ligneEssaiRepository;
     private final JournalAuditService journalAuditService;
+    private final TenantExecutor tenantExecutor;
+    private final UtilisateurRepository utilisateurRepository;
 
-    private static final int DELAI_ECHEANCE_DEFAUT = 30;
     private static final int RETRY_MAX = 3;
 
-    @Transactional(readOnly = true)
-    public Page<FactureAdminDto> listerFactures(Boolean statutPayee, Boolean echeanceDepassee,
-                                                   LocalDate debut, LocalDate fin, Long clientId,
-                                                   String q, Pageable pageable) {
-        Page<Facture> page = factureRepository.rechercher(statutPayee, echeanceDepassee, debut, fin, clientId, q, pageable);
-        return page.map(this::toAdminDto);
+    @Value("${facturation.delai-echeance-jours:30}")
+    private int delaiEcheanceJours;
+
+    public Page<FactureAdminDto> listerFactures(String statut, LocalDate debut, LocalDate fin, Long clientId,
+                                                   String q, int page, int size, String tri, String direction) {
+        String proprieteTri = switch (tri) {
+            case "numero" -> "numero";
+            case "date" -> "dateFacture";
+            default -> "dateFacture";
+        };
+        Sort.Direction sensTri = "asc".equalsIgnoreCase(direction)
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sensTri, proprieteTri));
+        return tenantExecutor.inTenant(schemaCourant(), () -> {
+            Page<Facture> pageResult = factureRepository.rechercher(
+                    statut, debut, fin, clientId, q, pageable);
+            return pageResult.map(this::toAdminDto);
+        });
     }
 
-    @Transactional(readOnly = true)
     public FactureAdminDto getFacture(Long id) {
-        Facture facture = factureRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Facture", "id", id));
-        return toAdminDto(facture);
+        return tenantExecutor.inTenant(schemaCourant(), () -> {
+            Facture facture = factureRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Facture", "id", id));
+            return toAdminDto(facture);
+        });
     }
 
-    @Transactional
     public FactureAdminDto emettreFacture(EmettreFactureRequest request) {
+        UtilisateurPrincipal acteur = SecurityUtils.principalCourant();
+        return emettrePourDemande(
+                request.getDemandeId(), request.getDateEcheance(), acteur, schemaCourant(), false);
+    }
+
+    public List<DemandeFacturableDto> listerDemandesFacturables() {
+        return tenantExecutor.inTenant(schemaCourant(), () ->
+                factureRepository.listerDemandesFacturables(
+                        List.of("ACCEPTEE", "EN_COURS", "EN_VALIDATION", "TERMINEE"),
+                        PageRequest.of(0, 200)));
+    }
+
+    public FactureAdminDto emettrePourDemande(
+            Long demandeId,
+            LocalDate dateEcheance,
+            UtilisateurPrincipal acteur,
+            String nomSchema,
+            boolean automatique) {
+        if (nomSchema == null || nomSchema.isBlank()) {
+            throw new BusinessRuleException("SCHEMA_LABORATOIRE_REQUIS",
+                    "Le schéma du laboratoire est obligatoire pour émettre une facture.");
+        }
         for (int essai = 0; essai < RETRY_MAX; essai++) {
             try {
-                return emettreFactureInterne(request);
-            } catch (Exception ex) {
+                return tenantExecutor.inTenant(nomSchema,
+                        () -> emettreFactureInterne(demandeId, dateEcheance, acteur, nomSchema, automatique));
+            } catch (DataIntegrityViolationException ex) {
                 if (essai == RETRY_MAX - 1) {
                     throw ex;
                 }
-                log.warn("Réessai émission facture ({}/{}): {}", essai + 1, RETRY_MAX, ex.getMessage());
+                log.warn("Réessai émission facture demandeId={} tentative={}/{} code=CONFLIT_NUMERO",
+                        demandeId, essai + 1, RETRY_MAX);
             }
         }
         throw new BusinessRuleException("EMISSION_ECHOUEE", "Échec de l'émission après réessais");
     }
 
-    private FactureAdminDto emettreFactureInterne(EmettreFactureRequest request) {
-        Demande demande = demandeRepository.findById(request.getDemandeId())
-                .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", request.getDemandeId()));
+    private FactureAdminDto emettreFactureInterne(
+            Long demandeId,
+            LocalDate dateEcheance,
+            UtilisateurPrincipal acteur,
+            String nomSchema,
+            boolean automatique) {
+        Demande demande = demandeRepository.findByIdForUpdate(demandeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", demandeId));
 
         StatutDemande statut = StatutDemande.depuis(demande.getStatut());
         if (statut != StatutDemande.ACCEPTEE && statut != StatutDemande.EN_COURS
@@ -89,12 +142,12 @@ public class FacturationAdminService {
                     "Cette demande n'est pas facturable (statut: " + demande.getStatut() + ")");
         }
 
-        if (factureRepository.existsByDemandeId(request.getDemandeId())) {
+        if (factureRepository.existsByDemandeId(demandeId)) {
             throw new BusinessRuleException("FACTURE_DEJA_EMISE",
                     "Une facture existe déjà pour cette demande");
         }
 
-        List<LigneEssai> lignesEssai = ligneEssaiRepository.findByDemande_Id(request.getDemandeId());
+        List<LigneEssai> lignesEssai = ligneEssaiRepository.findByDemande_Id(demandeId);
         if (lignesEssai.isEmpty()) {
             throw new BusinessRuleException("DEMANDE_SANS_MONTANT",
                     "Cette demande n'a aucune ligne d'essai");
@@ -111,15 +164,15 @@ public class FacturationAdminService {
 
         String numero = genererNumeroFacture();
         LocalDate dateFacture = LocalDate.now();
-        LocalDate dateEcheance = request.getDateEcheance() != null
-                ? request.getDateEcheance()
-                : dateFacture.plusDays(DELAI_ECHEANCE_DEFAUT);
+        LocalDate echeance = dateEcheance != null
+                ? dateEcheance
+                : dateFacture.plusDays(delaiEcheanceJours);
 
         Facture facture = Facture.builder()
                 .numero(numero)
                 .type("STANDARD")
                 .dateFacture(dateFacture)
-                .dateEcheance(dateEcheance)
+                .dateEcheance(echeance)
                 .montantHt(montantTotal)
                 .statut(StatutFacture.IMPAYEE.name())
                 .demande(demande)
@@ -137,10 +190,38 @@ public class FacturationAdminService {
             factureLigneRepository.save(ligne);
         }
 
-        journalAuditService.enregistrer("EMISSION_FACTURE", "Facture", facture.getId(),
-                SecurityUtils.principalCourant().getEmail(), null, "{\"statut\": \"" + facture.getStatut() + "\"}", null);
+        enregistrerAuditEmission(facture, nomSchema, acteur, automatique);
 
         return toAdminDto(facture);
+    }
+
+    private void enregistrerAuditEmission(
+            Facture facture, String nomSchema, UtilisateurPrincipal acteur, boolean automatique) {
+        Utilisateur utilisateur = tenantExecutor.inCentral(() ->
+                utilisateurRepository.findByEmail(acteur.getEmail()).orElse(null));
+        if (utilisateur == null) {
+            throw new BusinessRuleException("ACTEUR_AUDIT_INTRouvable",
+                    "L'acteur de l'émission est introuvable pour l'audit.");
+        }
+        JournalAudit entree = JournalAudit.builder()
+                .code("AUD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                .dateAction(Instant.now())
+                .action("EMISSION_FACTURE")
+                .objet(nomSchema + "/Facture#" + facture.getId())
+                .valeurApres("{\"statut\":\"" + facture.getStatut() + "\"}")
+                .motif(automatique ? "AUTO_ACCEPTATION" : null)
+                .utilisateur(utilisateur)
+                .build();
+        journalAuditService.enregistrer(entree);
+    }
+
+    private String schemaCourant() {
+        String nomSchema = SecurityUtils.principalCourant().getNomSchema();
+        if (nomSchema == null || nomSchema.isBlank()) {
+            throw new BusinessRuleException("SCHEMA_LABORATOIRE_REQUIS",
+                    "Le schéma du laboratoire est obligatoire.");
+        }
+        return nomSchema;
     }
 
     @Transactional
@@ -170,7 +251,6 @@ public class FacturationAdminService {
         paiementRepository.save(paiement);
 
         facture.setStatut(StatutFacture.PAYEE.name());
-        factureRepository.save(facture);
 
         journalAuditService.enregistrer("ENCAISSEMENT_FACTURE", "Facture", facture.getId(),
                 SecurityUtils.principalCourant().getEmail(), "{\"statut\": \"IMPAYEE\"}",

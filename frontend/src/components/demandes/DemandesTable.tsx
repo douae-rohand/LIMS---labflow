@@ -1,7 +1,11 @@
+import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
 import { Skeleton } from "@/components/lab";
 import { messageErreurDemande, type DemandeResume } from "@/api/demandes";
 import { StatutDemandeBadge } from "./StatutDemandeBadge";
 import { formatDate } from "@/components/employes/dateUtils";
+
+type ColTriDemande = "reference" | "dateSoumission";
+type DirectionTri = "asc" | "desc";
 
 interface DemandesTableProps {
   demandes: DemandeResume[] | undefined;
@@ -13,6 +17,43 @@ interface DemandesTableProps {
   onSelect: (id: number) => void;
   onReinitialiser: () => void;
   onReessayer: () => void;
+  tri: ColTriDemande;
+  direction: DirectionTri;
+  onTriChange: (colonne: ColTriDemande) => void;
+}
+
+function EnteteTri({
+  label,
+  colonne,
+  tri,
+  direction,
+  onTriChange,
+}: {
+  label: string;
+  colonne: ColTriDemande;
+  tri: ColTriDemande;
+  direction: DirectionTri;
+  onTriChange: (colonne: ColTriDemande) => void;
+}) {
+  const active = tri === colonne;
+  const Icon = !active ? ChevronsUpDown : direction === "asc" ? ChevronUp : ChevronDown;
+
+  return (
+    <th
+      scope="col"
+      aria-sort={!active ? "none" : direction === "asc" ? "ascending" : "descending"}
+      className="px-4 py-3 font-semibold"
+    >
+      <button
+        type="button"
+        onClick={() => onTriChange(colonne)}
+        className="inline-flex items-center gap-1 text-left hover:text-ink-900 focus-visible:outline-2 focus-visible:outline-brand-900"
+      >
+        {label}
+        <Icon className={`size-3.5 ${active ? "" : "opacity-40"}`} aria-hidden="true" />
+      </button>
+    </th>
+  );
 }
 
 export function DemandesTable({
@@ -25,17 +66,20 @@ export function DemandesTable({
   onSelect,
   onReinitialiser,
   onReessayer,
+  tri,
+  direction,
+  onTriChange,
 }: DemandesTableProps) {
   return (
     <div className="overflow-x-auto rounded-2xl border border-brand-900/10">
       <table className="w-full min-w-180 text-left text-sm">
         <thead className="bg-surface-card text-brand-900">
           <tr>
-            <th scope="col" className="px-4 py-3 font-semibold">Référence</th>
-            <th scope="col" className="px-4 py-3 font-semibold">Objet</th>
+            <EnteteTri label="Référence" colonne="reference" tri={tri} direction={direction} onTriChange={onTriChange} />
+            <th scope="col" className="px-4 py-3 font-semibold">Intitulé</th>
             <th scope="col" className="px-4 py-3 font-semibold">Client</th>
             <th scope="col" className="px-4 py-3 font-semibold">Statut</th>
-            <th scope="col" className="px-4 py-3 font-semibold">Soumise le</th>
+            <EnteteTri label="Soumise le" colonne="dateSoumission" tri={tri} direction={direction} onTriChange={onTriChange} />
           </tr>
         </thead>
         <tbody>
@@ -86,7 +130,7 @@ export function DemandesTable({
                         e.stopPropagation();
                         onSelect(demande.id);
                       }}
-                      className="text-left font-semibold text-ink-900 hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-900 rounded underline!"
+                      className="rounded text-left font-semibold text-ink-900 no-underline hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-900"
                     >
                       {demande.objet}
                     </button>

@@ -18,7 +18,7 @@ public class ExportController {
     private final ExportService exportService;
 
     @GetMapping("/{jeu}")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_EXPORT_' + #p0.toUpperCase())")
     public ResponseEntity<byte[]> exporter(
             @PathVariable String jeu,
             @RequestParam(defaultValue = "csv") String format) {

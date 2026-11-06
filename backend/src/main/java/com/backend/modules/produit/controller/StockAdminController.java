@@ -24,7 +24,7 @@ public class StockAdminController {
     private final StockAdminService stockAdminService;
 
     @GetMapping("/produits")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_STOCK_CONSULTER')")
     public ResponseEntity<ApiResponse<Page<ProduitDto>>> listerProduits(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -32,19 +32,19 @@ public class StockAdminController {
     }
 
     @GetMapping("/produits/{id}")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_STOCK_CONSULTER')")
     public ResponseEntity<ApiResponse<ProduitDto>> getProduit(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(stockAdminService.getProduit(id)));
     }
 
     @PostMapping("/produits")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_STOCK_GERER')")
     public ResponseEntity<ApiResponse<ProduitDto>> creerProduit(@Valid @RequestBody CreerProduitRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Produit créé", stockAdminService.creerProduit(request)));
     }
 
     @PutMapping("/produits/{id}")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_STOCK_GERER')")
     public ResponseEntity<ApiResponse<ProduitDto>> modifierProduit(
             @PathVariable Long id,
             @Valid @RequestBody ModifierProduitRequest request) {
@@ -52,26 +52,26 @@ public class StockAdminController {
     }
 
     @DeleteMapping("/produits/{id}")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_STOCK_GERER')")
     public ResponseEntity<ApiResponse<Void>> supprimerProduit(@PathVariable Long id) {
         stockAdminService.supprimerProduit(id);
         return ResponseEntity.ok(ApiResponse.success("Produit supprimé", null));
     }
 
     @GetMapping("/produits/{produitId}/lots")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_STOCK_CONSULTER')")
     public ResponseEntity<ApiResponse<java.util.List<LotDto>>> listerLots(@PathVariable Long produitId) {
         return ResponseEntity.ok(ApiResponse.success(stockAdminService.listerLotsParProduit(produitId)));
     }
 
     @PostMapping("/lots")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_STOCK_GERER')")
     public ResponseEntity<ApiResponse<LotDto>> creerLot(@Valid @RequestBody CreerLotRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Lot créé", stockAdminService.creerLot(request)));
     }
 
     @PatchMapping("/lots/{lotId}/ajuster")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_STOCK_GERER')")
     public ResponseEntity<ApiResponse<LotDto>> ajusterStock(
             @PathVariable Long lotId,
             @Valid @RequestBody AjusterStockRequest request) {
@@ -79,7 +79,7 @@ public class StockAdminController {
     }
 
     @GetMapping("/alertes")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_STOCK_CONSULTER')")
     public ResponseEntity<ApiResponse<Map<String, List<?>>>> getAlertes() {
         return ResponseEntity.ok(ApiResponse.success(stockAdminService.getAlertes()));
     }

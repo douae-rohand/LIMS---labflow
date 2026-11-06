@@ -13,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/factures-admin")
@@ -23,37 +24,44 @@ public class FacturationAdminController {
     private final FacturationAdminService facturationAdminService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_FACTURATION_CONSULTER')")
     public ResponseEntity<ApiResponse<PageResponse<FactureAdminDto>>> listerFactures(
-            @RequestParam(required = false) Boolean statutPayee,
-            @RequestParam(required = false) Boolean echeanceDepassee,
+            @RequestParam(required = false) String statut,
             @RequestParam(required = false) LocalDate debut,
             @RequestParam(required = false) LocalDate fin,
             @RequestParam(required = false) Long clientId,
             @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "date") String tri,
+            @RequestParam(defaultValue = "desc") String direction,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         org.springframework.data.domain.Page<FactureAdminDto> pageResult = 
-                facturationAdminService.listerFactures(statutPayee, echeanceDepassee, debut, fin, clientId, q,
-                        org.springframework.data.domain.PageRequest.of(page, size));
+                facturationAdminService.listerFactures(statut, debut, fin, clientId, q,
+                        page, size, tri, direction);
         return ResponseEntity.ok(ApiResponse.success(PageResponse.from(pageResult)));
     }
 
+    @GetMapping("/demandes-facturables")
+    @PreAuthorize("hasAuthority('PERM_FACTURATION_CONSULTER')")
+    public ResponseEntity<ApiResponse<List<DemandeFacturableDto>>> listerDemandesFacturables() {
+        return ResponseEntity.ok(ApiResponse.success(facturationAdminService.listerDemandesFacturables()));
+    }
+
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_FACTURATION_CONSULTER')")
     public ResponseEntity<ApiResponse<FactureAdminDto>> getFacture(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(facturationAdminService.getFacture(id)));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_FACTURATION_GERER')")
     public ResponseEntity<ApiResponse<FactureAdminDto>> emettreFacture(@Valid @RequestBody EmettreFactureRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Facture émise", facturationAdminService.emettreFacture(request)));
     }
 
     @PostMapping("/{id}/paiements")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'ACCUEIL')")
+    @PreAuthorize("hasAuthority('PERM_FACTURATION_PAYER')")
     public ResponseEntity<ApiResponse<FactureAdminDto>> enregistrerPaiement(
             @PathVariable Long id,
             @Valid @RequestBody EnregistrerPaiementRequest request) {
@@ -61,7 +69,7 @@ public class FacturationAdminController {
     }
 
     @GetMapping("/stats")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('PERM_FACTURATION_CONSULTER')")
     public ResponseEntity<ApiResponse<FactureStatsDto>> getStats(
             @RequestParam(required = false) LocalDate debut,
             @RequestParam(required = false) LocalDate fin) {

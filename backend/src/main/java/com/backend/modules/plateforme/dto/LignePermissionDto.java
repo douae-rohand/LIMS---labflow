@@ -11,6 +11,7 @@ public class LignePermissionDto {
     private String action;
     private String libelle;
     private boolean parDefaut;
+    private boolean deleguable;
     /** AJOUT, RETRAIT, ou null lorsque le compte suit le défaut du rôle. */
     private String ecart;
     private boolean effective;
