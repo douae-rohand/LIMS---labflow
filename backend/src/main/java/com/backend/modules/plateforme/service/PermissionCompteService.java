@@ -314,8 +314,14 @@ public class PermissionCompteService {
     }
 
     private Utilisateur charger(Long id) {
-        return utilisateurRepository.findById(id)
+        Utilisateur compte = utilisateurRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur", "id", id));
+        if (compte.getRole() == null
+                || !RoleUtilisateur.ADMINISTRATEUR.name().equals(compte.getRole().getCode())) {
+            throw new BusinessRuleException("COMPTE_HORS_PERIMETRE",
+                    "Cet écran ne gère que les administrateurs de laboratoire");
+        }
+        return compte;
     }
 
     private static Long laboratoireId(Utilisateur compte) {

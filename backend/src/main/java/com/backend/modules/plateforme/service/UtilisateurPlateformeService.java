@@ -62,7 +62,7 @@ public class UtilisateurPlateformeService {
     public Page<CompteUtilisateurDto> lister(String recherche, String role, Long laboratoireId, String statut,
                                              int page, int size, String tri, String ordre) {
         Page<Utilisateur> trouves = utilisateurRepository.rechercherComptesPlateforme(
-                roleFiltre(role),
+                roleAdministrateur(role),
                 laboratoireId,
                 actifFiltre(statut),
                 like(recherche),
@@ -78,7 +78,7 @@ public class UtilisateurPlateformeService {
     public FichierGenere exporter(String format, String recherche, String role, Long laboratoireId, String statut,
                                   String tri, String ordre) {
         Page<Utilisateur> page = utilisateurRepository.rechercherComptesPlateforme(
-                roleFiltre(role),
+                roleAdministrateur(role),
                 laboratoireId,
                 actifFiltre(statut),
                 like(recherche),
@@ -91,11 +91,11 @@ public class UtilisateurPlateformeService {
         String jour = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.of("Africa/Casablanca")).format(Instant.now());
         return switch (normaliserFormat(format)) {
             case "xlsx" -> new FichierGenere(
-                    "utilisateurs-" + jour + ".xlsx",
+                    "administrateurs-" + jour + ".xlsx",
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     excel(comptes));
             case "csv" -> new FichierGenere(
-                    "utilisateurs-" + jour + ".csv",
+                    "administrateurs-" + jour + ".csv",
                     "text/csv; charset=UTF-8",
                     csv(comptes));
             default -> throw new BusinessRuleException("FORMAT_EXPORT_INVALIDE",
@@ -171,8 +171,18 @@ public class UtilisateurPlateformeService {
     }
 
     private Utilisateur charger(Long id) {
-        return utilisateurRepository.findById(id)
+        Utilisateur compte = utilisateurRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur", "id", id));
+        exigerAdministrateurLaboratoire(compte);
+        return compte;
+    }
+
+    private static void exigerAdministrateurLaboratoire(Utilisateur compte) {
+        if (compte.getRole() == null
+                || !RoleUtilisateur.ADMINISTRATEUR.name().equals(compte.getRole().getCode())) {
+            throw new BusinessRuleException("COMPTE_HORS_PERIMETRE",
+                    "Cet écran ne gère que les administrateurs de laboratoire");
+        }
     }
 
     private static void refuserComptePlateforme(Utilisateur compte, Long acteurId) {
@@ -236,17 +246,13 @@ public class UtilisateurPlateformeService {
         return Sort.by(direction, champ);
     }
 
-    private static String roleFiltre(String role) {
-        if (!StringUtils.hasText(role)) {
-            return null;
+    private static String roleAdministrateur(String role) {
+        if (StringUtils.hasText(role)
+                && !RoleUtilisateur.ADMINISTRATEUR.name().equals(role.trim().toUpperCase(Locale.ROOT))) {
+            throw new BusinessRuleException("ROLE_FILTRE_INVALIDE",
+                    "Cet écran ne gère que les administrateurs de laboratoire");
         }
-        String code = role.trim().toUpperCase(Locale.ROOT);
-        try {
-            RoleUtilisateur.valueOf(code);
-        } catch (IllegalArgumentException ex) {
-            throw new BusinessRuleException("ROLE_FILTRE_INVALIDE", "Rôle de filtre inconnu");
-        }
-        return code;
+        return RoleUtilisateur.ADMINISTRATEUR.name();
     }
 
     private static Boolean actifFiltre(String statut) {

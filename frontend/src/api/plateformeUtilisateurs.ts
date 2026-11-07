@@ -79,7 +79,7 @@ export async function exporterComptes(format: "csv" | "xlsx", filtre: FiltreUtil
   recherche.set("format", format);
   await apiClient.download(
     `/plateforme/utilisateurs/export?${recherche.toString()}`,
-    format === "csv" ? "utilisateurs.csv" : "utilisateurs.xlsx",
+    format === "csv" ? "administrateurs.csv" : "administrateurs.xlsx",
   );
 }
 

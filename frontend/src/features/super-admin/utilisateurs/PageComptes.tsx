@@ -30,14 +30,11 @@ import { EtatVide } from "../EtatVide";
 import { formaterDate, messageErreur, texte } from "../texte";
 import { DialogueImportUtilisateurs } from "./DialogueImportUtilisateurs";
 
-const ROLES = ["SUPER_ADMINISTRATEUR", "ADMINISTRATEUR", "RESPONSABLE", "TECHNICIEN", "ACCUEIL", "CLIENT"] as const;
-
 export function PageComptes() {
   const queryClient = useQueryClient();
   const session = getSession();
   const [recherche, setRecherche] = useState("");
   const [differee, setDifferee] = useState("");
-  const [role, setRole] = useState("");
   const [laboratoireId, setLaboratoireId] = useState("");
   const [laboratoireLibelle, setLaboratoireLibelle] = useState("");
   const [portee, setPortee] = useState<"filtres" | "tous">("filtres");
@@ -54,21 +51,24 @@ export function PageComptes() {
     const timer = window.setTimeout(() => setDifferee(recherche.trim()), 300);
     return () => window.clearTimeout(timer);
   }, [recherche]);
-  useEffect(() => setPage(0), [differee, role, laboratoireId, statut]);
+  useEffect(() => setPage(0), [differee, laboratoireId, statut]);
 
   const filtre: FiltreUtilisateurs = {
     page,
     size: 20,
     tri: "nom",
     ordre: "asc",
+    role: "ADMINISTRATEUR",
     ...(differee ? { recherche: differee } : {}),
-    ...(role ? { role } : {}),
     ...(laboratoireId ? { laboratoireId: Number(laboratoireId) } : {}),
     ...(statut ? { statut } : {}),
   };
-  const filtresActifs = Boolean(differee || role || laboratoireId || statut);
+  const filtresActifs = Boolean(differee || laboratoireId || statut);
   const exportMutation = useMutation({
-    mutationFn: (format: "csv" | "xlsx") => exporterComptes(format, portee === "tous" ? { page: 0, size: 20 } : filtre),
+    mutationFn: (format: "csv" | "xlsx") => exporterComptes(
+      format,
+      portee === "tous" ? { page: 0, size: 20, role: "ADMINISTRATEUR" } : filtre,
+    ),
     onSuccess: () => toast.success("Le fichier a été téléchargé."),
     onError: (erreur) => toast.error(messageErreur(erreur, "L'exportation a échoué.")),
   });
@@ -123,8 +123,8 @@ export function PageComptes() {
   return (
     <div className="px-4 py-6 sm:px-6 lg:px-8">
       <EnTetePage
-        titre="Utilisateurs"
-        description="Comptes de connexion de la plateforme. Les dossiers patients ne sont pas accessibles depuis cet écran."
+        titre="Administrateurs"
+        description="Administrateurs des laboratoires. Les autres comptes sont gérés dans chaque laboratoire."
         action={
           <Button size="sm" icon={<UserPlus className="size-4" aria-hidden="true" />} iconPosition="left" onClick={() => setCreation(true)}>
             Créer un administrateur
@@ -136,9 +136,9 @@ export function PageComptes() {
           recherche={recherche}
           onRecherche={setRecherche}
           placeholder="Rechercher par nom, prénom ou e-mail"
-          libelleRecherche="Rechercher un compte"
+          libelleRecherche="Rechercher un administrateur"
           filtresActifs={filtresActifs}
-          onReinitialiser={() => { setRecherche(""); setRole(""); setLaboratoireId(""); setLaboratoireLibelle(""); setStatut(""); }}
+          onReinitialiser={() => { setRecherche(""); setLaboratoireId(""); setLaboratoireLibelle(""); setStatut(""); }}
           onImporter={() => setImportOuvert(true)}
           exportEnCours={exportMutation.isPending}
           porteeExport={{
@@ -147,7 +147,7 @@ export function PageComptes() {
             onChange: (valeur) => setPortee(valeur as "filtres" | "tous"),
             options: [
               { valeur: "filtres", libelle: "Résultats filtrés" },
-              { valeur: "tous", libelle: "Tous les comptes" },
+              { valeur: "tous", libelle: "Tous les administrateurs" },
             ],
           }}
           formatsExport={[
@@ -156,16 +156,11 @@ export function PageComptes() {
           ]}
           puces={[
             ...(differee ? [{ libelle: `Recherche : ${differee}`, onRetirer: () => setRecherche("") }] : []),
-            ...(role ? [{ libelle: libelleRole(role), onRetirer: () => setRole("") }] : []),
             ...(laboratoireId ? [{ libelle: laboratoireLibelle || "Laboratoire", onRetirer: () => { setLaboratoireId(""); setLaboratoireLibelle(""); } }] : []),
             ...(statut ? [{ libelle: statut === "ACTIF" ? "Actif" : "Inactif", onRetirer: () => setStatut("") }] : []),
           ]}
           filtres={
             <>
-              <Select value={role} aria-label="Filtrer par rôle" className="xl:w-44" onChange={(event) => setRole(event.target.value)}>
-                <option value="">Tous les rôles</option>
-                {ROLES.map((valeur) => <option key={valeur} value={valeur}>{libelleRole(valeur)}</option>)}
-              </Select>
               <FiltreLaboratoire
                 key={laboratoireId || "tous"}
                 onChoisir={(id, libelle) => { setLaboratoireId(id); setLaboratoireLibelle(libelle); }}
@@ -181,19 +176,18 @@ export function PageComptes() {
       </div>
 
       {comptes.isLoading ? (
-        <p className="text-sm text-muted-foreground" aria-busy="true">Chargement des comptes…</p>
+        <p className="text-sm text-muted-foreground" aria-busy="true">Chargement des administrateurs…</p>
       ) : comptes.isError ? (
-        <EtatVide titre="Les comptes n'ont pas pu être chargés." />
+        <EtatVide titre="Les administrateurs n'ont pas pu être chargés." />
       ) : comptes.data && comptes.data.content.length === 0 ? (
-        <EtatVide titre="Aucun compte ne correspond." detail="Modifiez la recherche ou les filtres." />
+        <EtatVide titre="Aucun administrateur ne correspond." detail="Modifiez la recherche ou les filtres." />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-brand-900/10 bg-card">
           <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] text-left text-sm">
             <thead>
               <tr className="bg-surface-alt text-xs font-semibold tracking-wide text-brand-900 uppercase">
-                <th className="px-4 py-3">Compte</th>
-                <th className="px-4 py-3">Rôle</th>
+                <th className="px-4 py-3">Administrateur</th>
                 <th className="px-4 py-3">Laboratoire</th>
                 <th className="px-4 py-3">Statut</th>
                 <th className="px-4 py-3">Dernière connexion</th>
@@ -222,7 +216,6 @@ export function PageComptes() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3"><Badge variant="soft">{libelleRole(compte.role)}</Badge></td>
                     <td className="px-4 py-3">{texte(compte.laboratoireNom)}</td>
                     <td className="px-4 py-3">
                       <Switch
@@ -432,31 +425,102 @@ function PanneauCompte({ compte, onFermer }: { compte: CompteUtilisateur | null;
   return (
     <Panneau ouvert={compte != null} titre="Détail du compte" onFermer={onFermer}>
       {compte && (
-        <div className="flex flex-col gap-4 text-sm">
-          <dl className="grid grid-cols-[9rem_1fr] gap-y-2">
-            <dt className="text-muted-foreground">Identité</dt><dd className="text-ink-900">{nom}</dd>
-            <dt className="text-muted-foreground">E-mail</dt><dd>{compte.email}</dd>
-            <dt className="text-muted-foreground">Téléphone</dt><dd>{texte(compte.telephone)}</dd>
-            <dt className="text-muted-foreground">Fonction</dt><dd>{texte(compte.fonction)}</dd>
-            <dt className="text-muted-foreground">Rôle</dt><dd>{libelleRole(compte.role)}</dd>
-            <dt className="text-muted-foreground">Laboratoire</dt><dd>{texte(compte.laboratoireNom)}</dd>
-            <dt className="text-muted-foreground">Statut</dt><dd>{compte.statut === "ACTIF" ? "Actif" : "Inactif"}</dd>
-            <dt className="text-muted-foreground">Dernière connexion</dt><dd>{compte.derniereConnexion ? formaterDate(compte.derniereConnexion) : "—"}</dd>
-          </dl>
-          {!permissions.data?.personnalisable && (
-            <p className="text-muted-foreground">Les permissions de ce compte suivent le rôle et ne sont pas personnalisables.</p>
-          )}
-          {permissions.data?.personnalisees && <Badge variant="outline">Personnalisées</Badge>}
-          <ul className="flex flex-col gap-1">
-            {permissions.data?.permissions.filter((ligne) => ligne.effective || ligne.ecart === "RETRAIT").map((ligne) => (
-              <li key={ligne.code} className="flex items-center justify-between gap-3">
-                <span>{ligne.libelle}</span>
-                <span className="text-xs text-muted-foreground">
-                  {ligne.ecart === "AJOUT" ? "Ajoutée" : ligne.ecart === "RETRAIT" ? "Retirée" : "Par défaut"}
-                </span>
-              </li>
-            ))}
-          </ul>
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Badge
+              variant={compte.statut === "ACTIF" ? "lime" : "outline"}
+              size="sm"
+            >
+              {compte.statut === "ACTIF" ? "Actif" : "Inactif"}
+            </Badge>
+            {compte.role === "SUPER_ADMINISTRATEUR" && (
+              <Badge variant="brand" size="sm">Compte plateforme</Badge>
+            )}
+          </div>
+
+          <div>
+            <h3 className="mb-3 text-sm font-semibold text-brand-900">Informations personnelles</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-surface-alt px-3 py-2">
+                <dt className="text-xs font-semibold text-muted-foreground">Nom complet</dt>
+                <dd className="text-sm text-ink-900">{nom}</dd>
+              </div>
+              <div className="rounded-2xl bg-surface-alt px-3 py-2">
+                <dt className="text-xs font-semibold text-muted-foreground">E-mail</dt>
+                <dd className="text-sm text-ink-900">{compte.email}</dd>
+              </div>
+              <div className="rounded-2xl bg-surface-alt px-3 py-2">
+                <dt className="text-xs font-semibold text-muted-foreground">Téléphone</dt>
+                <dd className="text-sm text-ink-900">{texte(compte.telephone)}</dd>
+              </div>
+              <div className="rounded-2xl bg-surface-alt px-3 py-2">
+                <dt className="text-xs font-semibold text-muted-foreground">Fonction</dt>
+                <dd className="text-sm text-ink-900">{texte(compte.fonction)}</dd>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-3 text-sm font-semibold text-brand-900">Rôle et organisation</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-surface-alt px-3 py-2">
+                <dt className="text-xs font-semibold text-muted-foreground">Rôle</dt>
+                <dd className="text-sm text-ink-900">{libelleRole(compte.role)}</dd>
+              </div>
+              <div className="rounded-2xl bg-surface-alt px-3 py-2">
+                <dt className="text-xs font-semibold text-muted-foreground">Laboratoire</dt>
+                <dd className="text-sm text-ink-900">{texte(compte.laboratoireNom)}</dd>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-3 text-sm font-semibold text-brand-900">Activité</h3>
+            <div className="rounded-2xl bg-surface-alt px-3 py-2">
+              <dt className="text-xs font-semibold text-muted-foreground">Dernière connexion</dt>
+              <dd className="text-sm text-ink-900">{compte.derniereConnexion ? formaterDate(compte.derniereConnexion) : "Jamais connecté"}</dd>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-3 text-sm font-semibold text-brand-900">Permissions</h3>
+            {permissions.isLoading ? (
+              <p className="text-sm text-muted-foreground">Chargement des permissions…</p>
+            ) : permissions.isError ? (
+              <p className="text-sm text-red-600">Les permissions n'ont pas pu être chargées.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {!permissions.data?.personnalisable && (
+                  <p className="text-sm text-muted-foreground">Les permissions de ce compte suivent le rôle et ne sont pas personnalisables.</p>
+                )}
+                {permissions.data?.personnalisees && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">Personnalisées</Badge>
+                  </div>
+                )}
+                {permissions.data?.permissions && permissions.data.permissions.length > 0 && (
+                  <div className="rounded-2xl bg-surface-alt p-3">
+                    <ul className="flex flex-col gap-2">
+                      {permissions.data.permissions.filter((ligne) => ligne.effective || ligne.ecart === "RETRAIT").map((ligne) => (
+                        <li key={ligne.code} className="flex items-center justify-between gap-3 rounded-xl bg-surface-card px-3 py-2">
+                          <span className="text-sm text-ink-900">{ligne.libelle}</span>
+                          <span className="text-xs font-semibold">
+                            {ligne.ecart === "AJOUT" ? (
+                              <span className="text-green-600">Ajoutée</span>
+                            ) : ligne.ecart === "RETRAIT" ? (
+                              <span className="text-red-600">Retirée</span>
+                            ) : (
+                              <span className="text-muted-foreground">Par défaut</span>
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </Panneau>

@@ -50,7 +50,7 @@ export function SuperAdminShell({
             <p className="px-2 pb-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">Plateforme</p>
             <Lien to="/app/tableau-de-bord" icone={<LayoutDashboard className="size-4" aria-hidden="true" />} libelle="Tableau de bord" />
             <Lien to="/app/gestion-laboratoires" search={{ onglet: "laboratoires" }} icone={<Building2 className="size-4" aria-hidden="true" />} libelle="Laboratoires" />
-            <Lien to="/app/utilisateurs" icone={<Users className="size-4" aria-hidden="true" />} libelle="Utilisateurs" />
+            <Lien to="/app/utilisateurs" icone={<Users className="size-4" aria-hidden="true" />} libelle="Administrateurs" />
             <Lien to="/app/journal-audit" icone={<ScrollText className="size-4" aria-hidden="true" />} libelle="Journal d'audit" />
           </nav>
           <div className="border-t border-brand-900/10 p-3">
@@ -81,7 +81,7 @@ export function SuperAdminShell({
           <nav className="flex gap-1 overflow-x-auto border-b border-brand-900/10 bg-card px-3 py-2 md:hidden" aria-label="Navigation">
             <Lien to="/app/tableau-de-bord" icone={<LayoutDashboard className="size-4" aria-hidden="true" />} libelle="Tableau de bord" />
             <Lien to="/app/gestion-laboratoires" search={{ onglet: "laboratoires" }} icone={<Building2 className="size-4" aria-hidden="true" />} libelle="Laboratoires" />
-            <Lien to="/app/utilisateurs" icone={<Users className="size-4" aria-hidden="true" />} libelle="Utilisateurs" />
+            <Lien to="/app/utilisateurs" icone={<Users className="size-4" aria-hidden="true" />} libelle="Administrateurs" />
             <Lien to="/app/journal-audit" icone={<ScrollText className="size-4" aria-hidden="true" />} libelle="Journal" />
           </nav>
           <main className="min-w-0 flex-1">

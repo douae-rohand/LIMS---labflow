@@ -42,7 +42,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/plateforme/utilisateurs")
 @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
 @RequiredArgsConstructor
-@Tag(name = "Utilisateurs plateforme", description = "Comptes de connexion centraux, sans donnée métier de tenant")
+@Tag(name = "Utilisateurs plateforme", description = "Administrateurs de laboratoire, sans donnée métier de tenant")
 public class UtilisateurPlateformeController {
 
     private final UtilisateurPlateformeService utilisateurPlateformeService;
@@ -51,7 +51,7 @@ public class UtilisateurPlateformeController {
     private final PermissionCompteService permissionCompteService;
 
     @GetMapping
-    @Operation(summary = "Lister les comptes de connexion")
+    @Operation(summary = "Lister les administrateurs de laboratoire")
     public ResponseEntity<ApiResponse<Page<CompteUtilisateurDto>>> lister(
             @RequestParam(required = false) String recherche,
             @RequestParam(required = false) String role,
@@ -66,7 +66,7 @@ public class UtilisateurPlateformeController {
     }
 
     @GetMapping("/export")
-    @Operation(summary = "Exporter les comptes de connexion (CSV ou Excel)")
+    @Operation(summary = "Exporter les administrateurs de laboratoire (CSV ou Excel)")
     public ResponseEntity<byte[]> exporter(
             @RequestParam String format,
             @RequestParam(required = false) String recherche,
