@@ -25,9 +25,7 @@ public class LaboratoireParametresService {
     private final TenantExecutor tenantExecutor;
     private final JournalAuditService journalAuditService;
 
-    private static final Set<String> TYPES_LABORATOIRE_AUTORISES = Set.of(
-            "Médical", "Industriel", "Environnemental", "Pharmaceutique et cosmétique"
-    );
+    private final ParametrePlateformeService parametrePlateformeService;
 
     @Transactional(readOnly = true)
     public LaboratoireParametresDto getParametres() {
@@ -58,8 +56,16 @@ public class LaboratoireParametresService {
 
             if (request.getTypeLaboratoire() != null) {
                 Set<String> typesFournis = new HashSet<>(Set.of(request.getTypeLaboratoire().split(",\\s*")));
+                // Types actifs du référentiel, plus ceux déjà portés par le laboratoire
+                // (un type désactivé depuis reste accepté pour ce laboratoire).
+                Set<String> autorises = new HashSet<>(parametrePlateformeService.typesLaboratoireActifs());
+                if (laboratoire.getTypeLaboratoire() != null) {
+                    for (String existant : laboratoire.getTypeLaboratoire().split(",\\s*")) {
+                        autorises.add(existant.trim());
+                    }
+                }
                 for (String type : typesFournis) {
-                    if (!TYPES_LABORATOIRE_AUTORISES.contains(type.trim())) {
+                    if (!autorises.contains(type.trim())) {
                         throw new BusinessRuleException("TYPE_LABORATOIRE_INVALIDE",
                                 "Type de laboratoire non autorisé : " + type);
                     }
