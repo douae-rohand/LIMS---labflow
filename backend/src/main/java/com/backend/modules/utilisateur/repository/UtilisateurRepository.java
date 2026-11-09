@@ -33,6 +33,12 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
 
     @Query("""
             SELECT u FROM Utilisateur u
+            WHERE u.role.code = :role AND u.actif = true
+            """)
+    List<Utilisateur> findActifsParRole(@Param("role") String role);
+
+    @Query("""
+            SELECT u FROM Utilisateur u
             WHERE u.role.code = :#{#role.name()}
             """)
     Page<Utilisateur> findByRole(@Param("role") RoleUtilisateur role, Pageable pageable);

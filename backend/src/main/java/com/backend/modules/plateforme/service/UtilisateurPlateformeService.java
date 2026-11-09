@@ -7,6 +7,8 @@ import com.backend.modules.auth.repository.RefreshTokenRepository;
 import com.backend.modules.plateforme.dto.CompteUtilisateurDto;
 import com.backend.modules.plateforme.dto.FichierGenere;
 import com.backend.modules.plateforme.dto.ModifierIdentiteCompteRequest;
+import com.backend.modules.plateforme.dto.SessionCompteDto;
+import com.backend.common.util.ExportTableau;
 import com.backend.modules.plateforme.entity.Laboratoire;
 import com.backend.modules.utilisateur.entity.RoleUtilisateur;
 import com.backend.modules.utilisateur.entity.Utilisateur;
@@ -16,9 +18,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -26,9 +25,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -87,20 +83,58 @@ public class UtilisateurPlateformeService {
             throw new BusinessRuleException("EXPORT_TROP_LARGE",
                     "Plus de " + EXPORT_MAX + " lignes correspondent. Affinez les filtres avant d'exporter.");
         }
-        List<Utilisateur> comptes = page.getContent();
-        String jour = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.of("Africa/Casablanca")).format(Instant.now());
-        return switch (normaliserFormat(format)) {
-            case "xlsx" -> new FichierGenere(
-                    "administrateurs-" + jour + ".xlsx",
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    excel(comptes));
-            case "csv" -> new FichierGenere(
-                    "administrateurs-" + jour + ".csv",
-                    "text/csv; charset=UTF-8",
-                    csv(comptes));
-            default -> throw new BusinessRuleException("FORMAT_EXPORT_INVALIDE",
-                    "Le format d'exportation doit être Excel ou CSV");
-        };
+        List<List<String>> lignes = page.getContent().stream().map(this::valeurs).toList();
+        return ExportTableau.generer(format, "administrateurs", "Administrateurs de laboratoire",
+                COLONNES, lignes);
+    }
+
+    /**
+     * Efface le secret TOTP : à la prochaine connexion, l'administrateur reconfigure
+     * sa 2FA (ou se connecte sans si elle n'est pas obligatoire pour son rôle).
+     * Ses sessions ouvertes sont révoquées.
+     */
+    @Transactional
+    public CompteUtilisateurDto reinitialiserDeuxFacteurs(Long id, Long acteurId, String acteurEmail, String motif) {
+        Utilisateur compte = charger(id);
+        refuserComptePlateforme(compte, acteurId);
+        if (!compte.isDoubleAuthentification() && !StringUtils.hasText(compte.getSecret2fa())) {
+            throw new BusinessRuleException("2FA_NON_CONFIGUREE",
+                    "La double authentification n'est pas configurée sur ce compte");
+        }
+        compte.setDoubleAuthentification(false);
+        compte.setSecret2fa(null);
+        utilisateurRepository.save(compte);
+        int sessions = refreshTokenRepository.revoquerTousParUtilisateur(compte.getId());
+        journalAuditService.enregistrer(
+                "REINITIALISER_2FA", "Utilisateur", compte.getId(), acteurEmail,
+                "{\"doubleAuthentification\":true}", "{\"doubleAuthentification\":false,\"sessionsRevoquees\":" + sessions + "}",
+                motifOuNull(motif), idLaboratoire(compte));
+        log.info("2FA réinitialisée et {} session(s) révoquée(s) : userId={}", sessions, compte.getId());
+        return versDto(compte);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SessionCompteDto> sessions(Long id) {
+        Utilisateur compte = charger(id);
+        return refreshTokenRepository.listerActifs(compte.getId(), Instant.now()).stream()
+                .map(jeton -> new SessionCompteDto(jeton.getId(), jeton.getUserAgent(),
+                        jeton.getCreatedAt(), jeton.getDateExpiration()))
+                .toList();
+    }
+
+    /**
+     * Révoque toutes les sessions. Le jeton d'accès déjà émis reste valable
+     * jusqu'à son expiration (15 minutes par défaut).
+     */
+    @Transactional
+    public int revoquerSessions(Long id, Long acteurId, String acteurEmail, String motif) {
+        Utilisateur compte = charger(id);
+        refuserComptePlateforme(compte, acteurId);
+        int sessions = refreshTokenRepository.revoquerTousParUtilisateur(compte.getId());
+        journalAuditService.enregistrer(
+                "REVOQUER_SESSIONS", "Utilisateur", compte.getId(), acteurEmail,
+                null, "{\"sessionsRevoquees\":" + sessions + "}", motifOuNull(motif), idLaboratoire(compte));
+        return sessions;
     }
 
     @Transactional(readOnly = true)
@@ -213,6 +247,7 @@ public class UtilisateurPlateformeService {
                 .statut(compte.isActif() ? "ACTIF" : "INACTIF")
                 .derniereConnexion(compte.getDerniereConnexion())
                 .personnalise(personnalise)
+                .deuxFacteursActive(compte.isDoubleAuthentification() && StringUtils.hasText(compte.getSecret2fa()))
                 .build();
     }
 
@@ -267,55 +302,6 @@ public class UtilisateurPlateformeService {
         };
     }
 
-    private static String normaliserFormat(String format) {
-        if (format == null) {
-            return "";
-        }
-        return switch (format.trim().toLowerCase(Locale.ROOT)) {
-            case "xlsx", "excel" -> "xlsx";
-            case "csv" -> "csv";
-            default -> "";
-        };
-    }
-
-    private byte[] csv(List<Utilisateur> comptes) {
-        StringBuilder builder = new StringBuilder();
-        builder.append('\uFEFF');
-        builder.append(String.join(";", COLONNES)).append("\r\n");
-        for (Utilisateur compte : comptes) {
-            List<String> cellules = valeurs(compte);
-            for (int i = 0; i < cellules.size(); i++) {
-                if (i > 0) {
-                    builder.append(';');
-                }
-                builder.append(cellule(cellules.get(i)));
-            }
-            builder.append("\r\n");
-        }
-        return builder.toString().getBytes(StandardCharsets.UTF_8);
-    }
-
-    private byte[] excel(List<Utilisateur> comptes) {
-        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream sortie = new ByteArrayOutputStream()) {
-            Sheet feuille = workbook.createSheet("Utilisateurs");
-            Row entete = feuille.createRow(0);
-            for (int i = 0; i < COLONNES.size(); i++) {
-                entete.createCell(i).setCellValue(COLONNES.get(i));
-            }
-            for (int ligne = 0; ligne < comptes.size(); ligne++) {
-                Row row = feuille.createRow(ligne + 1);
-                List<String> cellules = valeurs(comptes.get(ligne));
-                for (int i = 0; i < cellules.size(); i++) {
-                    row.createCell(i).setCellValue(protege(cellules.get(i)));
-                }
-            }
-            workbook.write(sortie);
-            return sortie.toByteArray();
-        } catch (IOException ex) {
-            throw new BusinessRuleException("EXPORT_ECHOUE", "Le fichier Excel n'a pas pu être généré");
-        }
-    }
-
     private List<String> valeurs(Utilisateur compte) {
         Laboratoire laboratoire = compte.getLaboratoire();
         return List.of(
@@ -326,26 +312,6 @@ public class UtilisateurPlateformeService {
                 laboratoire == null ? "" : texte(laboratoire.getRaisonSociale()),
                 compte.isActif() ? "Actif" : "Inactif",
                 compte.getDerniereConnexion() == null ? "" : DATE.format(compte.getDerniereConnexion()));
-    }
-
-    private static String cellule(String valeur) {
-        return "\"" + protege(valeur).replace("\"", "\"\"") + "\"";
-    }
-
-    private static String protege(String valeur) {
-        String texte = valeur == null ? "" : valeur;
-        int index = 0;
-        while (index < texte.length()) {
-            char caractere = texte.charAt(index);
-            if (caractere != ' ' && caractere != '\t' && caractere != '\r') {
-                break;
-            }
-            index++;
-        }
-        if (index < texte.length() && "=+-@".indexOf(texte.charAt(index)) >= 0) {
-            return "'" + texte;
-        }
-        return texte;
     }
 
     private static Long idLaboratoire(Utilisateur compte) {
