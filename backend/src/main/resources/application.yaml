@@ -203,6 +203,19 @@ app:
       delai-cooldown-secondes: ${APP_REINIT_DELAI_COOLDOWN_SECONDES:60}
 
 # ============================================================
+# Espace Technicien (CMD-13)
+# ============================================================
+lims:
+  technicien:
+    # Plafond de durée déclarée par essai (en minutes). Défaut : 480 min = 8 h.
+    duree-max-minutes: ${LIMS_TECHNICIEN_DUREE_MAX_MINUTES:480}
+    import:
+      # Taille maximale d'un fichier CSV d'import (en octets). Défaut : 1 Mo.
+      taille-max-octets: ${LIMS_TECHNICIEN_IMPORT_TAILLE_MAX_OCTETS:1048576}
+      # Nombre maximal de lignes de données dans le CSV. Défaut : 500.
+      lignes-max: ${LIMS_TECHNICIEN_IMPORT_LIGNES_MAX:500}
+
+# ============================================================
 # Logging
 # ============================================================
 logging:

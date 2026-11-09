@@ -5,6 +5,7 @@ import type { RoleUtilisateur } from "@/api/session";
 import { SuperAdminShell } from "@/features/super-admin/SuperAdminShell";
 import { AdminShell } from "@/features/admin/AdminShell";
 import { ClientShell } from "@/features/client/ClientShell";
+import { TechnicienShell } from "@/features/technicien/TechnicienShell";
 import { LogOut, User } from "lucide-react";
 import { Button } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
@@ -40,9 +41,9 @@ function AppLayout() {
   const { session } = useSession();
   const user = session?.user;
   const isSuperAdmin = user?.role === "SUPER_ADMINISTRATEUR";
+  const isTechnicien = user?.role === "TECHNICIEN";
   const espaceLaboratoire = user?.role === "ADMINISTRATEUR"
     || user?.role === "RESPONSABLE"
-    || user?.role === "TECHNICIEN"
     || user?.role === "ACCUEIL";
 
   const handleLogout = async () => {
@@ -65,6 +66,14 @@ function AppLayout() {
       <SuperAdminShell utilisateur={user} onLogout={() => void handleLogout()}>
         <Outlet />
       </SuperAdminShell>
+    );
+  }
+
+  if (isTechnicien) {
+    return (
+      <TechnicienShell utilisateur={user} onLogout={() => void handleLogout()}>
+        <Outlet />
+      </TechnicienShell>
     );
   }
 
