@@ -149,7 +149,7 @@ function SectionSecurite() {
     >
       <Carte
         titre="Double authentification obligatoire"
-        description="Les comptes des rôles cochés doivent saisir un code de leur application d'authentification à chaque connexion. Ceux qui ne l'ont pas encore configurée le feront à leur prochaine connexion."
+        description="Choisissez les rôles pour lesquels la double authentification sera obligatoire. Ce réglage est enregistré mais n'est pas encore appliqué à la connexion."
       >
         <div className="grid gap-2 sm:grid-cols-2">
           {ROLES.map((role) => (
@@ -164,13 +164,6 @@ function SectionSecurite() {
             </label>
           ))}
         </div>
-        {valeurs.roles2faObligatoire.includes("SUPER_ADMINISTRATEUR")
-          && !(securite.data?.roles2faObligatoire ?? []).includes("SUPER_ADMINISTRATEUR") && (
-          <p className="mt-3 rounded-2xl bg-surface-alt px-4 py-3 text-sm text-ink-900">
-            Vous devrez vous-même configurer la double authentification à votre prochaine connexion. Gardez une
-            application d'authentification à portée de main.
-          </p>
-        )}
       </Carte>
 
       <Carte
