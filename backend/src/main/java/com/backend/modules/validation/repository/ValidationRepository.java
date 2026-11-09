@@ -13,5 +13,9 @@ public interface ValidationRepository extends JpaRepository<Validation, Long> {
 
     List<Validation> findByLigneEssai_Id(Long ligneEssaiId);
 
+    List<Validation> findByLigneEssai_IdOrderByDateValidationAscIdAsc(Long ligneEssaiId);
+
+    List<Validation> findByLigneEssai_IdInOrderByDateValidationAscIdAsc(java.util.Collection<Long> ligneEssaiIds);
+
     Page<Validation> findByValidateurId(Long validateurId, Pageable pageable);
 }

@@ -38,11 +38,15 @@ import { Route as AppLaboratoiresRouteImport } from './routes/app/laboratoires'
 import { Route as AppPanierRouteImport } from './routes/app/panier'
 import { Route as AppParametresRouteImport } from './routes/app/parametres'
 import { Route as AppParametresPlateformeRouteImport } from './routes/app/parametres-plateforme'
+import { Route as AppPlanificationRouteImport } from './routes/app/planification'
 import { Route as AppProfilRouteImport } from './routes/app/profil'
 import { Route as AppRapportsRouteImport } from './routes/app/rapports'
+import { Route as AppRapportsLaboratoireRouteImport } from './routes/app/rapports-laboratoire'
 import { Route as AppSatisfactionRouteImport } from './routes/app/satisfaction'
 import { Route as AppStockRouteImport } from './routes/app/stock'
+import { Route as AppSuiviRouteImport } from './routes/app/suivi'
 import { Route as AppTableauDeBordRouteImport } from './routes/app/tableau-de-bord'
+import { Route as AppValidationResultatsRouteImport } from './routes/app/validation-resultats'
 import { Route as IntegrationComplementsRouteImport } from './routes/integration_.complements'
 import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/index'
 import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
@@ -215,6 +219,11 @@ const AppParametresPlateformeRoute = AppParametresPlateformeRouteImport.update({
   path: '/parametres-plateforme',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPlanificationRoute = AppPlanificationRouteImport.update({
+  id: '/planification',
+  path: '/planification',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProfilRoute = AppProfilRouteImport.update({
   id: '/profil',
   path: '/profil',
@@ -223,6 +232,11 @@ const AppProfilRoute = AppProfilRouteImport.update({
 const AppRapportsRoute = AppRapportsRouteImport.update({
   id: '/rapports',
   path: '/rapports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRapportsLaboratoireRoute = AppRapportsLaboratoireRouteImport.update({
+  id: '/rapports-laboratoire',
+  path: '/rapports-laboratoire',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSatisfactionRoute = AppSatisfactionRouteImport.update({
@@ -235,9 +249,19 @@ const AppStockRoute = AppStockRouteImport.update({
   path: '/stock',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSuiviRoute = AppSuiviRouteImport.update({
+  id: '/suivi',
+  path: '/suivi',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTableauDeBordRoute = AppTableauDeBordRouteImport.update({
   id: '/tableau-de-bord',
   path: '/tableau-de-bord',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppValidationResultatsRoute = AppValidationResultatsRouteImport.update({
+  id: '/validation-resultats',
+  path: '/validation-resultats',
   getParentRoute: () => AppRoute,
 } as any)
 const IntegrationComplementsRoute = IntegrationComplementsRouteImport.update({
@@ -406,11 +430,15 @@ export interface FileRoutesByFullPath {
   '/app/panier': typeof AppPanierRouteWithChildren
   '/app/parametres': typeof AppParametresRoute
   '/app/parametres-plateforme': typeof AppParametresPlateformeRoute
+  '/app/planification': typeof AppPlanificationRoute
   '/app/profil': typeof AppProfilRoute
   '/app/rapports': typeof AppRapportsRouteWithChildren
+  '/app/rapports-laboratoire': typeof AppRapportsLaboratoireRoute
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/stock': typeof AppStockRouteWithChildren
+  '/app/suivi': typeof AppSuiviRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
+  '/app/validation-resultats': typeof AppValidationResultatsRoute
   '/integration/complements': typeof IntegrationComplementsRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
@@ -458,9 +486,13 @@ export interface FileRoutesByTo {
   '/app/journal-audit': typeof AppJournalAuditRoute
   '/app/parametres': typeof AppParametresRoute
   '/app/parametres-plateforme': typeof AppParametresPlateformeRoute
+  '/app/planification': typeof AppPlanificationRoute
   '/app/profil': typeof AppProfilRoute
+  '/app/rapports-laboratoire': typeof AppRapportsLaboratoireRoute
   '/app/satisfaction': typeof AppSatisfactionRoute
+  '/app/suivi': typeof AppSuiviRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
+  '/app/validation-resultats': typeof AppValidationResultatsRoute
   '/integration/complements': typeof IntegrationComplementsRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app': typeof AppIndexRoute
@@ -519,11 +551,15 @@ export interface FileRoutesById {
   '/app/panier': typeof AppPanierRouteWithChildren
   '/app/parametres': typeof AppParametresRoute
   '/app/parametres-plateforme': typeof AppParametresPlateformeRoute
+  '/app/planification': typeof AppPlanificationRoute
   '/app/profil': typeof AppProfilRoute
   '/app/rapports': typeof AppRapportsRouteWithChildren
+  '/app/rapports-laboratoire': typeof AppRapportsLaboratoireRoute
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/stock': typeof AppStockRouteWithChildren
+  '/app/suivi': typeof AppSuiviRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
+  '/app/validation-resultats': typeof AppValidationResultatsRoute
   '/integration_/complements': typeof IntegrationComplementsRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
@@ -583,11 +619,15 @@ export interface FileRouteTypes {
     | '/app/panier'
     | '/app/parametres'
     | '/app/parametres-plateforme'
+    | '/app/planification'
     | '/app/profil'
     | '/app/rapports'
+    | '/app/rapports-laboratoire'
     | '/app/satisfaction'
     | '/app/stock'
+    | '/app/suivi'
     | '/app/tableau-de-bord'
+    | '/app/validation-resultats'
     | '/integration/complements'
     | '/laboratoires/$id'
     | '/app/'
@@ -635,9 +675,13 @@ export interface FileRouteTypes {
     | '/app/journal-audit'
     | '/app/parametres'
     | '/app/parametres-plateforme'
+    | '/app/planification'
     | '/app/profil'
+    | '/app/rapports-laboratoire'
     | '/app/satisfaction'
+    | '/app/suivi'
     | '/app/tableau-de-bord'
+    | '/app/validation-resultats'
     | '/integration/complements'
     | '/laboratoires/$id'
     | '/app'
@@ -695,11 +739,15 @@ export interface FileRouteTypes {
     | '/app/panier'
     | '/app/parametres'
     | '/app/parametres-plateforme'
+    | '/app/planification'
     | '/app/profil'
     | '/app/rapports'
+    | '/app/rapports-laboratoire'
     | '/app/satisfaction'
     | '/app/stock'
+    | '/app/suivi'
     | '/app/tableau-de-bord'
+    | '/app/validation-resultats'
     | '/integration_/complements'
     | '/laboratoires/$id'
     | '/app/'
@@ -952,6 +1000,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppParametresPlateformeRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/planification': {
+      id: '/app/planification'
+      path: '/planification'
+      fullPath: '/app/planification'
+      preLoaderRoute: typeof AppPlanificationRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/profil': {
       id: '/app/profil'
       path: '/profil'
@@ -964,6 +1019,13 @@ declare module '@tanstack/react-router' {
       path: '/rapports'
       fullPath: '/app/rapports'
       preLoaderRoute: typeof AppRapportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/rapports-laboratoire': {
+      id: '/app/rapports-laboratoire'
+      path: '/rapports-laboratoire'
+      fullPath: '/app/rapports-laboratoire'
+      preLoaderRoute: typeof AppRapportsLaboratoireRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/satisfaction': {
@@ -980,11 +1042,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppStockRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/suivi': {
+      id: '/app/suivi'
+      path: '/suivi'
+      fullPath: '/app/suivi'
+      preLoaderRoute: typeof AppSuiviRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/tableau-de-bord': {
       id: '/app/tableau-de-bord'
       path: '/tableau-de-bord'
       fullPath: '/app/tableau-de-bord'
       preLoaderRoute: typeof AppTableauDeBordRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/validation-resultats': {
+      id: '/app/validation-resultats'
+      path: '/validation-resultats'
+      fullPath: '/app/validation-resultats'
+      preLoaderRoute: typeof AppValidationResultatsRouteImport
       parentRoute: typeof AppRoute
     }
     '/integration_/complements': {
@@ -1340,11 +1416,15 @@ interface AppRouteChildren {
   AppPanierRoute: typeof AppPanierRouteWithChildren
   AppParametresRoute: typeof AppParametresRoute
   AppParametresPlateformeRoute: typeof AppParametresPlateformeRoute
+  AppPlanificationRoute: typeof AppPlanificationRoute
   AppProfilRoute: typeof AppProfilRoute
   AppRapportsRoute: typeof AppRapportsRouteWithChildren
+  AppRapportsLaboratoireRoute: typeof AppRapportsLaboratoireRoute
   AppSatisfactionRoute: typeof AppSatisfactionRoute
   AppStockRoute: typeof AppStockRouteWithChildren
+  AppSuiviRoute: typeof AppSuiviRoute
   AppTableauDeBordRoute: typeof AppTableauDeBordRoute
+  AppValidationResultatsRoute: typeof AppValidationResultatsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppDemandesIntegrationIdRoute: typeof AppDemandesIntegrationIdRoute
   AppUtilisateursNouveauRoute: typeof AppUtilisateursNouveauRoute
@@ -1369,11 +1449,15 @@ const AppRouteChildren: AppRouteChildren = {
   AppPanierRoute: AppPanierRouteWithChildren,
   AppParametresRoute: AppParametresRoute,
   AppParametresPlateformeRoute: AppParametresPlateformeRoute,
+  AppPlanificationRoute: AppPlanificationRoute,
   AppProfilRoute: AppProfilRoute,
   AppRapportsRoute: AppRapportsRouteWithChildren,
+  AppRapportsLaboratoireRoute: AppRapportsLaboratoireRoute,
   AppSatisfactionRoute: AppSatisfactionRoute,
   AppStockRoute: AppStockRouteWithChildren,
+  AppSuiviRoute: AppSuiviRoute,
   AppTableauDeBordRoute: AppTableauDeBordRoute,
+  AppValidationResultatsRoute: AppValidationResultatsRoute,
   AppIndexRoute: AppIndexRoute,
   AppDemandesIntegrationIdRoute: AppDemandesIntegrationIdRoute,
   AppUtilisateursNouveauRoute: AppUtilisateursNouveauRoute,

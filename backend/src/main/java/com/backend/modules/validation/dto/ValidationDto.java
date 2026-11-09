@@ -12,4 +12,7 @@ public class ValidationDto {
     private StatutValidation statut;
     private String commentaire;
     private Instant dateValidation;
+    /** 1 = validation technique (technicien), 2 = décision du responsable. */
+    private Integer niveau;
+    private String validateurNom;
 }
