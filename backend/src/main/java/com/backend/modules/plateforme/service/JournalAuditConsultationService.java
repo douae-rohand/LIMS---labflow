@@ -3,6 +3,8 @@ package com.backend.modules.plateforme.service;
 import com.backend.common.audit.JournalAudit;
 import com.backend.common.audit.JournalAuditRepository;
 import com.backend.common.exception.BusinessRuleException;
+import com.backend.common.util.ExportTableau;
+import com.backend.modules.plateforme.dto.FichierGenere;
 import com.backend.modules.plateforme.dto.JournalAuditDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -11,7 +13,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -56,17 +57,20 @@ public class JournalAuditConsultationService {
         return journalAuditRepository.listerActions();
     }
 
+    private static final List<String> COLONNES_EXPORT = List.of(
+            "Code", "Date", "Action", "Objet", "Acteur", "Motif", "Valeur avant", "Valeur après");
+    private static final java.time.format.DateTimeFormatter DATE_EXPORT = java.time.format.DateTimeFormatter
+            .ofPattern("dd/MM/yyyy HH:mm:ss").withZone(java.time.ZoneId.of("Africa/Casablanca"));
+
     @Transactional(readOnly = true)
-    public byte[] exporterCsv(String acteur, String action, Long laboratoireId, LocalDate du, LocalDate au) {
-        String nomSchema = null;
-        if (laboratoireId != null) {
-            nomSchema = laboratoireId.toString();
-        }
+    public FichierGenere exporter(String format, String acteur, String action, Long laboratoireId,
+                                  LocalDate du, LocalDate au) {
+        String nomSchema = laboratoireId == null ? null : laboratoireId.toString();
         Page<JournalAuditDto> page = journalAuditRepository.rechercher(
                         like(acteur),
-                null,
-                texte(action),
-                null,
+                        null,
+                        texte(action),
+                        null,
                         nomSchema,
                         null,
                         debut(du),
@@ -78,20 +82,18 @@ public class JournalAuditConsultationService {
             throw new BusinessRuleException("EXPORT_TROP_LARGE",
                     "Plus de " + EXPORT_MAX + " lignes correspondent. Affinez les filtres avant d'exporter.");
         }
-        StringBuilder csv = new StringBuilder();
-        csv.append('\uFEFF');
-        csv.append("code;date;action;objet;acteur;motif;valeurAvant;valeurApres\n");
-        for (JournalAuditDto ligne : page.getContent()) {
-            csv.append(cellule(ligne.getCode())).append(';')
-                    .append(cellule(ligne.getDateAction() == null ? "" : ligne.getDateAction().toString())).append(';')
-                    .append(cellule(ligne.getAction())).append(';')
-                    .append(cellule(ligne.getObjet())).append(';')
-                    .append(cellule(ligne.getActeurEmail())).append(';')
-                    .append(cellule(ligne.getMotif())).append(';')
-                    .append(cellule(ligne.getValeurAvant())).append(';')
-                    .append(cellule(ligne.getValeurApres())).append('\n');
-        }
-        return csv.toString().getBytes(StandardCharsets.UTF_8);
+        List<List<String>> lignes = page.getContent().stream()
+                .map(ligne -> java.util.Arrays.asList(
+                        ligne.getCode(),
+                        ligne.getDateAction() == null ? "" : DATE_EXPORT.format(ligne.getDateAction()),
+                        ligne.getAction(),
+                        ligne.getObjet(),
+                        ligne.getActeurEmail(),
+                        ligne.getMotif(),
+                        ligne.getValeurAvant(),
+                        ligne.getValeurApres()))
+                .toList();
+        return ExportTableau.generer(format, "journal-audit", "Journal d'audit", COLONNES_EXPORT, lignes);
     }
 
     private JournalAuditDto versDto(JournalAudit entree) {
@@ -147,24 +149,5 @@ public class JournalAuditConsultationService {
                 .replace("\\", "\\\\")
                 .replace("%", "\\%")
                 .replace("_", "\\_");
-    }
-
-    private static String cellule(String valeur) {
-        if (valeur == null) {
-            return "";
-        }
-        String texte = valeur;
-        int index = 0;
-        while (index < texte.length()) {
-            char caractere = texte.charAt(index);
-            if (caractere != ' ' && caractere != '\t' && caractere != '\r') {
-                break;
-            }
-            index++;
-        }
-        if (index < texte.length() && "=+-@".indexOf(texte.charAt(index)) >= 0) {
-            texte = "'" + texte;
-        }
-        return "\"" + texte.replace("\"", "\"\"") + "\"";
     }
 }
