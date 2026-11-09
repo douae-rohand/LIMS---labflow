@@ -37,11 +37,13 @@ import { Route as AppJournalAuditRouteImport } from './routes/app/journal-audit'
 import { Route as AppLaboratoiresRouteImport } from './routes/app/laboratoires'
 import { Route as AppPanierRouteImport } from './routes/app/panier'
 import { Route as AppParametresRouteImport } from './routes/app/parametres'
+import { Route as AppParametresPlateformeRouteImport } from './routes/app/parametres-plateforme'
 import { Route as AppProfilRouteImport } from './routes/app/profil'
 import { Route as AppRapportsRouteImport } from './routes/app/rapports'
 import { Route as AppSatisfactionRouteImport } from './routes/app/satisfaction'
 import { Route as AppStockRouteImport } from './routes/app/stock'
 import { Route as AppTableauDeBordRouteImport } from './routes/app/tableau-de-bord'
+import { Route as IntegrationComplementsRouteImport } from './routes/integration_.complements'
 import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/index'
 import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
 import { Route as AppCatalogueIndexRouteImport } from './routes/app/catalogue/index'
@@ -208,6 +210,11 @@ const AppParametresRoute = AppParametresRouteImport.update({
   path: '/parametres',
   getParentRoute: () => AppRoute,
 } as any)
+const AppParametresPlateformeRoute = AppParametresPlateformeRouteImport.update({
+  id: '/parametres-plateforme',
+  path: '/parametres-plateforme',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProfilRoute = AppProfilRouteImport.update({
   id: '/profil',
   path: '/profil',
@@ -232,6 +239,11 @@ const AppTableauDeBordRoute = AppTableauDeBordRouteImport.update({
   id: '/tableau-de-bord',
   path: '/tableau-de-bord',
   getParentRoute: () => AppRoute,
+} as any)
+const IntegrationComplementsRoute = IntegrationComplementsRouteImport.update({
+  id: '/integration_/complements',
+  path: '/integration/complements',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LaboratoiresIndexRoute = LaboratoiresIndexRouteImport.update({
   id: '/laboratoires/',
@@ -393,11 +405,13 @@ export interface FileRoutesByFullPath {
   '/app/laboratoires': typeof AppLaboratoiresRouteWithChildren
   '/app/panier': typeof AppPanierRouteWithChildren
   '/app/parametres': typeof AppParametresRoute
+  '/app/parametres-plateforme': typeof AppParametresPlateformeRoute
   '/app/profil': typeof AppProfilRoute
   '/app/rapports': typeof AppRapportsRouteWithChildren
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/stock': typeof AppStockRouteWithChildren
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
+  '/integration/complements': typeof IntegrationComplementsRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
@@ -443,9 +457,11 @@ export interface FileRoutesByTo {
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/app/journal-audit': typeof AppJournalAuditRoute
   '/app/parametres': typeof AppParametresRoute
+  '/app/parametres-plateforme': typeof AppParametresPlateformeRoute
   '/app/profil': typeof AppProfilRoute
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
+  '/integration/complements': typeof IntegrationComplementsRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app': typeof AppIndexRoute
   '/laboratoires': typeof LaboratoiresIndexRoute
@@ -502,11 +518,13 @@ export interface FileRoutesById {
   '/app/laboratoires': typeof AppLaboratoiresRouteWithChildren
   '/app/panier': typeof AppPanierRouteWithChildren
   '/app/parametres': typeof AppParametresRoute
+  '/app/parametres-plateforme': typeof AppParametresPlateformeRoute
   '/app/profil': typeof AppProfilRoute
   '/app/rapports': typeof AppRapportsRouteWithChildren
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/stock': typeof AppStockRouteWithChildren
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
+  '/integration_/complements': typeof IntegrationComplementsRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
@@ -564,11 +582,13 @@ export interface FileRouteTypes {
     | '/app/laboratoires'
     | '/app/panier'
     | '/app/parametres'
+    | '/app/parametres-plateforme'
     | '/app/profil'
     | '/app/rapports'
     | '/app/satisfaction'
     | '/app/stock'
     | '/app/tableau-de-bord'
+    | '/integration/complements'
     | '/laboratoires/$id'
     | '/app/'
     | '/laboratoires/'
@@ -614,9 +634,11 @@ export interface FileRouteTypes {
     | '/app/gestion-laboratoires'
     | '/app/journal-audit'
     | '/app/parametres'
+    | '/app/parametres-plateforme'
     | '/app/profil'
     | '/app/satisfaction'
     | '/app/tableau-de-bord'
+    | '/integration/complements'
     | '/laboratoires/$id'
     | '/app'
     | '/laboratoires'
@@ -672,11 +694,13 @@ export interface FileRouteTypes {
     | '/app/laboratoires'
     | '/app/panier'
     | '/app/parametres'
+    | '/app/parametres-plateforme'
     | '/app/profil'
     | '/app/rapports'
     | '/app/satisfaction'
     | '/app/stock'
     | '/app/tableau-de-bord'
+    | '/integration_/complements'
     | '/laboratoires/$id'
     | '/app/'
     | '/laboratoires/'
@@ -718,6 +742,7 @@ export interface RootRouteChildren {
   MotDePasseOublieRoute: typeof MotDePasseOublieRoute
   ReinitialiserMotDePasseRoute: typeof ReinitialiserMotDePasseRoute
   UiKitRoute: typeof UiKitRoute
+  IntegrationComplementsRoute: typeof IntegrationComplementsRoute
   LaboratoiresIdRoute: typeof LaboratoiresIdRoute
   LaboratoiresIndexRoute: typeof LaboratoiresIndexRoute
 }
@@ -920,6 +945,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppParametresRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/parametres-plateforme': {
+      id: '/app/parametres-plateforme'
+      path: '/parametres-plateforme'
+      fullPath: '/app/parametres-plateforme'
+      preLoaderRoute: typeof AppParametresPlateformeRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/profil': {
       id: '/app/profil'
       path: '/profil'
@@ -954,6 +986,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/tableau-de-bord'
       preLoaderRoute: typeof AppTableauDeBordRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/integration_/complements': {
+      id: '/integration_/complements'
+      path: '/integration/complements'
+      fullPath: '/integration/complements'
+      preLoaderRoute: typeof IntegrationComplementsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/laboratoires/': {
       id: '/laboratoires/'
@@ -1300,6 +1339,7 @@ interface AppRouteChildren {
   AppLaboratoiresRoute: typeof AppLaboratoiresRouteWithChildren
   AppPanierRoute: typeof AppPanierRouteWithChildren
   AppParametresRoute: typeof AppParametresRoute
+  AppParametresPlateformeRoute: typeof AppParametresPlateformeRoute
   AppProfilRoute: typeof AppProfilRoute
   AppRapportsRoute: typeof AppRapportsRouteWithChildren
   AppSatisfactionRoute: typeof AppSatisfactionRoute
@@ -1328,6 +1368,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppLaboratoiresRoute: AppLaboratoiresRouteWithChildren,
   AppPanierRoute: AppPanierRouteWithChildren,
   AppParametresRoute: AppParametresRoute,
+  AppParametresPlateformeRoute: AppParametresPlateformeRoute,
   AppProfilRoute: AppProfilRoute,
   AppRapportsRoute: AppRapportsRouteWithChildren,
   AppSatisfactionRoute: AppSatisfactionRoute,
@@ -1355,6 +1396,7 @@ const rootRouteChildren: RootRouteChildren = {
   MotDePasseOublieRoute: MotDePasseOublieRoute,
   ReinitialiserMotDePasseRoute: ReinitialiserMotDePasseRoute,
   UiKitRoute: UiKitRoute,
+  IntegrationComplementsRoute: IntegrationComplementsRoute,
   LaboratoiresIdRoute: LaboratoiresIdRoute,
   LaboratoiresIndexRoute: LaboratoiresIndexRoute,
 }

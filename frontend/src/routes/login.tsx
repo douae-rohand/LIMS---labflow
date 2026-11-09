@@ -15,6 +15,7 @@ import { apiClient, ApiError } from "@/api/axios";
 import { cn } from "@/lib/utils";
 import { cibleApresConnexion, sanitizeRedirect } from "@/lib/redirect";
 import { RenvoyerLienActivation } from "@/components/auth/RenvoyerLienActivation";
+import { EtapeDeuxFacteurs } from "@/components/auth/EtapeDeuxFacteurs";
 
 // ---------------------------------------------------------------------------
 // Garde : si déjà connecté → /app (ou /changer-mot-de-passe)
@@ -57,7 +58,14 @@ export const Route = createFileRoute("/login")({
 // Composant champ mot de passe avec icône œil
 // ---------------------------------------------------------------------------
 
-function PwdField({ id, label, error, errorId, ...props }: any) {
+type PwdFieldProps = React.InputHTMLAttributes<HTMLInputElement> & {
+  id: string;
+  label: string;
+  error?: string | undefined;
+  errorId?: string;
+};
+
+function PwdField({ id, label, error, errorId, ...props }: PwdFieldProps) {
   const [visible, setVisible] = useState(false);
   return (
     <div className="flex flex-col gap-1.5">
@@ -116,6 +124,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 function LoginPage() {
   const router = useRouter();
   const search = Route.useSearch();
+  const [deuxFacteurs, setDeuxFacteurs] = useState<{ token: string; configuration: boolean } | null>(null);
   const {
     register,
     handleSubmit,
@@ -144,9 +153,11 @@ function LoginPage() {
       });
 
       if (response.requiresTwoFactor) {
-        setError("root", {
-          message: "La double authentification n'est pas encore disponible dans cette interface.",
-        });
+        if (!response.twoFactorToken) {
+          setError("root", { message: "Une erreur est survenue. Veuillez réessayer." });
+          return;
+        }
+        setDeuxFacteurs({ token: response.twoFactorToken, configuration: Boolean(response.setupRequired) });
         return;
       }
 
@@ -204,6 +215,15 @@ function LoginPage() {
             Espace sécurisé de votre laboratoire.
           </p>
 
+          {deuxFacteurs ? (
+            <EtapeDeuxFacteurs
+              twoFactorToken={deuxFacteurs.token}
+              configurationRequise={deuxFacteurs.configuration}
+              onConnecte={ouvrirSession}
+              onAnnuler={() => setDeuxFacteurs(null)}
+            />
+          ) : (
+          <>
           {/* Erreur globale accessible */}
           {errors.root?.message && (
             <div
@@ -289,6 +309,8 @@ function LoginPage() {
               Mot de passe oublié ?
             </Link>
           </p>
+          </>
+          )}
         </Card>
 
         <Photo
