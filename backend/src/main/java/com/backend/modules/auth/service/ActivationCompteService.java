@@ -32,6 +32,7 @@ public class ActivationCompteService {
     private final UtilisateurRepository utilisateurRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final com.backend.modules.plateforme.service.ParametrePlateformeService parametrePlateformeService;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -112,7 +113,9 @@ public class ActivationCompteService {
         TokenActivation token = chargerTokenValide(tokenBrut);
         Utilisateur utilisateur = token.getUtilisateur();
 
-        MotDePasseValidator.valider(motDePasse, utilisateur.getMotDePasseHash(), passwordEncoder);
+        var politique = parametrePlateformeService.politiqueMotDePasse();
+        MotDePasseValidator.valider(motDePasse, utilisateur.getMotDePasseHash(), passwordEncoder,
+                politique.longueurMin(), politique.exigerCaractereSpecial());
 
         utilisateur.setMotDePasseHash(passwordEncoder.encode(motDePasse));
         utilisateur.setActif(true);

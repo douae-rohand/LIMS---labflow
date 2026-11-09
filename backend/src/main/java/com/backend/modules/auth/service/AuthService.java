@@ -39,6 +39,7 @@ public class AuthService {
     private final UtilisateurRepository utilisateurRepository;
     private final PasswordEncoder passwordEncoder;
     private final TwoFactorRateLimiter twoFactorRateLimiter;
+    private final com.backend.modules.plateforme.service.ParametrePlateformeService parametrePlateformeService;
 
     // -------------------------------------------------------------------------
     // Connexion
@@ -120,12 +121,9 @@ public class AuthService {
         return buildLoginResult(principal, httpRequest);
     }
 
-    /**
-     * Détermine si la 2FA est obligatoire pour un rôle.
-     * L'obligation reste coupée tant que l'interface de connexion ne finalise pas l'enrôlement.
-     */
+    /** La 2FA est obligatoire pour les rôles choisis dans les paramètres de la plateforme. */
     public boolean is2faRequiredForRole(RoleUtilisateur role) {
-        return false;
+        return parametrePlateformeService.deuxFacteursObligatoire(role);
     }
 
     @Transactional

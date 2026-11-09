@@ -19,6 +19,7 @@ import java.util.Optional;
 public class RefreshCookieService {
 
     private final JwtConfig jwtConfig;
+    private final com.backend.modules.plateforme.service.ParametrePlateformeService parametrePlateformeService;
 
     @Value("${jwt.cookie-name:refreshToken}")
     private String cookieName;
@@ -39,7 +40,7 @@ public class RefreshCookieService {
      * @return ResponseCookie configuré
      */
     public ResponseCookie creerCookieRefreshToken(String rawRefreshToken) {
-        long maxAgeSeconds = jwtConfig.getRefreshExpiration() / 1000;
+        long maxAgeSeconds = parametrePlateformeService.dureeSessionMs() / 1000;
         return ResponseCookie.from(cookieName, rawRefreshToken)
                 .httpOnly(true)
                 .secure(cookieSecure)

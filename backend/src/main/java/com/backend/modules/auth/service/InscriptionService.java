@@ -51,6 +51,7 @@ public class InscriptionService {
     private final ActivationService activationService;
     private final ActivationEmailService activationEmailService;
     private final MatriculeGeneratorService matriculeGeneratorService;
+    private final com.backend.modules.plateforme.service.ParametrePlateformeService parametrePlateformeService;
 
     @Value("${app.inscription.version-consentement-cndp:1.0}")
     private String versionConsentementCndp;
@@ -66,7 +67,9 @@ public class InscriptionService {
      */
     @Transactional
     public void inscrire(InscriptionRequest request) {
-        MotDePasseValidator.valider(request.getMotDePasse(), null, passwordEncoder);
+        var politique = parametrePlateformeService.politiqueMotDePasse();
+        MotDePasseValidator.valider(request.getMotDePasse(), null, passwordEncoder,
+                politique.longueurMin(), politique.exigerCaractereSpecial());
         // 1. Hacher AVANT de toucher à la base (timing constant quel que soit le chemin)
         String hash = passwordEncoder.encode(request.getMotDePasse());
 
