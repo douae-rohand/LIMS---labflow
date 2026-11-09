@@ -7,7 +7,7 @@ import { trouverDemandeDuLaboratoire } from "@/api/plateforme";
 import { historiqueLaboratoire } from "@/api/tableauBord";
 import { IndicateurEtapes } from "@/components/integration/IndicateurEtapes";
 import { LocationPicker } from "@/components/integration/LocationPicker";
-import { TYPES_LABORATOIRE } from "@/components/integration/constants";
+import { useTypesLaboratoire } from "@/hooks/useParametresPublics";
 import {
   modifierAdministrateurLaboratoire,
   modifierLaboratoire,
@@ -31,6 +31,7 @@ export function PanneauLaboratoire({
   onDemanderStatut: (laboratoire: LaboratoireAdmin, action: "activer" | "suspendre" | "desactiver") => void;
 }) {
   const queryClient = useQueryClient();
+  const typesLaboratoire = useTypesLaboratoire();
   const [mode, setMode] = useState(modeInitial);
   const [etape, setEtape] = useState(0);
   const [formulaire, setFormulaire] = useState(() => versFormulaire(laboratoire));
@@ -254,7 +255,7 @@ export function PanneauLaboratoire({
                   <div>
                     <Label>Types de laboratoire</Label>
                     <div className="mt-2 flex flex-col gap-2">
-                      {TYPES_LABORATOIRE.map((type) => (
+                      {[...new Set([...typesLaboratoire, ...formulaire.types])].map((type) => (
                         <label key={type} className="flex items-center gap-2 text-sm text-ink-900">
                           <input
                             type="checkbox"
@@ -371,6 +372,7 @@ export function PanneauLaboratoire({
                 <ListeDocuments
                   demandeId={dossier.data?.id ?? null}
                   documents={dossier.data?.documents}
+                  attendus={dossier.data?.documentsAttendus}
                   chargement={dossier.isLoading}
                   introuvable={!dossier.isLoading && dossier.data == null}
                 />

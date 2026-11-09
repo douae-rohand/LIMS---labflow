@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
-import { Download, Eye, FileSpreadsheet, MoreHorizontal, Pencil, SlidersHorizontal, UserPlus } from "lucide-react";
+import { Download, Eye, FileSpreadsheet, FileText, MoreHorizontal, Pencil, ShieldCheck, SlidersHorizontal, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Badge, Button, Input, Label, Select } from "@/components/lab";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -16,6 +16,7 @@ import {
   lirePermissions,
   modifierCompte,
   reactiverCompte,
+  reinitialiserDeuxFacteurs,
   reinitialiserMotDePasseCompte,
   renvoyerInvitationCompte,
   type CompteUtilisateur,
@@ -29,6 +30,7 @@ import { EnTetePage } from "../EnTetePage";
 import { EtatVide } from "../EtatVide";
 import { formaterDate, messageErreur, texte } from "../texte";
 import { DialogueImportUtilisateurs } from "./DialogueImportUtilisateurs";
+import { DialogueSessions } from "./DialogueSessions";
 
 export function PageComptes() {
   const queryClient = useQueryClient();
@@ -46,6 +48,8 @@ export function PageComptes() {
   const [detail, setDetail] = useState<CompteUtilisateur | null>(null);
   const [permissionsCible, setPermissionsCible] = useState<CompteUtilisateur | null>(null);
   const [confirmation, setConfirmation] = useState<CompteUtilisateur | null>(null);
+  const [deuxFacteursCible, setDeuxFacteursCible] = useState<CompteUtilisateur | null>(null);
+  const [sessionsCible, setSessionsCible] = useState<CompteUtilisateur | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDifferee(recherche.trim()), 300);
@@ -65,7 +69,7 @@ export function PageComptes() {
   };
   const filtresActifs = Boolean(differee || laboratoireId || statut);
   const exportMutation = useMutation({
-    mutationFn: (format: "csv" | "xlsx") => exporterComptes(
+    mutationFn: (format: "csv" | "xlsx" | "pdf") => exporterComptes(
       format,
       portee === "tous" ? { page: 0, size: 20, role: "ADMINISTRATEUR" } : filtre,
     ),
@@ -102,6 +106,17 @@ export function PageComptes() {
       await invalider();
     },
     onError: (erreur) => toast.error(messageErreur(erreur, "La réactivation a été refusée.")),
+  });
+
+  const reinitialisation2fa = useMutation({
+    mutationFn: ({ compte, motif }: { compte: CompteUtilisateur; motif: string }) =>
+      reinitialiserDeuxFacteurs(compte.id, motif || undefined),
+    onSuccess: async () => {
+      toast.success("Double authentification réinitialisée. Les sessions du compte ont été fermées.");
+      setDeuxFacteursCible(null);
+      await invalider();
+    },
+    onError: (erreur) => toast.error(messageErreur(erreur, "La réinitialisation a échoué.")),
   });
 
   const action = useMutation({
@@ -153,6 +168,7 @@ export function PageComptes() {
           formatsExport={[
             { icone: FileSpreadsheet, libelle: "Exporter en Excel", onClick: () => exportMutation.mutate("xlsx") },
             { icone: Download, libelle: "Exporter en CSV", onClick: () => exportMutation.mutate("csv") },
+            { icone: FileText, libelle: "Exporter en PDF", onClick: () => exportMutation.mutate("pdf") },
           ]}
           puces={[
             ...(differee ? [{ libelle: `Recherche : ${differee}`, onRetirer: () => setRecherche("") }] : []),
@@ -212,6 +228,11 @@ export function PageComptes() {
                           <p className="truncate font-semibold text-ink-900">{nomAffiche}</p>
                           <p className="truncate text-xs text-muted-foreground">{compte.email}</p>
                           {comptePlateforme && <p className="text-xs font-semibold text-brand-900">Compte plateforme</p>}
+                          {compte.deuxFacteursActive && (
+                            <p className="flex items-center gap-1 text-xs font-semibold text-brand-900">
+                              <ShieldCheck className="size-3.5" aria-hidden="true" /> 2FA active
+                            </p>
+                          )}
                           {compte.personnalise && compte.role !== "SUPER_ADMINISTRATEUR" && compte.role !== "CLIENT" && <Badge variant="outline">Personnalisées</Badge>}
                         </div>
                       </div>
@@ -249,6 +270,10 @@ export function PageComptes() {
                                 {compte.role === "ADMINISTRATEUR" && (
                                   <>
                                     <DropdownMenuItem onSelect={() => action.mutate({ id: compte.id, type: "mdp" })}>Réinitialiser le mot de passe</DropdownMenuItem>
+                                    {compte.deuxFacteursActive && modifiable && (
+                                      <DropdownMenuItem onSelect={() => setDeuxFacteursCible(compte)}>Réinitialiser la 2FA</DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem onSelect={() => setSessionsCible(compte)}>Sessions ouvertes</DropdownMenuItem>
                                   </>
                                 )}
                                 {invitation && (
@@ -287,6 +312,22 @@ export function PageComptes() {
         compteId={permissionsCible?.id ?? null}
         nom={permissionsCible ? `${texte(permissionsCible.prenom)} ${permissionsCible.nom}`.trim() : ""}
         onFermer={() => setPermissionsCible(null)}
+      />
+      <DialogueMotif
+        ouvert={deuxFacteursCible != null}
+        titre="Réinitialiser la double authentification"
+        description="La clé de l'application d'authentification est effacée et toutes les sessions du compte sont fermées. Si la 2FA est obligatoire pour son rôle, l'administrateur la reconfigurera à sa prochaine connexion."
+        libelleConfirmation="Réinitialiser"
+        enCours={reinitialisation2fa.isPending}
+        onFermer={() => setDeuxFacteursCible(null)}
+        onConfirmer={(motif) => {
+          if (deuxFacteursCible) reinitialisation2fa.mutate({ compte: deuxFacteursCible, motif });
+        }}
+      />
+      <DialogueSessions
+        compte={sessionsCible}
+        modifiable={sessionsCible != null && sessionsCible.id !== session?.user.userId}
+        onFermer={() => setSessionsCible(null)}
       />
       <DialogueMotif
         ouvert={confirmation != null}

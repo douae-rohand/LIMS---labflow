@@ -54,6 +54,11 @@ export async function listerActionsAudit(): Promise<string[]> {
   return res.data;
 }
 
-export async function exporterJournalAudit(filtre: FiltreAudit): Promise<void> {
-  await apiClient.download(`/plateforme/audit/export?${params(filtre).toString()}`, "journal-audit.csv");
+export async function exporterJournalAudit(
+  filtre: FiltreAudit,
+  format: "csv" | "xlsx" | "pdf" = "csv",
+): Promise<void> {
+  const recherche = params(filtre);
+  recherche.set("format", format);
+  await apiClient.download(`/plateforme/audit/export?${recherche.toString()}`, `journal-audit.${format}`);
 }

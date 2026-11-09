@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Download, Eye, X } from "lucide-react";
+import { Download, Eye, FileSpreadsheet, FileText, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge, Button, Input, Select } from "@/components/lab";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -61,10 +61,10 @@ export function JournalAudit() {
   const fin = Math.min(total, (page + 1) * 10);
   const filtresActifs = Boolean(acteurDiffere || action || laboratoireId || du || au);
 
-  async function exporter() {
+  async function exporter(format: "csv" | "xlsx" | "pdf") {
     try {
-      await exporterJournalAudit(filtre);
-      toast.success("Le fichier CSV a été téléchargé.");
+      await exporterJournalAudit(filtre, format);
+      toast.success("Le fichier a été téléchargé.");
     } catch (erreur) {
       toast.error(messageErreur(erreur, "L'export a échoué."));
     }
@@ -79,7 +79,11 @@ export function JournalAudit() {
         libelleRecherche="Filtrer par acteur"
         filtresActifs={filtresActifs}
         onReinitialiser={() => { setActeur(""); setAction(""); setLaboratoireId(""); setDu(""); setAu(""); }}
-        formatsExport={[{ icone: Download, libelle: "Exporter en CSV", onClick: () => void exporter() }]}
+        formatsExport={[
+          { icone: FileSpreadsheet, libelle: "Exporter en Excel", onClick: () => void exporter("xlsx") },
+          { icone: Download, libelle: "Exporter en CSV", onClick: () => void exporter("csv") },
+          { icone: FileText, libelle: "Exporter en PDF", onClick: () => void exporter("pdf") },
+        ]}
         puces={[
           ...(acteurDiffere ? [{ libelle: `Recherche : ${acteurDiffere}`, onRetirer: () => setActeur("") }] : []),
           ...(action ? [{ libelle: action, onRetirer: () => setAction("") }] : []),
