@@ -1,10 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Download, Eye } from "lucide-react";
-import { Button } from "@/components/lab";
+import { Badge, Button } from "@/components/lab";
 import { ApiError } from "@/api/axios";
-import { contenuDocumentIntegration, ouvrirDocumentIntegration, type DocumentIntegrationDto } from "@/api/plateforme";
-import { LIBELLES_DOCUMENTS, TYPES_DOCUMENTS, type TypeDocumentIntegration } from "@/components/integration/constants";
+import {
+  contenuDocumentIntegration,
+  ouvrirDocumentIntegration,
+  type DocumentIntegrationDto,
+  type TypeDocumentIntegrationDto,
+} from "@/api/plateforme";
 import { messageErreur } from "../texte";
 
 function modeApercu(nom: string, mime: string): "pdf" | "image" | "aucun" {
@@ -15,9 +19,51 @@ function modeApercu(nom: string, mime: string): "pdf" | "image" | "aucun" {
   return "aucun";
 }
 
+interface LigneDocument {
+  code: string;
+  libelle: string;
+  raison?: string | null | undefined;
+  obligatoire: boolean;
+  actif: boolean;
+}
+
+/**
+ * Liste les documents attendus pour un dossier : les types actifs du paramétrage
+ * et ceux déjà déposés (même s'ils ont été retirés depuis de la liste exigée).
+ */
+function lignesAttendues(
+  attendus: TypeDocumentIntegrationDto[] | undefined,
+  documents: DocumentIntegrationDto[] | undefined,
+): LigneDocument[] {
+  const lignes = new Map<string, LigneDocument>();
+  (attendus ?? []).forEach((type) =>
+    lignes.set(type.code, {
+      code: type.code,
+      libelle: type.libelle,
+      raison: type.raison,
+      obligatoire: type.obligatoire,
+      actif: type.actif,
+    }),
+  );
+  (documents ?? []).forEach((document) => {
+    if (!lignes.has(document.typeDocument)) {
+      lignes.set(document.typeDocument, {
+        code: document.typeDocument,
+        libelle: document.libelle,
+        raison: document.raison,
+        obligatoire: false,
+        actif: false,
+      });
+    }
+  });
+  return [...lignes.values()];
+}
+
 export function ListeDocuments({
   demandeId,
   documents,
+  attendus,
+  demandes,
   chargement,
   introuvable,
   peutRemplacer,
@@ -26,15 +72,19 @@ export function ListeDocuments({
 }: {
   demandeId: number | null;
   documents: DocumentIntegrationDto[] | undefined;
+  attendus?: TypeDocumentIntegrationDto[] | undefined;
+  /** Codes des documents réclamés au demandeur (demande de compléments en cours). */
+  demandes?: string[] | undefined;
   chargement?: boolean;
   introuvable?: boolean;
   peutRemplacer?: boolean;
   remplacementEnCours?: boolean;
-  onRemplacer?: (type: TypeDocumentIntegration, fichier: File) => void;
+  onRemplacer?: (type: string, fichier: File) => void;
 }) {
-  const [selection, setSelection] = useState<TypeDocumentIntegration | null>(null);
+  const [selection, setSelection] = useState<string | null>(null);
   const presents = new Map((documents ?? []).map((document) => [document.typeDocument, document]));
   const choisi = selection ? presents.get(selection) : undefined;
+  const lignes = lignesAttendues(attendus, documents);
 
   useEffect(() => {
     setSelection(null);
@@ -54,12 +104,22 @@ export function ListeDocuments({
   return (
     <div className="flex flex-col gap-4">
       <ul className="flex flex-col gap-2">
-        {TYPES_DOCUMENTS.map((type) => {
-          const document = presents.get(type);
+        {lignes.map((ligne) => {
+          const document = presents.get(ligne.code);
+          const reclame = demandes?.includes(ligne.code) ?? false;
           return (
-            <li key={type} className="rounded-2xl border border-brand-900/10 p-3">
-              <p className="font-semibold text-ink-900">{LIBELLES_DOCUMENTS[type].libelle}</p>
-              <p className="text-xs text-muted-foreground">{LIBELLES_DOCUMENTS[type].raison}</p>
+            <li key={ligne.code} className="rounded-2xl border border-brand-900/10 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-semibold text-ink-900">{ligne.libelle}</p>
+                  {ligne.raison && <p className="text-xs text-muted-foreground">{ligne.raison}</p>}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {reclame && <Badge variant="lime" size="sm">Réclamé</Badge>}
+                  {!ligne.actif && <Badge variant="outline" size="sm">Plus exigé</Badge>}
+                  {ligne.actif && !ligne.obligatoire && <Badge variant="outline" size="sm">Facultatif</Badge>}
+                </div>
+              </div>
               {document ? (
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-muted-foreground">
@@ -69,10 +129,10 @@ export function ListeDocuments({
                     <Button
                       type="button"
                       size="sm"
-                      variant={selection === type ? "primary" : "secondary"}
+                      variant={selection === ligne.code ? "primary" : "secondary"}
                       icon={<Eye className="size-4" aria-hidden="true" />}
                       iconPosition="left"
-                      onClick={() => setSelection(type)}
+                      onClick={() => setSelection(ligne.code)}
                     >
                       Consulter
                     </Button>
@@ -82,14 +142,16 @@ export function ListeDocuments({
                       variant="ghost"
                       icon={<Download className="size-4" aria-hidden="true" />}
                       iconPosition="left"
-                      onClick={() => void ouvrirDocumentIntegration(demandeId, type, true)}
+                      onClick={() => void ouvrirDocumentIntegration(demandeId, ligne.code, true)}
                     >
                       Télécharger
                     </Button>
                   </div>
                 </div>
               ) : (
-                <p className="mt-2 text-xs text-red-600">Document manquant</p>
+                <p className={`mt-2 text-xs ${ligne.obligatoire ? "text-red-600" : "text-muted-foreground"}`}>
+                  {ligne.obligatoire ? "Document manquant" : "Non fourni"}
+                </p>
               )}
               {peutRemplacer && onRemplacer && (
                 <label className="mt-2 block text-xs font-semibold text-brand-900">
@@ -101,7 +163,7 @@ export function ListeDocuments({
                     className="mt-1 block w-full text-sm font-normal text-ink-900"
                     onChange={(event) => {
                       const fichier = event.target.files?.[0];
-                      if (fichier) onRemplacer(type, fichier);
+                      if (fichier) onRemplacer(ligne.code, fichier);
                       event.target.value = "";
                     }}
                   />
@@ -111,9 +173,7 @@ export function ListeDocuments({
           );
         })}
       </ul>
-      {choisi && selection && (
-        <ApercuDocument demandeId={demandeId} type={selection} document={choisi} />
-      )}
+      {choisi && selection && <ApercuDocument demandeId={demandeId} type={selection} document={choisi} />}
     </div>
   );
 }
@@ -124,7 +184,7 @@ function ApercuDocument({
   document,
 }: {
   demandeId: number;
-  type: TypeDocumentIntegration;
+  type: string;
   document: DocumentIntegrationDto;
 }) {
   const mode = modeApercu(document.nomFichier, document.typeMime ?? "");
@@ -153,7 +213,7 @@ function ApercuDocument({
     <section className="overflow-hidden rounded-2xl border border-brand-900/10">
       <div className="border-b border-brand-900/10 bg-surface-alt px-4 py-2">
         <p className="text-sm font-semibold text-ink-900">{document.nomFichier}</p>
-        <p className="text-xs text-muted-foreground">{LIBELLES_DOCUMENTS[type].libelle}</p>
+        <p className="text-xs text-muted-foreground">{document.libelle}</p>
       </div>
       {mode === "aucun" && (
         <p className="px-4 py-6 text-sm text-ink-900">

@@ -10,6 +10,7 @@ import { PublicLayout } from "@/layouts/PublicLayout";
 import { reinitialiserMotDePasse } from "@/api/auth";
 import { ApiError } from "@/api/axios";
 import { cn } from "@/lib/utils";
+import { erreurMotDePasse, reglesMotDePasse, usePolitiqueMotDePasse } from "@/hooks/useParametresPublics";
 
 // ---------------------------------------------------------------------------
 // Route : lit le token depuis l'URL puis le retire de l'historique
@@ -39,13 +40,6 @@ const politiqueMdp = z
   .regex(/[a-z]/, "Au moins une lettre minuscule.")
   .regex(/[A-Z]/, "Au moins une lettre majuscule.")
   .regex(/[0-9]/, "Au moins un chiffre.");
-
-const REGLES = [
-  { id: "len",   label: "10 caractères minimum", test: (v: string) => v.length >= 10 },
-  { id: "lower", label: "Une lettre minuscule",   test: (v: string) => /[a-z]/.test(v) },
-  { id: "upper", label: "Une lettre majuscule",   test: (v: string) => /[A-Z]/.test(v) },
-  { id: "digit", label: "Un chiffre",             test: (v: string) => /[0-9]/.test(v) },
-] as const;
 
 const schema = z
   .object({
@@ -109,10 +103,11 @@ function PwdField({ id, label, error, errorId, ...props }: PwdFieldProps) {
 // ---------------------------------------------------------------------------
 
 function MdpChecklist({ value }: { value: string }) {
+  const regles = reglesMotDePasse(usePolitiqueMotDePasse());
   if (!value) return null;
   return (
     <ul aria-label="Critères du mot de passe" aria-live="polite" className="mt-1 flex flex-col gap-1">
-      {REGLES.map(({ id, label, test }) => {
+      {regles.map(({ id, label, test }) => {
         const ok = test(value);
         return (
           <li key={id} className="flex items-center gap-2 text-xs">
@@ -158,9 +153,11 @@ function ReinitialiserMotDePassePage() {
   // Message d'erreur API (politique refusée → afficher texte serveur ; lien invalide → générique)
   const [erreurApi, setErreurApi] = useState<string | null>(null);
 
+  const politique = usePolitiqueMotDePasse();
   const {
     register,
     handleSubmit,
+    setError,
     setFocus,
     control,
     formState: { errors, isSubmitting },
@@ -179,6 +176,11 @@ function ReinitialiserMotDePassePage() {
   const onSubmit = async (values: FormValues) => {
     const token = tokenRef.current;
     if (!token) { setEtat("lien-invalide"); return; }
+    const erreurPolitique = erreurMotDePasse(politique, values.nouveauMotDePasse);
+    if (erreurPolitique) {
+      setError("nouveauMotDePasse", { message: erreurPolitique });
+      return;
+    }
 
     setErreurApi(null);
 

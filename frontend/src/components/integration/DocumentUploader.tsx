@@ -1,19 +1,22 @@
 import { FileText, Replace, Trash2, Upload } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Button } from "@/components/lab";
-import {
-  FORMAT_DOCUMENTS_ACCEPTES,
-  LIBELLES_DOCUMENTS,
-  TAILLE_MAX_DOCUMENT,
-  TYPES_DOCUMENTS,
-  type TypeDocumentIntegration,
-} from "./constants";
+import { FORMAT_DOCUMENTS_ACCEPTES, TAILLE_MAX_DOCUMENT } from "./constants";
 import { cn } from "@/lib/utils";
 
+/** Description minimale d'un document à déposer. */
+export interface DocumentADeposer {
+  code: string;
+  libelle: string;
+  raison?: string | null | undefined;
+  obligatoire: boolean;
+}
+
 type DocumentUploaderProps = {
-  files: Partial<Record<TypeDocumentIntegration, File>>;
-  onChange: (type: TypeDocumentIntegration, file: File | null) => void;
-  errors?: Partial<Record<TypeDocumentIntegration, string>>;
+  types: DocumentADeposer[];
+  files: Partial<Record<string, File>>;
+  onChange: (type: string, file: File | null) => void;
+  errors?: Partial<Record<string, string | undefined>>;
 };
 
 function formatTaille(bytes: number): string {
@@ -29,7 +32,7 @@ function DocumentSlot({
   preview,
   onChange,
 }: {
-  type: TypeDocumentIntegration;
+  type: DocumentADeposer;
   file?: File | undefined;
   error?: string | undefined;
   preview?: string | undefined;
@@ -37,7 +40,6 @@ function DocumentSlot({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [tailleError, setTailleError] = useState<string | null>(null);
-  const meta = LIBELLES_DOCUMENTS[type];
   const isImage = file?.type.startsWith("image/");
   const message = tailleError || error;
 
@@ -66,11 +68,11 @@ function DocumentSlot({
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-semibold text-ink-900">{meta.libelle}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{meta.raison}</p>
+          <p className="font-semibold text-ink-900">{type.libelle}</p>
+          {type.raison && <p className="mt-1 text-sm text-muted-foreground">{type.raison}</p>}
         </div>
-        <Badge variant="mint" size="sm">
-          Obligatoire
+        <Badge variant={type.obligatoire ? "mint" : "outline"} size="sm">
+          {type.obligatoire ? "Obligatoire" : "Facultatif"}
         </Badge>
       </div>
 
@@ -79,6 +81,7 @@ function DocumentSlot({
         type="file"
         className="sr-only"
         accept={FORMAT_DOCUMENTS_ACCEPTES}
+        aria-label={type.libelle}
         onChange={(event) => {
           appliquerFichier(event.target.files?.[0] ?? null);
           event.target.value = "";
@@ -140,29 +143,38 @@ function DocumentSlot({
   );
 }
 
-export function DocumentUploader({ files, onChange, errors }: DocumentUploaderProps) {
+export function DocumentUploader({ types, files, onChange, errors }: DocumentUploaderProps) {
   const previews = useMemo(() => {
-    const urls: Partial<Record<TypeDocumentIntegration, string>> = {};
-    TYPES_DOCUMENTS.forEach((type) => {
-      const file = files[type];
-      if (file) urls[type] = URL.createObjectURL(file);
+    const urls: Partial<Record<string, string>> = {};
+    types.forEach((type) => {
+      const file = files[type.code];
+      if (file) urls[type.code] = URL.createObjectURL(file);
     });
     return urls;
-  }, [files]);
+  }, [files, types]);
+
+  useEffect(
+    () => () => Object.values(previews).forEach((url) => url && URL.revokeObjectURL(url)),
+    [previews],
+  );
+
+  const obligatoires = types.filter((type) => type.obligatoire).length;
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        6 documents obligatoires · PDF, JPG, PNG ou WEBP · 10 Mo maximum par fichier
+        {obligatoires} document{obligatoires > 1 ? "s" : ""} obligatoire{obligatoires > 1 ? "s" : ""}
+        {types.length > obligatoires ? `, ${types.length - obligatoires} facultatif(s)` : ""} · PDF, JPG,
+        PNG ou WEBP · 10 Mo maximum par fichier
       </p>
-      {TYPES_DOCUMENTS.map((type) => (
+      {types.map((type) => (
         <DocumentSlot
-          key={type}
+          key={type.code}
           type={type}
-          file={files[type]}
-          error={errors?.[type]}
-          preview={previews[type]}
-          onChange={(file) => onChange(type, file)}
+          file={files[type.code]}
+          error={errors?.[type.code]}
+          preview={previews[type.code]}
+          onChange={(file) => onChange(type.code, file)}
         />
       ))}
     </div>

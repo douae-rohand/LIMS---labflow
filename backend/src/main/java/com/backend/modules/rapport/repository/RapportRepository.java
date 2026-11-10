@@ -18,6 +18,10 @@ public interface RapportRepository extends JpaRepository<Rapport, Long> {
 
     Page<Rapport> findByDemande_Id(Long demandeId, Pageable pageable);
 
+    List<Rapport> findByDemande_IdInOrderByIdDesc(java.util.Collection<Long> demandeIds);
+
+    long countByDemande_Id(Long demandeId);
+
     Page<Rapport> findByStatut(String statut, Pageable pageable);
 
     /**

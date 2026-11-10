@@ -37,6 +37,16 @@ class LaboratoireImportServiceTest {
     private LaboratoireRepository laboratoireRepository;
     @Mock
     private UtilisateurRepository utilisateurRepository;
+    @Mock
+    private com.backend.common.audit.JournalAuditService journalAuditService;
+    @Mock
+    private ParametrePlateformeService parametrePlateformeService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void referentiel() {
+        org.mockito.Mockito.lenient().when(parametrePlateformeService.typesLaboratoireActifs())
+                .thenReturn(List.of("Médical", "Industriel", "Environnemental", "Pharmaceutique et cosmétique"));
+    }
 
     @InjectMocks
     private LaboratoireImportService importService;

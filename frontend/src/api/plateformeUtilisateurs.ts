@@ -15,6 +15,14 @@ export interface CompteUtilisateur {
   statut: "ACTIF" | "INACTIF";
   derniereConnexion?: string | null;
   personnalise: boolean;
+  deuxFacteursActive: boolean;
+}
+
+export interface SessionCompte {
+  id: number;
+  appareil?: string | null;
+  ouverture: string;
+  expiration: string;
 }
 
 export interface FiltreUtilisateurs {
@@ -74,13 +82,30 @@ export async function listerComptes(filtre: FiltreUtilisateurs): Promise<SpringP
   return res.data;
 }
 
-export async function exporterComptes(format: "csv" | "xlsx", filtre: FiltreUtilisateurs): Promise<void> {
+export async function exporterComptes(format: "csv" | "xlsx" | "pdf", filtre: FiltreUtilisateurs): Promise<void> {
   const recherche = params({ ...filtre, page: 0, size: 20 });
   recherche.set("format", format);
-  await apiClient.download(
-    `/plateforme/utilisateurs/export?${recherche.toString()}`,
-    format === "csv" ? "utilisateurs.csv" : "utilisateurs.xlsx",
+  await apiClient.download(`/plateforme/utilisateurs/export?${recherche.toString()}`, `administrateurs.${format}`);
+}
+
+export async function reinitialiserDeuxFacteurs(id: number, motif?: string): Promise<CompteUtilisateur> {
+  const res = await apiClient.post<ApiResponse<CompteUtilisateur>>(
+    `/plateforme/utilisateurs/${id}/reinitialiser-2fa`,
+    { motif },
   );
+  return res.data;
+}
+
+export async function listerSessionsCompte(id: number): Promise<SessionCompte[]> {
+  const res = await apiClient.get<ApiResponse<SessionCompte[]>>(`/plateforme/utilisateurs/${id}/sessions`);
+  return res.data;
+}
+
+export async function revoquerSessionsCompte(id: number, motif?: string): Promise<number> {
+  const res = await apiClient.post<ApiResponse<number>>(`/plateforme/utilisateurs/${id}/sessions/revoquer`, {
+    motif,
+  });
+  return res.data;
 }
 
 export async function creerAdministrateur(payload: {

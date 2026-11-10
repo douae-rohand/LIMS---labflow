@@ -42,7 +42,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/plateforme/utilisateurs")
 @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
 @RequiredArgsConstructor
-@Tag(name = "Utilisateurs plateforme", description = "Comptes de connexion centraux, sans donnée métier de tenant")
+@Tag(name = "Utilisateurs plateforme", description = "Administrateurs de laboratoire, sans donnée métier de tenant")
 public class UtilisateurPlateformeController {
 
     private final UtilisateurPlateformeService utilisateurPlateformeService;
@@ -51,7 +51,7 @@ public class UtilisateurPlateformeController {
     private final PermissionCompteService permissionCompteService;
 
     @GetMapping
-    @Operation(summary = "Lister les comptes de connexion")
+    @Operation(summary = "Lister les administrateurs de laboratoire")
     public ResponseEntity<ApiResponse<Page<CompteUtilisateurDto>>> lister(
             @RequestParam(required = false) String recherche,
             @RequestParam(required = false) String role,
@@ -66,7 +66,7 @@ public class UtilisateurPlateformeController {
     }
 
     @GetMapping("/export")
-    @Operation(summary = "Exporter les comptes de connexion (CSV ou Excel)")
+    @Operation(summary = "Exporter les administrateurs de laboratoire (CSV, Excel ou PDF)")
     public ResponseEntity<byte[]> exporter(
             @RequestParam String format,
             @RequestParam(required = false) String recherche,
@@ -151,6 +151,34 @@ public class UtilisateurPlateformeController {
         return ResponseEntity.ok(ApiResponse.success(
                 "Compte réactivé",
                 utilisateurPlateformeService.reactiver(id, acteur.getId(), acteur.getEmail(), motif(request))));
+    }
+
+    @PostMapping("/{id}/reinitialiser-2fa")
+    @Operation(summary = "Réinitialiser la double authentification d'un administrateur")
+    public ResponseEntity<ApiResponse<CompteUtilisateurDto>> reinitialiserDeuxFacteurs(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) MotifFacultatifRequest request) {
+        UtilisateurPrincipal acteur = acteur();
+        return ResponseEntity.ok(ApiResponse.success(
+                "Double authentification réinitialisée",
+                utilisateurPlateformeService.reinitialiserDeuxFacteurs(id, acteur.getId(), acteur.getEmail(), motif(request))));
+    }
+
+    @GetMapping("/{id}/sessions")
+    @Operation(summary = "Sessions ouvertes d'un administrateur")
+    public ResponseEntity<ApiResponse<java.util.List<com.backend.modules.plateforme.dto.SessionCompteDto>>> sessions(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(utilisateurPlateformeService.sessions(id)));
+    }
+
+    @PostMapping("/{id}/sessions/revoquer")
+    @Operation(summary = "Déconnecter un administrateur de tous ses appareils")
+    public ResponseEntity<ApiResponse<Integer>> revoquerSessions(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) MotifFacultatifRequest request) {
+        UtilisateurPrincipal acteur = acteur();
+        int sessions = utilisateurPlateformeService.revoquerSessions(id, acteur.getId(), acteur.getEmail(), motif(request));
+        return ResponseEntity.ok(ApiResponse.success(sessions + " session(s) fermée(s)", sessions));
     }
 
     @PostMapping("/{id}/reinitialiser-mot-de-passe")

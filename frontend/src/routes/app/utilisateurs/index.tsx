@@ -33,7 +33,11 @@ export const Route = createFileRoute("/app/utilisateurs/")({
     }
   },
   head: () => ({
-    meta: [{ title: "Utilisateurs — LabFlow LIMS" }],
+    meta: [{
+      title: getSession()?.user.role === "SUPER_ADMINISTRATEUR"
+        ? "Administrateurs — LabFlow LIMS"
+        : "Utilisateurs — LabFlow LIMS",
+    }],
   }),
   component: PageSelonRole,
 });

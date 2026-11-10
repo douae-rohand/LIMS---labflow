@@ -75,8 +75,6 @@ public class LaboratoireImportService {
             "Longitude"
     );
 
-    private static final List<String> TYPES = List.of(
-            "Médical", "Industriel", "Environnemental", "Pharmaceutique et cosmétique");
     private static final Pattern EMAIL = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
     private static final Pattern ICE = Pattern.compile("^\\d{15}$");
 
@@ -84,6 +82,7 @@ public class LaboratoireImportService {
     private final LaboratoireRepository laboratoireRepository;
     private final UtilisateurRepository utilisateurRepository;
     private final JournalAuditService journalAuditService;
+    private final ParametrePlateformeService parametrePlateformeService;
 
     public FichierGenere modele(String format) {
         return switch (format == null ? "" : format.trim().toLowerCase(Locale.ROOT)) {
@@ -321,7 +320,7 @@ public class LaboratoireImportService {
                     "Champs obligatoires : Nom du laboratoire, Raison sociale, Types de laboratoire, Ville, Adresse, "
                             + "Nom, prénom, adresse e-mail, téléphone, fonction et CIN de l'administrateur.");
             instructions.createRow(ligne++).createCell(0).setCellValue(
-                    "Types acceptés, séparés par une virgule : " + String.join(", ", TYPES) + ".");
+                    "Types acceptés, séparés par une virgule : " + String.join(", ", parametrePlateformeService.typesLaboratoireActifs()) + ".");
             instructions.createRow(ligne++).createCell(0).setCellValue(
                     "L'identifiant ICE, s'il est renseigné, doit contenir 15 chiffres.");
             instructions.createRow(ligne++).createCell(0).setCellValue(
@@ -342,7 +341,7 @@ public class LaboratoireImportService {
                 + "# Champs obligatoires : Nom du laboratoire, Raison sociale, Types de laboratoire, Ville, Adresse, "
                 + "Nom de l'administrateur, Prénom de l'administrateur, Adresse e-mail de l'administrateur, "
                 + "Téléphone de l'administrateur, Fonction de l'administrateur, CIN de l'administrateur.\r\n"
-                + "# Types acceptés, séparés par une virgule : " + String.join(", ", TYPES) + ".\r\n"
+                + "# Types acceptés, séparés par une virgule : " + String.join(", ", parametrePlateformeService.typesLaboratoireActifs()) + ".\r\n"
                 + "# L'importation crée une demande d'intégration incomplète. Les documents justificatifs restent obligatoires. "
                 + "Aucun espace laboratoire n'est créé.\r\n"
                 + String.join(";", ENTETES) + "\r\n";
@@ -486,13 +485,13 @@ public class LaboratoireImportService {
         }
         LinkedHashSet<String> retenus = new LinkedHashSet<>();
         for (String morceau : brut.split("[,;]")) {
-            String canonique = TYPES.stream()
+            String canonique = parametrePlateformeService.typesLaboratoireActifs().stream()
                     .filter(type -> type.toLowerCase(Locale.FRENCH).equals(morceau.trim().toLowerCase(Locale.FRENCH)))
                     .findFirst()
                     .orElse(null);
             if (canonique == null && StringUtils.hasText(morceau)) {
                 erreurs.add("Type de laboratoire inconnu : " + morceau.trim()
-                        + ". Valeurs acceptées : " + String.join(", ", TYPES));
+                        + ". Valeurs acceptées : " + String.join(", ", parametrePlateformeService.typesLaboratoireActifs()));
             } else if (canonique != null) {
                 retenus.add(canonique);
             }

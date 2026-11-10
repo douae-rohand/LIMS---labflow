@@ -1,19 +1,28 @@
 import apiClient from "./axios";
 import type { ApiResponse } from "./auth";
-import type { TypeDocumentIntegration } from "@/components/integration/constants";
 
-export type StatutIntegration = "EN_ATTENTE" | "ACCEPTEE" | "REFUSEE";
+export type StatutIntegration = "EN_ATTENTE" | "COMPLEMENTS_DEMANDES" | "ACCEPTEE" | "REFUSEE";
 
+export const LIBELLES_STATUT_INTEGRATION: Record<StatutIntegration, string> = {
+  EN_ATTENTE: "En attente",
+  COMPLEMENTS_DEMANDES: "Compléments demandés",
+  ACCEPTEE: "Acceptée",
+  REFUSEE: "Refusée",
+};
+
+/** Document exigé pour l'intégration ; la liste est paramétrée par le Super Administrateur. */
 export interface TypeDocumentIntegrationDto {
-  code: TypeDocumentIntegration;
+  code: string;
   libelle: string;
-  raison: string;
+  raison?: string | null;
   obligatoire: boolean;
+  actif: boolean;
+  ordre: number;
 }
 
 export interface DocumentIntegrationDto {
   id: number;
-  typeDocument: TypeDocumentIntegration;
+  typeDocument: string;
   libelle: string;
   raison: string;
   nomFichier: string;
@@ -81,6 +90,11 @@ export interface DemandeIntegration {
   nomSchema?: string | null;
   nombreDocuments?: number;
   dossierComplet?: boolean;
+  complementsDemandes?: string | null;
+  documentsComplements?: string[];
+  dateDemandeComplements?: string | null;
+  dateReceptionComplements?: string | null;
+  documentsAttendus?: TypeDocumentIntegrationDto[];
   historique?: HistoriqueDecision[];
   documents?: DocumentIntegrationDto[];
 }
@@ -108,7 +122,7 @@ export async function listerDocumentsRequis(): Promise<TypeDocumentIntegrationDt
 
 export async function soumettreDemandeIntegration(
   demande: SoumettreDemandeIntegrationRequest,
-  fichiers: Record<TypeDocumentIntegration, File>,
+  fichiers: Record<string, File>,
   onProgress?: (pct: number) => void,
 ): Promise<DemandeIntegration> {
   const formData = new FormData();
@@ -116,8 +130,8 @@ export async function soumettreDemandeIntegration(
     "demande",
     new Blob([JSON.stringify(demande)], { type: "application/json" }),
   );
-  (Object.keys(fichiers) as TypeDocumentIntegration[]).forEach((type) => {
-    formData.append(type, fichiers[type]);
+  Object.entries(fichiers).forEach(([type, fichier]) => {
+    formData.append(type, fichier);
   });
   const res = await apiClient.upload<ApiResponse<DemandeIntegration>>(
     "/plateforme/demandes",
@@ -159,7 +173,7 @@ export async function trouverDemandeDuLaboratoire(
 
 export async function contenuDocumentIntegration(
   id: number,
-  type: TypeDocumentIntegration,
+  type: string,
 ): Promise<Blob> {
   return apiClient.getBlob(`/plateforme/demandes/${id}/documents/${type}`);
 }
@@ -182,7 +196,7 @@ export async function renvoyerInvitation(id: number): Promise<void> {
 
 export async function ouvrirDocumentIntegration(
   id: number,
-  type: TypeDocumentIntegration,
+  type: string,
   download = false,
 ): Promise<void> {
   const blob = await apiClient.getBlob(
@@ -204,7 +218,7 @@ export async function ouvrirDocumentIntegration(
 
 export async function ajouterDocumentIntegration(
   id: number,
-  type: TypeDocumentIntegration,
+  type: string,
   fichier: File,
 ): Promise<DemandeIntegration> {
   const formData = new FormData();
@@ -212,6 +226,83 @@ export async function ajouterDocumentIntegration(
   const res = await apiClient.upload<ApiResponse<DemandeIntegration>>(
     `/plateforme/demandes/${id}/documents?type=${encodeURIComponent(type)}`,
     formData,
+  );
+  return res.data;
+}
+
+export async function demanderComplements(
+  id: number,
+  message: string,
+  documents: string[],
+): Promise<DemandeIntegration> {
+  const res = await apiClient.post<ApiResponse<DemandeIntegration>>(
+    `/plateforme/demandes/${id}/complements`,
+    { message, documents },
+  );
+  return res.data;
+}
+
+export type FormatExport = "csv" | "xlsx" | "pdf";
+
+export const EXTENSIONS_EXPORT: Record<FormatExport, string> = { csv: "csv", xlsx: "xlsx", pdf: "pdf" };
+
+export async function exporterDemandesIntegration(
+  format: FormatExport,
+  statut?: StatutIntegration,
+  recherche?: string,
+): Promise<void> {
+  const params = new URLSearchParams({ format });
+  if (statut) params.set("statut", statut);
+  if (recherche) params.set("recherche", recherche);
+  await apiClient.download(
+    `/plateforme/demandes/export?${params.toString()}`,
+    `demandes-integration.${EXTENSIONS_EXPORT[format]}`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Compléments : accès public du demandeur par le lien reçu par e-mail
+// ---------------------------------------------------------------------------
+
+export interface DocumentComplement {
+  code: string;
+  libelle: string;
+  raison?: string | null;
+  dejaFourni: boolean;
+}
+
+export interface ComplementsPublic {
+  numero: string;
+  nomLaboratoire: string;
+  message: string;
+  dateDemande: string;
+  expiration: string;
+  documents: DocumentComplement[];
+}
+
+export async function consulterComplements(jeton: string): Promise<ComplementsPublic> {
+  const res = await apiClient.post<ApiResponse<ComplementsPublic>>(
+    "/public/integration/complements/consulter",
+    { jeton },
+  );
+  return res.data;
+}
+
+export async function deposerComplements(
+  jeton: string,
+  reponse: string,
+  fichiers: Record<string, File>,
+  onProgress?: (pct: number) => void,
+): Promise<ComplementsPublic> {
+  const formData = new FormData();
+  formData.append("jeton", jeton);
+  if (reponse.trim()) formData.append("reponse", reponse.trim());
+  Object.entries(fichiers).forEach(([code, fichier]) => formData.append(code, fichier));
+  const res = await apiClient.upload<ApiResponse<ComplementsPublic>>(
+    "/public/integration/complements",
+    formData,
+    onProgress,
+    180_000,
   );
   return res.data;
 }

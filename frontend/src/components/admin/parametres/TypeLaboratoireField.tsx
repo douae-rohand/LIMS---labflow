@@ -1,13 +1,7 @@
 import { useState } from "react";
 import { Check, Pencil, X } from "lucide-react";
 import { Button } from "@/components/lab";
-
-const TYPES_LABORATOIRE = [
-  "Médical",
-  "Industriel",
-  "Environnemental",
-  "Pharmaceutique et cosmétique",
-];
+import { useTypesLaboratoire } from "@/hooks/useParametresPublics";
 
 interface TypeLaboratoireFieldProps {
   value: string;
@@ -18,6 +12,8 @@ export function TypeLaboratoireField({ value, onChange }: TypeLaboratoireFieldPr
   const [editionOuverte, setEditionOuverte] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
   const typesActuels = separerTypes(value);
+  // Types proposés par la plateforme, plus ceux déjà portés par le laboratoire.
+  const typesProposes = [...new Set([...useTypesLaboratoire(), ...typesActuels])];
 
   function ouvrirEdition() {
     setSelection(typesActuels);
@@ -75,7 +71,7 @@ export function TypeLaboratoireField({ value, onChange }: TypeLaboratoireFieldPr
               Sélectionnez les types qui décrivent votre laboratoire
             </legend>
             <div className="grid gap-2 sm:grid-cols-2">
-              {TYPES_LABORATOIRE.map((type) => {
+              {typesProposes.map((type) => {
                 const coche = selection.includes(type);
                 return (
                   <label

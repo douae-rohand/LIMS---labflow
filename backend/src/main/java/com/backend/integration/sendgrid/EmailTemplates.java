@@ -88,6 +88,41 @@ public final class EmailTemplates {
         );
     }
 
+    public static String demandeComplements(String nomContact, String nomLaboratoire, String numero,
+                                            String message, java.util.List<String> documents,
+                                            String lien, Instant expiration) {
+        StringBuilder liste = new StringBuilder();
+        if (documents != null && !documents.isEmpty()) {
+            liste.append("<p>Documents à déposer :</p><ul>");
+            for (String document : documents) {
+                liste.append("<li>").append(e(document)).append("</li>");
+            }
+            liste.append("</ul>");
+        }
+        return page(
+                "Compléments nécessaires",
+                "Votre demande d'intégration nécessite des compléments.",
+                """
+                <p>Bonjour %s,</p>
+                <p>Pour poursuivre l'examen de la demande d'intégration du laboratoire <strong>%s</strong>
+                (n° %s), l'équipe LabFlow a besoin des éléments suivants :</p>
+                <blockquote style="margin:12px 0;padding:10px 14px;border-left:3px solid #1A4A54;background:#F4F7F6;">%s</blockquote>
+                %s
+                <p>Utilisez le bouton ci-dessous pour répondre et déposer les pièces. Ce lien ne sert qu'une fois
+                et expire le <strong>%s</strong>.</p>
+                """.formatted(
+                        e(nomContact),
+                        e(nomLaboratoire),
+                        e(numero),
+                        e(message).replace("\n", "<br>"),
+                        liste,
+                        expiration == null ? "" : DATE_FR.format(expiration)
+                ),
+                lien,
+                "Compléter ma demande"
+        );
+    }
+
     public static String invitationAdministrateur(String nomComplet, String nomLaboratoire,
                                                   String lienActivation, int ttlHeures) {
         return page(
@@ -251,7 +286,7 @@ public final class EmailTemplates {
             ligne(rows, "Ville", ville);
         }
         if (documents != null) {
-            ligne(rows, "Documents transmis", documents + " / 6");
+            ligne(rows, "Documents transmis", Integer.toString(documents));
         }
         if (date != null) {
             ligne(rows, "Date", DATE_FR.format(date));

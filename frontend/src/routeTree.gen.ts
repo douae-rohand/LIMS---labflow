@@ -21,6 +21,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as MotDePasseOublieRouteImport } from './routes/mot-de-passe-oublie'
 import { Route as ReinitialiserMotDePasseRouteImport } from './routes/reinitialiser-mot-de-passe'
 import { Route as UiKitRouteImport } from './routes/ui-kit'
+import { Route as VerifierRapportRouteImport } from './routes/verifier-rapport'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppAuditRouteImport } from './routes/app/audit'
 import { Route as AppCarteRouteImport } from './routes/app/carte'
@@ -39,12 +40,18 @@ import { Route as AppJournalAuditRouteImport } from './routes/app/journal-audit'
 import { Route as AppLaboratoiresRouteImport } from './routes/app/laboratoires'
 import { Route as AppPanierRouteImport } from './routes/app/panier'
 import { Route as AppParametresRouteImport } from './routes/app/parametres'
+import { Route as AppParametresPlateformeRouteImport } from './routes/app/parametres-plateforme'
+import { Route as AppPlanificationRouteImport } from './routes/app/planification'
 import { Route as AppPlanningRouteImport } from './routes/app/planning'
 import { Route as AppProfilRouteImport } from './routes/app/profil'
 import { Route as AppRapportsRouteImport } from './routes/app/rapports'
+import { Route as AppRapportsLaboratoireRouteImport } from './routes/app/rapports-laboratoire'
 import { Route as AppSatisfactionRouteImport } from './routes/app/satisfaction'
 import { Route as AppStockRouteImport } from './routes/app/stock'
+import { Route as AppSuiviRouteImport } from './routes/app/suivi'
 import { Route as AppTableauDeBordRouteImport } from './routes/app/tableau-de-bord'
+import { Route as AppValidationResultatsRouteImport } from './routes/app/validation-resultats'
+import { Route as IntegrationComplementsRouteImport } from './routes/integration_.complements'
 import { Route as LaboratoiresIndexRouteImport } from './routes/laboratoires/index'
 import { Route as LaboratoiresIdRouteImport } from './routes/laboratoires/$id'
 import { Route as AppCatalogueIndexRouteImport } from './routes/app/catalogue/index'
@@ -131,6 +138,11 @@ const ReinitialiserMotDePasseRoute = ReinitialiserMotDePasseRouteImport.update({
 const UiKitRoute = UiKitRouteImport.update({
   id: '/ui-kit',
   path: '/ui-kit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifierRapportRoute = VerifierRapportRouteImport.update({
+  id: '/verifier-rapport',
+  path: '/verifier-rapport',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -223,6 +235,16 @@ const AppParametresRoute = AppParametresRouteImport.update({
   path: '/parametres',
   getParentRoute: () => AppRoute,
 } as any)
+const AppParametresPlateformeRoute = AppParametresPlateformeRouteImport.update({
+  id: '/parametres-plateforme',
+  path: '/parametres-plateforme',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlanificationRoute = AppPlanificationRouteImport.update({
+  id: '/planification',
+  path: '/planification',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPlanningRoute = AppPlanningRouteImport.update({
   id: '/planning',
   path: '/planning',
@@ -238,6 +260,11 @@ const AppRapportsRoute = AppRapportsRouteImport.update({
   path: '/rapports',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRapportsLaboratoireRoute = AppRapportsLaboratoireRouteImport.update({
+  id: '/rapports-laboratoire',
+  path: '/rapports-laboratoire',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSatisfactionRoute = AppSatisfactionRouteImport.update({
   id: '/satisfaction',
   path: '/satisfaction',
@@ -248,10 +275,25 @@ const AppStockRoute = AppStockRouteImport.update({
   path: '/stock',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSuiviRoute = AppSuiviRouteImport.update({
+  id: '/suivi',
+  path: '/suivi',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTableauDeBordRoute = AppTableauDeBordRouteImport.update({
   id: '/tableau-de-bord',
   path: '/tableau-de-bord',
   getParentRoute: () => AppRoute,
+} as any)
+const AppValidationResultatsRoute = AppValidationResultatsRouteImport.update({
+  id: '/validation-resultats',
+  path: '/validation-resultats',
+  getParentRoute: () => AppRoute,
+} as any)
+const IntegrationComplementsRoute = IntegrationComplementsRouteImport.update({
+  id: '/integration_/complements',
+  path: '/integration/complements',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LaboratoiresIndexRoute = LaboratoiresIndexRouteImport.update({
   id: '/laboratoires/',
@@ -408,6 +450,7 @@ export interface FileRoutesByFullPath {
   '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
+  '/verifier-rapport': typeof VerifierRapportRoute
   '/app/audit': typeof AppAuditRoute
   '/app/carte': typeof AppCarteRoute
   '/app/catalogue': typeof AppCatalogueRouteWithChildren
@@ -425,12 +468,18 @@ export interface FileRoutesByFullPath {
   '/app/laboratoires': typeof AppLaboratoiresRouteWithChildren
   '/app/panier': typeof AppPanierRouteWithChildren
   '/app/parametres': typeof AppParametresRoute
+  '/app/parametres-plateforme': typeof AppParametresPlateformeRoute
+  '/app/planification': typeof AppPlanificationRoute
   '/app/planning': typeof AppPlanningRoute
   '/app/profil': typeof AppProfilRoute
   '/app/rapports': typeof AppRapportsRouteWithChildren
+  '/app/rapports-laboratoire': typeof AppRapportsLaboratoireRoute
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/stock': typeof AppStockRouteWithChildren
+  '/app/suivi': typeof AppSuiviRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
+  '/app/validation-resultats': typeof AppValidationResultatsRoute
+  '/integration/complements': typeof IntegrationComplementsRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
@@ -472,6 +521,7 @@ export interface FileRoutesByTo {
   '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
+  '/verifier-rapport': typeof VerifierRapportRoute
   '/app/audit': typeof AppAuditRoute
   '/app/carte': typeof AppCarteRoute
   '/app/exports': typeof AppExportsRoute
@@ -479,10 +529,16 @@ export interface FileRoutesByTo {
   '/app/import': typeof AppImportRoute
   '/app/journal-audit': typeof AppJournalAuditRoute
   '/app/parametres': typeof AppParametresRoute
+  '/app/parametres-plateforme': typeof AppParametresPlateformeRoute
+  '/app/planification': typeof AppPlanificationRoute
   '/app/planning': typeof AppPlanningRoute
   '/app/profil': typeof AppProfilRoute
+  '/app/rapports-laboratoire': typeof AppRapportsLaboratoireRoute
   '/app/satisfaction': typeof AppSatisfactionRoute
+  '/app/suivi': typeof AppSuiviRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
+  '/app/validation-resultats': typeof AppValidationResultatsRoute
+  '/integration/complements': typeof IntegrationComplementsRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app': typeof AppIndexRoute
   '/laboratoires': typeof LaboratoiresIndexRoute
@@ -526,6 +582,7 @@ export interface FileRoutesById {
   '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
+  '/verifier-rapport': typeof VerifierRapportRoute
   '/app/audit': typeof AppAuditRoute
   '/app/carte': typeof AppCarteRoute
   '/app/catalogue': typeof AppCatalogueRouteWithChildren
@@ -543,12 +600,18 @@ export interface FileRoutesById {
   '/app/laboratoires': typeof AppLaboratoiresRouteWithChildren
   '/app/panier': typeof AppPanierRouteWithChildren
   '/app/parametres': typeof AppParametresRoute
+  '/app/parametres-plateforme': typeof AppParametresPlateformeRoute
+  '/app/planification': typeof AppPlanificationRoute
   '/app/planning': typeof AppPlanningRoute
   '/app/profil': typeof AppProfilRoute
   '/app/rapports': typeof AppRapportsRouteWithChildren
+  '/app/rapports-laboratoire': typeof AppRapportsLaboratoireRoute
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/stock': typeof AppStockRouteWithChildren
+  '/app/suivi': typeof AppSuiviRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
+  '/app/validation-resultats': typeof AppValidationResultatsRoute
+  '/integration_/complements': typeof IntegrationComplementsRoute
   '/laboratoires/$id': typeof LaboratoiresIdRoute
   '/app/': typeof AppIndexRoute
   '/laboratoires/': typeof LaboratoiresIndexRoute
@@ -593,6 +656,7 @@ export interface FileRouteTypes {
     | '/mot-de-passe-oublie'
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
+    | '/verifier-rapport'
     | '/app/audit'
     | '/app/carte'
     | '/app/catalogue'
@@ -610,12 +674,18 @@ export interface FileRouteTypes {
     | '/app/laboratoires'
     | '/app/panier'
     | '/app/parametres'
+    | '/app/parametres-plateforme'
+    | '/app/planification'
     | '/app/planning'
     | '/app/profil'
     | '/app/rapports'
+    | '/app/rapports-laboratoire'
     | '/app/satisfaction'
     | '/app/stock'
+    | '/app/suivi'
     | '/app/tableau-de-bord'
+    | '/app/validation-resultats'
+    | '/integration/complements'
     | '/laboratoires/$id'
     | '/app/'
     | '/laboratoires/'
@@ -657,6 +727,7 @@ export interface FileRouteTypes {
     | '/mot-de-passe-oublie'
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
+    | '/verifier-rapport'
     | '/app/audit'
     | '/app/carte'
     | '/app/exports'
@@ -664,10 +735,16 @@ export interface FileRouteTypes {
     | '/app/import'
     | '/app/journal-audit'
     | '/app/parametres'
+    | '/app/parametres-plateforme'
+    | '/app/planification'
     | '/app/planning'
     | '/app/profil'
+    | '/app/rapports-laboratoire'
     | '/app/satisfaction'
+    | '/app/suivi'
     | '/app/tableau-de-bord'
+    | '/app/validation-resultats'
+    | '/integration/complements'
     | '/laboratoires/$id'
     | '/app'
     | '/laboratoires'
@@ -710,6 +787,7 @@ export interface FileRouteTypes {
     | '/mot-de-passe-oublie'
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
+    | '/verifier-rapport'
     | '/app/audit'
     | '/app/carte'
     | '/app/catalogue'
@@ -727,12 +805,18 @@ export interface FileRouteTypes {
     | '/app/laboratoires'
     | '/app/panier'
     | '/app/parametres'
+    | '/app/parametres-plateforme'
+    | '/app/planification'
     | '/app/planning'
     | '/app/profil'
     | '/app/rapports'
+    | '/app/rapports-laboratoire'
     | '/app/satisfaction'
     | '/app/stock'
+    | '/app/suivi'
     | '/app/tableau-de-bord'
+    | '/app/validation-resultats'
+    | '/integration_/complements'
     | '/laboratoires/$id'
     | '/app/'
     | '/laboratoires/'
@@ -776,6 +860,8 @@ export interface RootRouteChildren {
   MotDePasseOublieRoute: typeof MotDePasseOublieRoute
   ReinitialiserMotDePasseRoute: typeof ReinitialiserMotDePasseRoute
   UiKitRoute: typeof UiKitRoute
+  VerifierRapportRoute: typeof VerifierRapportRoute
+  IntegrationComplementsRoute: typeof IntegrationComplementsRoute
   LaboratoiresIdRoute: typeof LaboratoiresIdRoute
   LaboratoiresIndexRoute: typeof LaboratoiresIndexRoute
 }
@@ -864,6 +950,13 @@ declare module '@tanstack/react-router' {
       path: '/ui-kit'
       fullPath: '/ui-kit'
       preLoaderRoute: typeof UiKitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verifier-rapport': {
+      id: '/verifier-rapport'
+      path: '/verifier-rapport'
+      fullPath: '/verifier-rapport'
+      preLoaderRoute: typeof VerifierRapportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/': {
@@ -992,6 +1085,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppParametresRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/parametres-plateforme': {
+      id: '/app/parametres-plateforme'
+      path: '/parametres-plateforme'
+      fullPath: '/app/parametres-plateforme'
+      preLoaderRoute: typeof AppParametresPlateformeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/planification': {
+      id: '/app/planification'
+      path: '/planification'
+      fullPath: '/app/planification'
+      preLoaderRoute: typeof AppPlanificationRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/planning': {
       id: '/app/planning'
       path: '/planning'
@@ -1013,6 +1120,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRapportsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/rapports-laboratoire': {
+      id: '/app/rapports-laboratoire'
+      path: '/rapports-laboratoire'
+      fullPath: '/app/rapports-laboratoire'
+      preLoaderRoute: typeof AppRapportsLaboratoireRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/satisfaction': {
       id: '/app/satisfaction'
       path: '/satisfaction'
@@ -1027,12 +1141,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppStockRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/suivi': {
+      id: '/app/suivi'
+      path: '/suivi'
+      fullPath: '/app/suivi'
+      preLoaderRoute: typeof AppSuiviRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/tableau-de-bord': {
       id: '/app/tableau-de-bord'
       path: '/tableau-de-bord'
       fullPath: '/app/tableau-de-bord'
       preLoaderRoute: typeof AppTableauDeBordRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/app/validation-resultats': {
+      id: '/app/validation-resultats'
+      path: '/validation-resultats'
+      fullPath: '/app/validation-resultats'
+      preLoaderRoute: typeof AppValidationResultatsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/integration_/complements': {
+      id: '/integration_/complements'
+      path: '/integration/complements'
+      fullPath: '/integration/complements'
+      preLoaderRoute: typeof IntegrationComplementsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/laboratoires/': {
       id: '/laboratoires/'
@@ -1409,12 +1544,17 @@ interface AppRouteChildren {
   AppLaboratoiresRoute: typeof AppLaboratoiresRouteWithChildren
   AppPanierRoute: typeof AppPanierRouteWithChildren
   AppParametresRoute: typeof AppParametresRoute
+  AppParametresPlateformeRoute: typeof AppParametresPlateformeRoute
+  AppPlanificationRoute: typeof AppPlanificationRoute
   AppPlanningRoute: typeof AppPlanningRoute
   AppProfilRoute: typeof AppProfilRoute
   AppRapportsRoute: typeof AppRapportsRouteWithChildren
+  AppRapportsLaboratoireRoute: typeof AppRapportsLaboratoireRoute
   AppSatisfactionRoute: typeof AppSatisfactionRoute
   AppStockRoute: typeof AppStockRouteWithChildren
+  AppSuiviRoute: typeof AppSuiviRoute
   AppTableauDeBordRoute: typeof AppTableauDeBordRoute
+  AppValidationResultatsRoute: typeof AppValidationResultatsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppDemandesIntegrationIdRoute: typeof AppDemandesIntegrationIdRoute
   AppUtilisateursNouveauRoute: typeof AppUtilisateursNouveauRoute
@@ -1440,12 +1580,17 @@ const AppRouteChildren: AppRouteChildren = {
   AppLaboratoiresRoute: AppLaboratoiresRouteWithChildren,
   AppPanierRoute: AppPanierRouteWithChildren,
   AppParametresRoute: AppParametresRoute,
+  AppParametresPlateformeRoute: AppParametresPlateformeRoute,
+  AppPlanificationRoute: AppPlanificationRoute,
   AppPlanningRoute: AppPlanningRoute,
   AppProfilRoute: AppProfilRoute,
   AppRapportsRoute: AppRapportsRouteWithChildren,
+  AppRapportsLaboratoireRoute: AppRapportsLaboratoireRoute,
   AppSatisfactionRoute: AppSatisfactionRoute,
   AppStockRoute: AppStockRouteWithChildren,
+  AppSuiviRoute: AppSuiviRoute,
   AppTableauDeBordRoute: AppTableauDeBordRoute,
+  AppValidationResultatsRoute: AppValidationResultatsRoute,
   AppIndexRoute: AppIndexRoute,
   AppDemandesIntegrationIdRoute: AppDemandesIntegrationIdRoute,
   AppUtilisateursNouveauRoute: AppUtilisateursNouveauRoute,
@@ -1468,6 +1613,8 @@ const rootRouteChildren: RootRouteChildren = {
   MotDePasseOublieRoute: MotDePasseOublieRoute,
   ReinitialiserMotDePasseRoute: ReinitialiserMotDePasseRoute,
   UiKitRoute: UiKitRoute,
+  VerifierRapportRoute: VerifierRapportRoute,
+  IntegrationComplementsRoute: IntegrationComplementsRoute,
   LaboratoiresIdRoute: LaboratoiresIdRoute,
   LaboratoiresIndexRoute: LaboratoiresIndexRoute,
 }

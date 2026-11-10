@@ -56,7 +56,7 @@ export function DialogueImportUtilisateurs({
   const erreurs = rapport?.lignes.filter((ligne) => !ligne.valide) ?? [];
 
   return (
-    <Dialogue ouvert={ouvert} large titre="Importer des utilisateurs" description="Trois étapes : fichier, analyse, confirmation. Seules les lignes encore valides sont créées." onFermer={fermer}>
+    <Dialogue ouvert={ouvert} large titre="Importer des administrateurs" description="Trois étapes : fichier, analyse, confirmation. Chaque ligne doit avoir le rôle ADMINISTRATEUR. Seules les lignes encore valides sont créées." onFermer={fermer}>
       <p className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Étape {etape} sur 3</p>
       {etape === 1 && (
         <div className="flex flex-col gap-3">

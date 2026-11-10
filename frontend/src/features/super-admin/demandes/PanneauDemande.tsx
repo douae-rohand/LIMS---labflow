@@ -4,25 +4,19 @@ import { toast } from "sonner";
 import { Badge, Button, Label, Textarea } from "@/components/lab";
 import { IndicateurEtapes } from "@/components/integration/IndicateurEtapes";
 import { LocationPicker } from "@/components/integration/LocationPicker";
-import { TYPES_DOCUMENTS } from "@/components/integration/constants";
 import {
   ajouterDocumentIntegration,
+  demanderComplements,
+  LIBELLES_STATUT_INTEGRATION,
   renvoyerInvitation,
   trouverDemandeIntegration,
   traiterDemandeIntegration,
-  type StatutIntegration,
 } from "@/api/plateforme";
 import { ListeDocuments } from "../documents/ListeDocuments";
 import { Dialogue, Panneau } from "../Fenetres";
 import { formaterDate, messageErreur, texte } from "../texte";
 
 const ETAPES = ["Laboratoire", "Localisation", "Administrateur", "Documents"] as const;
-
-const LIBELLES: Record<StatutIntegration, string> = {
-  EN_ATTENTE: "En attente",
-  ACCEPTEE: "Acceptée",
-  REFUSEE: "Refusée",
-};
 
 export function PanneauDemande({
   demandeId,
@@ -35,11 +29,15 @@ export function PanneauDemande({
   const [etape, setEtape] = useState(0);
   const [motif, setMotif] = useState("");
   const [confirmation, setConfirmation] = useState<"accepter" | "refuser" | null>(null);
+  const [complementsOuvert, setComplementsOuvert] = useState(false);
+  const [messageComplements, setMessageComplements] = useState("");
+  const [documentsReclames, setDocumentsReclames] = useState<string[]>([]);
 
   useEffect(() => {
     setEtape(0);
     setMotif("");
     setConfirmation(null);
+    setComplementsOuvert(false);
   }, [demandeId]);
 
   const demande = useQuery({
@@ -74,13 +72,25 @@ export function PanneauDemande({
   });
 
   const documentMutation = useMutation({
-    mutationFn: ({ type, fichier }: { type: (typeof TYPES_DOCUMENTS)[number]; fichier: File }) =>
+    mutationFn: ({ type, fichier }: { type: string; fichier: File }) =>
       ajouterDocumentIntegration(demandeId as number, type, fichier),
     onSuccess: async () => {
       toast.success("Le document a été enregistré.");
       await invalider();
     },
     onError: (erreur) => toast.error(messageErreur(erreur, "Le document n'a pas pu être enregistré.")),
+  });
+
+  const complements = useMutation({
+    mutationFn: () => demanderComplements(demandeId as number, messageComplements.trim(), documentsReclames),
+    onSuccess: async () => {
+      toast.success("La demande de compléments a été envoyée au demandeur.");
+      setComplementsOuvert(false);
+      setMessageComplements("");
+      setDocumentsReclames([]);
+      await invalider();
+    },
+    onError: (erreur) => toast.error(messageErreur(erreur, "La demande de compléments a échoué.")),
   });
 
   const invitation = useMutation({
@@ -90,7 +100,18 @@ export function PanneauDemande({
   });
 
   const dossier = demande.data;
-  const enAttente = dossier?.statut === "EN_ATTENTE";
+  const enAttente = dossier?.statut === "EN_ATTENTE" || dossier?.statut === "COMPLEMENTS_DEMANDES";
+  const attenteDemandeur = dossier?.statut === "COMPLEMENTS_DEMANDES";
+  const documentsActifs = (dossier?.documentsAttendus ?? []).filter((type) => type.actif);
+
+  const ouvrirComplements = () => {
+    const presents = new Set((dossier?.documents ?? []).map((document) => document.typeDocument));
+    setDocumentsReclames(
+      documentsActifs.filter((type) => type.obligatoire && !presents.has(type.code)).map((type) => type.code),
+    );
+    setMessageComplements("");
+    setComplementsOuvert(true);
+  };
   const aDesCoordonnees = dossier?.latitude != null && dossier?.longitude != null;
 
   return (
@@ -106,11 +127,23 @@ export function PanneauDemande({
         {dossier && (
           <div className="flex flex-col gap-5 text-sm">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge>{LIBELLES[dossier.statut]}</Badge>
+              <Badge variant={attenteDemandeur ? "lime" : "soft"}>
+                {LIBELLES_STATUT_INTEGRATION[dossier.statut]}
+              </Badge>
               <span className="text-muted-foreground">
                 {dossier.numero} · {formaterDate(dossier.dateSoumission)}
               </span>
             </div>
+
+            {attenteDemandeur && (
+              <div className="rounded-2xl border border-brand-900/15 bg-surface-alt px-4 py-3">
+                <p className="font-semibold text-ink-900">En attente du demandeur</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Demandé le {formaterDate(dossier.dateDemandeComplements)}
+                </p>
+                {dossier.complementsDemandes && <p className="mt-2 whitespace-pre-line">{dossier.complementsDemandes}</p>}
+              </div>
+            )}
 
             <IndicateurEtapes etapes={ETAPES} etape={etape} onAller={setEtape} autoriserSuivantes />
 
@@ -146,7 +179,9 @@ export function PanneauDemande({
                 ) : (
                   <p className="text-muted-foreground">Aucune coordonnée géographique n'est enregistrée.</p>
                 )}
-                {dossier.informationsComplementaires && <p>{dossier.informationsComplementaires}</p>}
+                {dossier.informationsComplementaires && (
+                  <p className="whitespace-pre-line">{dossier.informationsComplementaires}</p>
+                )}
               </div>
             )}
 
@@ -173,6 +208,8 @@ export function PanneauDemande({
                 <ListeDocuments
                   demandeId={dossier.id}
                   documents={dossier.documents}
+                  attendus={dossier.documentsAttendus}
+                  demandes={attenteDemandeur ? dossier.documentsComplements : undefined}
                   peutRemplacer={enAttente}
                   remplacementEnCours={documentMutation.isPending}
                   onRemplacer={(type, fichier) => documentMutation.mutate({ type, fichier })}
@@ -193,7 +230,7 @@ export function PanneauDemande({
                   <div className="flex flex-col gap-3">
                     {!dossier.dossierComplet && (
                       <p className="rounded-2xl bg-surface-alt px-3 py-2 text-ink-900">
-                        Le dossier est incomplet. L'acceptation reste impossible tant que les six documents ne sont pas présents.
+                        Le dossier est incomplet. L'acceptation reste impossible tant que tous les documents obligatoires ne sont pas présents.
                       </p>
                     )}
                     <div>
@@ -208,6 +245,9 @@ export function PanneauDemande({
                     <div className="flex flex-wrap gap-2">
                       <Button disabled={!dossier.dossierComplet} onClick={() => setConfirmation("accepter")}>
                         Accepter et ouvrir l'espace
+                      </Button>
+                      <Button variant="secondary" onClick={ouvrirComplements}>
+                        {attenteDemandeur ? "Relancer le demandeur" : "Demander des compléments"}
                       </Button>
                       <Button variant="ghost" onClick={() => setConfirmation("refuser")}>
                         Refuser la demande
@@ -236,6 +276,67 @@ export function PanneauDemande({
           </div>
         )}
       </Panneau>
+
+      <Dialogue
+        ouvert={complementsOuvert}
+        titre="Demander des compléments"
+        description="Le demandeur reçoit un e-mail avec un lien à usage unique, valable 14 jours, pour répondre et déposer les pièces."
+        onFermer={() => setComplementsOuvert(false)}
+      >
+        <div className="flex flex-col gap-4 text-sm">
+          <div>
+            <Label htmlFor="message-complements">Message au demandeur *</Label>
+            <Textarea
+              id="message-complements"
+              className="mt-1"
+              rows={4}
+              maxLength={4000}
+              value={messageComplements}
+              onChange={(event) => setMessageComplements(event.target.value)}
+              placeholder="Précisez ce qui manque ou ce qui doit être corrigé."
+            />
+          </div>
+          {documentsActifs.length > 0 && (
+            <fieldset>
+              <legend className="font-semibold text-ink-900">Documents à déposer</legend>
+              <p className="text-xs text-muted-foreground">
+                Les documents cochés devront être envoyés par le demandeur. Laissez vide pour une simple question.
+              </p>
+              <div className="mt-2 flex flex-col gap-2">
+                {documentsActifs.map((type) => (
+                  <label key={type.code} className="flex items-start gap-2 text-ink-900">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 size-4 accent-brand-900"
+                      checked={documentsReclames.includes(type.code)}
+                      onChange={(event) =>
+                        setDocumentsReclames((courant) =>
+                          event.target.checked
+                            ? [...courant, type.code]
+                            : courant.filter((code) => code !== type.code),
+                        )
+                      }
+                    />
+                    <span>{type.libelle}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setComplementsOuvert(false)}>
+              Annuler
+            </Button>
+            <Button
+              loading={complements.isPending}
+              disabled={!messageComplements.trim()}
+              onClick={() => complements.mutate()}
+            >
+              Envoyer la demande
+            </Button>
+          </div>
+        </div>
+      </Dialogue>
 
       <Dialogue
         ouvert={confirmation !== null}

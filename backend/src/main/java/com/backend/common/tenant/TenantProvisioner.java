@@ -60,6 +60,7 @@ public class TenantProvisioner {
                     .ignoreMigrationPatterns("*:missing")
                     .load()
                     .migrate();
+            semerDomainesReference(tenantDataSource, nomSchema);
             log.info("Tenant provisionné : schema={}", nomSchema);
         } catch (RuntimeException ex) {
             if (schemaCree) {
@@ -104,6 +105,27 @@ public class TenantProvisioner {
                     "{\"schema\":\"" + nomSchema + "\"}",
                     "Schéma orphelin à nettoyer manuellement : " + nomSchema);
             throw new BusinessRuleException("DEPROVISIONNEMENT_ECHOUE", message);
+        }
+    }
+
+    /**
+     * Copie les domaines de référence actifs dans le catalogue du nouveau laboratoire.
+     * Un échec ici n'annule pas le provisionnement : l'administrateur peut créer ses domaines.
+     */
+    private void semerDomainesReference(DataSource tenantDataSource, String nomSchema) {
+        try {
+            java.util.List<java.util.Map<String, Object>> domaines = new org.springframework.jdbc.core.JdbcTemplate(
+                    registry.getCentral()).queryForList(
+                    "SELECT code, libelle FROM referentiel_domaine WHERE actif = 1 ORDER BY ordre, libelle");
+            org.springframework.jdbc.core.JdbcTemplate tenant = new org.springframework.jdbc.core.JdbcTemplate(tenantDataSource);
+            for (java.util.Map<String, Object> domaine : domaines) {
+                Object code = domaine.get("code");
+                tenant.update("INSERT INTO domaine (code, libelle) SELECT ?, ? FROM DUAL "
+                                + "WHERE NOT EXISTS (SELECT 1 FROM domaine WHERE code = ?)",
+                        code, domaine.get("libelle"), code);
+            }
+        } catch (RuntimeException ex) {
+            log.warn("Domaines de référence non copiés dans {} : {}", nomSchema, ex.getMessage());
         }
     }
 

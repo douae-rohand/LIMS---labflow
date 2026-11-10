@@ -62,6 +62,17 @@ public class DemandeIntegrationDto {
     private int nombreDocuments;
     private boolean dossierComplet;
 
+    /** Dernière demande de compléments adressée au demandeur. */
+    private String complementsDemandes;
+    @Builder.Default
+    private List<String> documentsComplements = new ArrayList<>();
+    private Instant dateDemandeComplements;
+    private Instant dateReceptionComplements;
+
+    /** Documents attendus pour ce dossier : types actifs et types déjà déposés. */
+    @Builder.Default
+    private List<TypeDocumentIntegrationDto> documentsAttendus = new ArrayList<>();
+
     @Builder.Default
     private List<HistoriqueDecisionDto> historique = new ArrayList<>();
 

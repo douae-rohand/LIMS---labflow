@@ -30,4 +30,14 @@ public class Notification {
 
     @Column(name = "date_creation", nullable = false)
     private Instant dateCreation;
+
+    @Column(columnDefinition = "TEXT")
+    private String corps;
+
+    /** Chemin de l'interface à ouvrir au clic (ex. /app/gestion-laboratoires?onglet=demandes). */
+    @Column(length = 500)
+    private String lien;
+
+    @Column(name = "type_notification", length = 50)
+    private String type;
 }

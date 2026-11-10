@@ -102,6 +102,7 @@ public class DemandeService {
     private final JournalAuditService journalAuditService;
     private final JournalAuditRepository journalAuditRepository;
     private final FacturationAdminService facturationAdminService;
+    private final com.backend.integration.sendgrid.EmailService emailService;
 
     private static final String STATUT_LABORATOIRE_ACTIF = "ACTIF";
     private static final int MOTIF_MIN = 5;
@@ -443,7 +444,9 @@ public class DemandeService {
                 TenantContext.getCurrentTenant(), id,
                 StatutDemande.NOUVEAU.name(), StatutDemande.ACCEPTEE.name(), null);
         planifierFacturationAutomatique(id);
-        return construireDetail(demandeRepository.save(demande));
+        Demande acceptee = demandeRepository.save(demande);
+        informerClientDecision(acceptee, "Acceptée");
+        return construireDetail(acceptee);
     }
 
     @Transactional
@@ -456,7 +459,30 @@ public class DemandeService {
         enregistrerAuditDemande("REFUS_DEMANDE",
                 TenantContext.getCurrentTenant(), id,
                 StatutDemande.NOUVEAU.name(), StatutDemande.REFUSEE.name(), sauvegardee.getMotif());
+        informerClientDecision(sauvegardee, "Refusée");
         return construireDetail(sauvegardee);
+    }
+
+    /** Prévient le client par e-mail de la décision, après validation de la transaction. */
+    private void informerClientDecision(Demande demande, String libelleStatut) {
+        Long utilisateurId = demande.getClient() == null ? null : demande.getClient().getUtilisateurId();
+        if (utilisateurId == null) {
+            return;
+        }
+        String reference = demande.getNumero();
+        com.backend.common.util.ApresCommit.executer(() -> {
+            try {
+                Utilisateur client = tenantExecutor.inCentral(() ->
+                        utilisateurRepository.findById(utilisateurId).orElse(null));
+                if (client != null && client.getEmail() != null) {
+                    String nom = ((client.getPrenom() == null ? "" : client.getPrenom() + " ")
+                            + (client.getNom() == null ? "" : client.getNom())).trim();
+                    emailService.envoyerNotificationDemande(client.getEmail(), nom, reference, libelleStatut);
+                }
+            } catch (Exception ex) {
+                log.warn("E-mail de décision non envoyé pour la demande {} : {}", reference, ex.getMessage());
+            }
+        });
     }
 
     private Demande enregistrerAcceptation(Long id) {

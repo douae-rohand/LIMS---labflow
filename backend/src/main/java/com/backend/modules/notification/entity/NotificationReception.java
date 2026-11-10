@@ -36,4 +36,7 @@ public class NotificationReception {
     @Builder.Default
     @Column(nullable = false)
     private boolean lue = false;
+
+    @Column(name = "date_lecture")
+    private java.time.Instant dateLecture;
 }

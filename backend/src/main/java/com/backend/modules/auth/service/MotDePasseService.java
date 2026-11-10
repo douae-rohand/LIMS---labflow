@@ -35,6 +35,7 @@ public class MotDePasseService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthService authService;
+    private final com.backend.modules.plateforme.service.ParametrePlateformeService parametrePlateformeService;
 
     @Transactional
     public AuthService.LoginResult changerMotDePasse(ChangerMotDePasseRequest request,
@@ -51,10 +52,13 @@ public class MotDePasseService {
         }
 
         // 2. Politique du nouveau mot de passe (réutilisable dans lot C)
+        var politique = parametrePlateformeService.politiqueMotDePasse();
         MotDePasseValidator.valider(
                 request.getNouveauMotDePasse(),
                 utilisateur.getMotDePasseHash(),
-                passwordEncoder);
+                passwordEncoder,
+                politique.longueurMin(),
+                politique.exigerCaractereSpecial());
 
         // 3. Mise à jour — on ne logue jamais un mot de passe en clair
         utilisateur.setMotDePasseHash(passwordEncoder.encode(request.getNouveauMotDePasse()));

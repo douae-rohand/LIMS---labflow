@@ -1,25 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Eye } from "lucide-react";
+import { Download, Eye, FileSpreadsheet, FileText } from "lucide-react";
+import { toast } from "sonner";
 import { Badge, Button, Select, Tooltip } from "@/components/lab";
 import {
+  exporterDemandesIntegration,
+  LIBELLES_STATUT_INTEGRATION,
   listerDemandesIntegration,
   type DemandeIntegration,
+  type FormatExport,
   type StatutIntegration,
 } from "@/api/plateforme";
 import { BarreListe } from "../BarreListe";
-import { formaterDate } from "../texte";
+import { formaterDate, messageErreur } from "../texte";
 import { PanneauDemande } from "./PanneauDemande";
 
-const LIBELLES: Record<StatutIntegration, string> = {
-  EN_ATTENTE: "En attente",
-  ACCEPTEE: "Acceptée",
-  REFUSEE: "Refusée",
-};
+const LIBELLES = LIBELLES_STATUT_INTEGRATION;
 
 function variante(statut: StatutIntegration) {
   if (statut === "ACCEPTEE") return "lime" as const;
   if (statut === "REFUSEE") return "outline" as const;
+  if (statut === "COMPLEMENTS_DEMANDES") return "soft" as const;
   return "mint" as const;
 }
 
@@ -29,6 +30,19 @@ export function ListeDemandes({ demandeInitiale }: { demandeInitiale?: number | 
   const [rechercheDifferee, setRechercheDifferee] = useState("");
   const [page, setPage] = useState(0);
   const [demandeId, setDemandeId] = useState<number | null>(demandeInitiale ?? null);
+  const [exportEnCours, setExportEnCours] = useState(false);
+
+  async function exporter(format: FormatExport) {
+    setExportEnCours(true);
+    try {
+      await exporterDemandesIntegration(format, statut || undefined, rechercheDifferee || undefined);
+      toast.success("Le fichier a été téléchargé.");
+    } catch (erreur) {
+      toast.error(messageErreur(erreur, "L'exportation a échoué."));
+    } finally {
+      setExportEnCours(false);
+    }
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => setRechercheDifferee(recherche.trim()), 300);
@@ -63,6 +77,12 @@ export function ListeDemandes({ demandeInitiale }: { demandeInitiale?: number | 
         libelleRecherche="Rechercher une demande"
         filtresActifs={filtresActifs}
         onReinitialiser={() => { setRecherche(""); setStatut(""); }}
+        exportEnCours={exportEnCours}
+        formatsExport={[
+          { icone: FileSpreadsheet, libelle: "Exporter en Excel", onClick: () => void exporter("xlsx") },
+          { icone: Download, libelle: "Exporter en CSV", onClick: () => void exporter("csv") },
+          { icone: FileText, libelle: "Exporter en PDF", onClick: () => void exporter("pdf") },
+        ]}
         puces={[
           ...(rechercheDifferee ? [{ libelle: `Recherche : ${rechercheDifferee}`, onRetirer: () => setRecherche("") }] : []),
           ...(statut ? [{ libelle: LIBELLES[statut], onRetirer: () => setStatut("") }] : []),
@@ -76,6 +96,7 @@ export function ListeDemandes({ demandeInitiale }: { demandeInitiale?: number | 
           >
             <option value="">Tous les statuts</option>
             <option value="EN_ATTENTE">En attente</option>
+            <option value="COMPLEMENTS_DEMANDES">Compléments demandés</option>
             <option value="ACCEPTEE">Acceptées</option>
             <option value="REFUSEE">Refusées</option>
           </Select>
@@ -187,7 +208,7 @@ function LigneDemande({ demande, onOuvrir }: { demande: DemandeIntegration; onOu
         </Badge>
       </td>
       <td className="border-t border-brand-900/10 bg-card px-4 py-3 group-hover:bg-surface-alt">
-        <p className="font-medium text-ink-900">{demande.nombreDocuments ?? 0} / 6</p>
+        <p className="font-medium text-ink-900">{demande.nombreDocuments ?? 0} déposé(s)</p>
         <p className="text-xs text-muted-foreground">{demande.dossierComplet ? "Dossier complet" : "Dossier incomplet"}</p>
       </td>
       <td className="sticky right-0 z-10 border-t border-brand-900/10 bg-card px-2 py-3 text-right shadow-[-8px_0_12px_-12px_rgba(36,42,46,0.35)] group-hover:bg-surface-alt">

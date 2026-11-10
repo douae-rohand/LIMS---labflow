@@ -34,6 +34,26 @@ public interface LigneEssaiRepository extends JpaRepository<LigneEssai, Long> {
 
     Page<LigneEssai> findByTechnicienId(Long technicienId, Pageable pageable);
 
+    /** Lignes des demandes dans les statuts donnés, avec demande, essai et domaine. */
+    @Query("""
+            SELECT le FROM LigneEssai le
+            JOIN FETCH le.demande d
+            LEFT JOIN FETCH le.essai e
+            LEFT JOIN FETCH e.domaine
+            WHERE d.statut IN :statuts
+            ORDER BY d.dateSoumission ASC, le.id ASC
+            """)
+    List<LigneEssai> findLignesDesDemandes(@Param("statuts") Collection<String> statuts);
+
+    @Query("""
+            SELECT le FROM LigneEssai le
+            JOIN FETCH le.demande d
+            LEFT JOIN FETCH le.essai e
+            LEFT JOIN FETCH e.domaine
+            WHERE le.id IN :ids
+            """)
+    List<LigneEssai> findAvecDetails(@Param("ids") Collection<Long> ids);
+
     Page<LigneEssai> findByStatut(StatutEssai statut, Pageable pageable);
 
     boolean existsByEssaiId(Long essaiId);

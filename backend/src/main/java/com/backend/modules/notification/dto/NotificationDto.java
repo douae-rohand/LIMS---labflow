@@ -23,6 +23,12 @@ public class NotificationDto {
     private StatutEnvoi statut;
     private Instant dateCreation;
     private Instant dateEnvoi;
+    /** Chemin de l'interface à ouvrir au clic. */
+    private String lien;
+    private String type;
+    /** Renseignés pour la liste « mes notifications ». */
+    private Boolean lue;
+    private Instant dateLecture;
 
     /** Destinataires (inclus uniquement à la création). */
     private List<Long> destinataireIds;
