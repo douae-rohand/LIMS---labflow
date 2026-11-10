@@ -53,7 +53,8 @@ export type CheminEspace =
   | "/app/validation-resultats"
   | "/app/rapports-laboratoire"
   | "/app/reception"
-  | "/app/caisse";
+  | "/app/caisse"
+  | "/app/clients-accueil";
 
 export type EntreeNavigation = {
   to: CheminEspace;

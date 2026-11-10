@@ -26,6 +26,7 @@ import { Route as AppAuditRouteImport } from './routes/app/audit'
 import { Route as AppCaisseRouteImport } from './routes/app/caisse'
 import { Route as AppCarteRouteImport } from './routes/app/carte'
 import { Route as AppCatalogueRouteImport } from './routes/app/catalogue'
+import { Route as AppClientsAccueilRouteImport } from './routes/app/clients-accueil'
 import { Route as AppDemandesRouteImport } from './routes/app/demandes'
 import { Route as AppDemandesClientsRouteImport } from './routes/app/demandes-clients'
 import { Route as AppEmployesRouteImport } from './routes/app/employes'
@@ -164,6 +165,11 @@ const AppCarteRoute = AppCarteRouteImport.update({
 const AppCatalogueRoute = AppCatalogueRouteImport.update({
   id: '/catalogue',
   path: '/catalogue',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClientsAccueilRoute = AppClientsAccueilRouteImport.update({
+  id: '/clients-accueil',
+  path: '/clients-accueil',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDemandesRoute = AppDemandesRouteImport.update({
@@ -460,6 +466,7 @@ export interface FileRoutesByFullPath {
   '/app/caisse': typeof AppCaisseRoute
   '/app/carte': typeof AppCarteRoute
   '/app/catalogue': typeof AppCatalogueRouteWithChildren
+  '/app/clients-accueil': typeof AppClientsAccueilRoute
   '/app/demandes': typeof AppDemandesRouteWithChildren
   '/app/demandes-clients': typeof AppDemandesClientsRouteWithChildren
   '/app/employes': typeof AppEmployesRouteWithChildren
@@ -531,6 +538,7 @@ export interface FileRoutesByTo {
   '/app/audit': typeof AppAuditRoute
   '/app/caisse': typeof AppCaisseRoute
   '/app/carte': typeof AppCarteRoute
+  '/app/clients-accueil': typeof AppClientsAccueilRoute
   '/app/exports': typeof AppExportsRoute
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/app/import': typeof AppImportRoute
@@ -594,6 +602,7 @@ export interface FileRoutesById {
   '/app/caisse': typeof AppCaisseRoute
   '/app/carte': typeof AppCarteRoute
   '/app/catalogue': typeof AppCatalogueRouteWithChildren
+  '/app/clients-accueil': typeof AppClientsAccueilRoute
   '/app/demandes': typeof AppDemandesRouteWithChildren
   '/app/demandes-clients': typeof AppDemandesClientsRouteWithChildren
   '/app/employes': typeof AppEmployesRouteWithChildren
@@ -669,6 +678,7 @@ export interface FileRouteTypes {
     | '/app/caisse'
     | '/app/carte'
     | '/app/catalogue'
+    | '/app/clients-accueil'
     | '/app/demandes'
     | '/app/demandes-clients'
     | '/app/employes'
@@ -740,6 +750,7 @@ export interface FileRouteTypes {
     | '/app/audit'
     | '/app/caisse'
     | '/app/carte'
+    | '/app/clients-accueil'
     | '/app/exports'
     | '/app/gestion-laboratoires'
     | '/app/import'
@@ -802,6 +813,7 @@ export interface FileRouteTypes {
     | '/app/caisse'
     | '/app/carte'
     | '/app/catalogue'
+    | '/app/clients-accueil'
     | '/app/demandes'
     | '/app/demandes-clients'
     | '/app/employes'
@@ -996,6 +1008,13 @@ declare module '@tanstack/react-router' {
       path: '/catalogue'
       fullPath: '/app/catalogue'
       preLoaderRoute: typeof AppCatalogueRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/clients-accueil': {
+      id: '/app/clients-accueil'
+      path: '/clients-accueil'
+      fullPath: '/app/clients-accueil'
+      preLoaderRoute: typeof AppClientsAccueilRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/demandes': {
@@ -1549,6 +1568,7 @@ interface AppRouteChildren {
   AppCaisseRoute: typeof AppCaisseRoute
   AppCarteRoute: typeof AppCarteRoute
   AppCatalogueRoute: typeof AppCatalogueRouteWithChildren
+  AppClientsAccueilRoute: typeof AppClientsAccueilRoute
   AppDemandesRoute: typeof AppDemandesRouteWithChildren
   AppDemandesClientsRoute: typeof AppDemandesClientsRouteWithChildren
   AppEmployesRoute: typeof AppEmployesRouteWithChildren
@@ -1587,6 +1607,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCaisseRoute: AppCaisseRoute,
   AppCarteRoute: AppCarteRoute,
   AppCatalogueRoute: AppCatalogueRouteWithChildren,
+  AppClientsAccueilRoute: AppClientsAccueilRoute,
   AppDemandesRoute: AppDemandesRouteWithChildren,
   AppDemandesClientsRoute: AppDemandesClientsRouteWithChildren,
   AppEmployesRoute: AppEmployesRouteWithChildren,

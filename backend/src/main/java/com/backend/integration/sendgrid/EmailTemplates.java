@@ -157,6 +157,24 @@ public final class EmailTemplates {
         );
     }
 
+    /** Compte client créé à l'accueil du laboratoire : le client choisit lui-même son mot de passe. */
+    public static String invitationClient(String nomComplet, String nomLaboratoire,
+                                          String lienActivation, int ttlHeures) {
+        return page(
+                "Votre espace client",
+                "Activez votre compte pour suivre vos analyses en ligne.",
+                """
+                <p>Bonjour %s,</p>
+                <p>L'accueil de <strong>%s</strong> a créé votre espace client LabFlow. Vous pourrez y suivre
+                vos demandes d'analyse, recevoir vos rapports et consulter vos factures.</p>
+                <p>Cliquez sur le bouton ci-dessous pour choisir votre mot de passe. Ce lien expire dans
+                <strong>%d heures</strong> et ne peut être utilisé qu'une seule fois.</p>
+                """.formatted(e(nomComplet), e(nomLaboratoire), ttlHeures),
+                lienActivation,
+                "Activer mon espace"
+        );
+    }
+
     public static String codeOtp(String code, int ttlMinutes) {
         return page(
                 "Code de vérification",

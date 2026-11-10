@@ -165,3 +165,88 @@ export async function ouvrirRecu(paiementId: number): Promise<void> {
   window.open(url, "_blank", "noopener,noreferrer");
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
+
+// ------------------------------------------------------------- clients et patients
+export type TypeClient = "PARTICULIER" | "ENTREPRISE";
+
+export interface ClientAccueil {
+  utilisateurId: number;
+  nomComplet: string;
+  email: string;
+  telephone?: string | null;
+  type: TypeClient;
+  raisonSociale?: string | null;
+  ice?: string | null;
+  adresse?: string | null;
+  compteActive: boolean;
+  datePremierContact?: string | null;
+}
+
+export interface NouveauClient {
+  type: TypeClient;
+  nom: string;
+  prenom: string;
+  email: string;
+  telephone: string;
+  raisonSociale: string;
+  ice: string;
+  adresse: string;
+  consentementCndp: boolean;
+}
+
+export interface Patient {
+  id: number;
+  code: string;
+  nom: string;
+  prenom: string;
+  dateNaissance?: string | null;
+  sexe?: string | null;
+  cin?: string | null;
+  telephone?: string | null;
+  email?: string | null;
+  adresse?: string | null;
+}
+
+export interface FichePatient {
+  nom: string;
+  prenom: string;
+  dateNaissance: string | null;
+  sexe: string;
+  cin: string;
+  telephone: string;
+  email: string;
+  adresse: string;
+  consentementCndp: boolean;
+}
+
+export async function listerClients(): Promise<ClientAccueil[]> {
+  const res = await apiClient.get<ApiResponse<ClientAccueil[]>>("/accueil/clients");
+  return res.data;
+}
+
+export async function creerClient(client: NouveauClient): Promise<ClientAccueil> {
+  const res = await apiClient.post<ApiResponse<ClientAccueil>>("/accueil/clients", client);
+  return res.data;
+}
+
+export async function rattacherClient(email: string): Promise<ClientAccueil> {
+  const res = await apiClient.post<ApiResponse<ClientAccueil>>("/accueil/clients/rattacher", { email });
+  return res.data;
+}
+
+export async function renvoyerInvitationClient(utilisateurId: number): Promise<ClientAccueil> {
+  const res = await apiClient.post<ApiResponse<ClientAccueil>>(`/accueil/clients/${utilisateurId}/invitation`, {});
+  return res.data;
+}
+
+export async function listerPatients(): Promise<Patient[]> {
+  const res = await apiClient.get<ApiResponse<Patient[]>>("/accueil/patients");
+  return res.data;
+}
+
+export async function enregistrerPatient(fiche: FichePatient, id?: number): Promise<Patient> {
+  const res = id
+    ? await apiClient.put<ApiResponse<Patient>>(`/accueil/patients/${id}`, fiche)
+    : await apiClient.post<ApiResponse<Patient>>("/accueil/patients", fiche);
+  return res.data;
+}

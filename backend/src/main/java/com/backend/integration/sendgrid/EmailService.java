@@ -108,6 +108,12 @@ public class EmailService {
         return envoyerHtml(email, sujet, html);
     }
 
+    public ResultatEnvoiEmail envoyerInvitationClient(String email, String nomComplet, String nomLaboratoire,
+                                                      String lienActivation, int ttlHeures) {
+        String sujet = "[LabFlow] Votre espace client " + nomLaboratoire;
+        return envoyerHtml(email, sujet, EmailTemplates.invitationClient(nomComplet, nomLaboratoire, lienActivation, ttlHeures));
+    }
+
     public ResultatEnvoiEmail envoyerInvitationEmploye(String email, String nomComplet,
                                                         String nomLaboratoire,
                                                         String lienActivation, int ttlHeures) {

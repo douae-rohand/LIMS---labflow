@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   PackageCheck,
   Receipt,
+  UserPlus,
   Settings,
   Shield,
   Users,
@@ -173,6 +174,11 @@ const NAV_ITEMS_ACCUEIL: EntreeAdminNavigation[] = [
     label: "Caisse",
     icon: Receipt,
     permission: "FACTURATION_PAYER",
+  },
+  {
+    to: "/app/clients-accueil" as const,
+    label: "Clients et patients",
+    icon: UserPlus,
   },
 ];
 
