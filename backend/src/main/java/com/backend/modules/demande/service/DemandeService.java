@@ -880,9 +880,8 @@ public class DemandeService {
     /**
      * Enregistre une entrée d'audit pour une transition de statut de demande.
      * L'objet est qualifié par le schéma du laboratoire : {@code <nomSchema>/Demande#<id>}.
-     * L'acteur est résolu dans le thread appelant. Si une transaction est active
-     * (méthodes laboratoire @Transactional), l'enregistrement est différé à afterCommit ;
-     * sinon il est exécuté immédiatement (méthodes client hors transaction).
+     * L'acteur est résolu dans le thread appelant ; l'écriture a lieu après le commit
+     * (ou tout de suite hors transaction), via JournalAuditService.
      */
     private void enregistrerAuditDemande(String action, String nomSchema, Long demandeId,
                                          String statutAvant, String statutApres, String motif) {
@@ -891,23 +890,17 @@ public class DemandeService {
         if (entree == null) {
             return;
         }
-        if (TransactionSynchronizationManager.isActualTransactionActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    journalAuditService.enregistrer(entree);
-                }
-            });
-        } else {
-            journalAuditService.enregistrer(entree);
-        }
+        // JournalAuditService diffère lui-même l'écriture après le commit (ApresCommit) : un second
+        // report enregistré pendant un afterCommit ne serait jamais exécuté et l'audit serait perdu.
+        journalAuditService.enregistrer(entree);
     }
 
     private JournalAudit construireEntreeAudit(String action, String nomSchema, Long demandeId,
                                                String statutAvant, String statutApres, String motif) {
         UtilisateurPrincipal principal = SecurityUtils.principalCourant();
         Utilisateur auteur = tenantExecutor.inCentral(() ->
-                utilisateurRepository.findByEmail(principal.getEmail()).orElse(null));
+                // Laboratoire chargé tout de suite : l'audit est écrit après le commit, hors session.
+                utilisateurRepository.findByEmailWithRoleAndLaboratoire(principal.getEmail()).orElse(null));
         if (auteur == null) {
             log.warn("Audit {} ignoré : utilisateur introuvable pour {}", action, principal.getEmail());
             return null;

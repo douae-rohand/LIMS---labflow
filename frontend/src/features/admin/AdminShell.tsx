@@ -13,6 +13,7 @@ import {
   PackageCheck,
   Receipt,
   UserPlus,
+  ClipboardList,
   Settings,
   Shield,
   Users,
@@ -179,6 +180,12 @@ const NAV_ITEMS_ACCUEIL: EntreeAdminNavigation[] = [
     to: "/app/clients-accueil" as const,
     label: "Clients et patients",
     icon: UserPlus,
+  },
+  {
+    to: "/app/suivi-demandes" as const,
+    label: "Suivi des demandes",
+    icon: ClipboardList,
+    permission: "DEMANDES_SUIVI",
   },
 ];
 

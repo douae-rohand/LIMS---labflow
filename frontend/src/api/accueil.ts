@@ -1,5 +1,7 @@
 import apiClient from "./axios";
 import type { ApiResponse } from "./auth";
+import type { DemandeLaboratoire, DemandeResume, StatutDemande } from "./demandes";
+import type { PageResponse } from "./utilisateurs";
 
 export type EtatReception = "A_RECEVOIR" | "PARTIELLE" | "COMPLETE";
 
@@ -248,5 +250,41 @@ export async function enregistrerPatient(fiche: FichePatient, id?: number): Prom
   const res = id
     ? await apiClient.put<ApiResponse<Patient>>(`/accueil/patients/${id}`, fiche)
     : await apiClient.post<ApiResponse<Patient>>("/accueil/patients", fiche);
+  return res.data;
+}
+
+// ------------------------------------------------------------- suivi des demandes (lecture seule)
+
+export interface EtapeSuivi {
+  libelle: string;
+  action: string;
+  statutAvant?: string | null;
+  statutApres?: string | null;
+  motif?: string | null;
+  date: string;
+  acteur: string;
+}
+
+export interface SuiviDemande {
+  demande: DemandeLaboratoire;
+  avancement: { analyses: number; attenteEchantillon: number; enCours: number; terminees: number; nonRealisables: number };
+  historique: EtapeSuivi[];
+  facture: { id: number; numero: string; montant: number; paye: number; reste: number; statut: string } | null;
+  rapport: { numero: string; statut: string; dateSignature?: string | null; diffuse: boolean } | null;
+}
+
+export async function listerDemandesSuivi(params: {
+  q?: string | undefined;
+  statut?: StatutDemande | undefined;
+  page: number;
+}): Promise<PageResponse<DemandeResume>> {
+  const res = await apiClient.get<ApiResponse<PageResponse<DemandeResume>>>("/accueil/demandes", {
+    params: { q: params.q || undefined, statut: params.statut, page: params.page, size: 20 },
+  });
+  return res.data;
+}
+
+export async function lireSuiviDemande(id: number): Promise<SuiviDemande> {
+  const res = await apiClient.get<ApiResponse<SuiviDemande>>(`/accueil/demandes/${id}`);
   return res.data;
 }

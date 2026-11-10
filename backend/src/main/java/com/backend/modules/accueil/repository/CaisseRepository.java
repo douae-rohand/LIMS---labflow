@@ -32,6 +32,9 @@ public interface CaisseRepository extends Repository<Paiement, Long> {
             """)
     Optional<Facture> facture(@Param("id") Long id);
 
+    @Query("SELECT f FROM Facture f WHERE f.demande.id = :demandeId ORDER BY f.id DESC")
+    List<Facture> facturesDeLaDemande(@Param("demandeId") Long demandeId);
+
     @Query("SELECT p FROM Paiement p WHERE p.facture.id IN :factureIds ORDER BY p.datePaiement DESC, p.id DESC")
     List<Paiement> paiementsDes(@Param("factureIds") Collection<Long> factureIds);
 

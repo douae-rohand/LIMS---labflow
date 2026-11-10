@@ -51,6 +51,7 @@ import { Route as AppReceptionRouteImport } from './routes/app/reception'
 import { Route as AppSatisfactionRouteImport } from './routes/app/satisfaction'
 import { Route as AppStockRouteImport } from './routes/app/stock'
 import { Route as AppSuiviRouteImport } from './routes/app/suivi'
+import { Route as AppSuiviDemandesRouteImport } from './routes/app/suivi-demandes'
 import { Route as AppTableauDeBordRouteImport } from './routes/app/tableau-de-bord'
 import { Route as AppValidationResultatsRouteImport } from './routes/app/validation-resultats'
 import { Route as IntegrationComplementsRouteImport } from './routes/integration_.complements'
@@ -292,6 +293,11 @@ const AppSuiviRoute = AppSuiviRouteImport.update({
   path: '/suivi',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSuiviDemandesRoute = AppSuiviDemandesRouteImport.update({
+  id: '/suivi-demandes',
+  path: '/suivi-demandes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTableauDeBordRoute = AppTableauDeBordRouteImport.update({
   id: '/tableau-de-bord',
   path: '/tableau-de-bord',
@@ -491,6 +497,7 @@ export interface FileRoutesByFullPath {
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/stock': typeof AppStockRouteWithChildren
   '/app/suivi': typeof AppSuiviRoute
+  '/app/suivi-demandes': typeof AppSuiviDemandesRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
   '/app/validation-resultats': typeof AppValidationResultatsRoute
   '/integration/complements': typeof IntegrationComplementsRoute
@@ -552,6 +559,7 @@ export interface FileRoutesByTo {
   '/app/reception': typeof AppReceptionRoute
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/suivi': typeof AppSuiviRoute
+  '/app/suivi-demandes': typeof AppSuiviDemandesRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
   '/app/validation-resultats': typeof AppValidationResultatsRoute
   '/integration/complements': typeof IntegrationComplementsRoute
@@ -627,6 +635,7 @@ export interface FileRoutesById {
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/stock': typeof AppStockRouteWithChildren
   '/app/suivi': typeof AppSuiviRoute
+  '/app/suivi-demandes': typeof AppSuiviDemandesRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
   '/app/validation-resultats': typeof AppValidationResultatsRoute
   '/integration_/complements': typeof IntegrationComplementsRoute
@@ -703,6 +712,7 @@ export interface FileRouteTypes {
     | '/app/satisfaction'
     | '/app/stock'
     | '/app/suivi'
+    | '/app/suivi-demandes'
     | '/app/tableau-de-bord'
     | '/app/validation-resultats'
     | '/integration/complements'
@@ -764,6 +774,7 @@ export interface FileRouteTypes {
     | '/app/reception'
     | '/app/satisfaction'
     | '/app/suivi'
+    | '/app/suivi-demandes'
     | '/app/tableau-de-bord'
     | '/app/validation-resultats'
     | '/integration/complements'
@@ -838,6 +849,7 @@ export interface FileRouteTypes {
     | '/app/satisfaction'
     | '/app/stock'
     | '/app/suivi'
+    | '/app/suivi-demandes'
     | '/app/tableau-de-bord'
     | '/app/validation-resultats'
     | '/integration_/complements'
@@ -1183,6 +1195,13 @@ declare module '@tanstack/react-router' {
       path: '/suivi'
       fullPath: '/app/suivi'
       preLoaderRoute: typeof AppSuiviRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/suivi-demandes': {
+      id: '/app/suivi-demandes'
+      path: '/suivi-demandes'
+      fullPath: '/app/suivi-demandes'
+      preLoaderRoute: typeof AppSuiviDemandesRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/tableau-de-bord': {
@@ -1593,6 +1612,7 @@ interface AppRouteChildren {
   AppSatisfactionRoute: typeof AppSatisfactionRoute
   AppStockRoute: typeof AppStockRouteWithChildren
   AppSuiviRoute: typeof AppSuiviRoute
+  AppSuiviDemandesRoute: typeof AppSuiviDemandesRoute
   AppTableauDeBordRoute: typeof AppTableauDeBordRoute
   AppValidationResultatsRoute: typeof AppValidationResultatsRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -1632,6 +1652,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSatisfactionRoute: AppSatisfactionRoute,
   AppStockRoute: AppStockRouteWithChildren,
   AppSuiviRoute: AppSuiviRoute,
+  AppSuiviDemandesRoute: AppSuiviDemandesRoute,
   AppTableauDeBordRoute: AppTableauDeBordRoute,
   AppValidationResultatsRoute: AppValidationResultatsRoute,
   AppIndexRoute: AppIndexRoute,
