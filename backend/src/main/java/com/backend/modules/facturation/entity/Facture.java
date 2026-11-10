@@ -41,6 +41,14 @@ public class Facture {
     @Column(length = 50)
     private String statut;
 
+    /**
+     * Taux de TVA (%) en vigueur à l'émission. Les prix du catalogue sont TTC :
+     * {@code montantHt} porte le total TTC et la TVA comprise vaut montant × taux / (100 + taux).
+     * {@code null} pour une facture émise avant la gestion de la TVA.
+     */
+    @Column(name = "taux_tva", precision = 5, scale = 2)
+    private BigDecimal tauxTva;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "demande_id", nullable = false)
     private Demande demande;

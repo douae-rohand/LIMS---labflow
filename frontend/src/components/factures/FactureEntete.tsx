@@ -69,7 +69,7 @@ export function FactureEntete({ facture }: { facture: FactureDetailClient }) {
         </div>
         <div>
           <dt className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            Montant HT
+            Montant TTC
           </dt>
           <dd className="mt-1 text-sm font-bold text-ink-900">{formatMontant(facture.montantHt)}</dd>
         </div>

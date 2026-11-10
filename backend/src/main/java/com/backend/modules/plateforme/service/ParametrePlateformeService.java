@@ -5,6 +5,8 @@ import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.CreerTypeLaboratoire;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.EnregistrerTypeDocument;
+import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Facturation;
+import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Identite;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.ModifierTypeLaboratoire;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.ParametresPublics;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.PolitiqueMotDePasse;
@@ -26,6 +28,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.Normalizer;
 import java.time.Duration;
 import java.time.Instant;
@@ -52,6 +56,16 @@ public class ParametrePlateformeService {
     static final String CLE_LONGUEUR_MDP = "securite.mdp.longueur_min";
     static final String CLE_SPECIAL_MDP = "securite.mdp.exiger_special";
     static final String CLE_DUREE_SESSION = "securite.session.duree_jours";
+    static final String CLE_NOM = "plateforme.nom";
+    static final String CLE_EMAIL_CONTACT = "plateforme.email_contact";
+    static final String CLE_TELEPHONE = "plateforme.telephone";
+    static final String CLE_ADRESSE = "plateforme.adresse";
+    static final String CLE_EXPEDITEUR = "email.expediteur_nom";
+    static final String CLE_TVA = "facturation.tva.taux";
+
+    public static final String NOM_PLATEFORME_DEFAUT = "LabFlow";
+    public static final String EXPEDITEUR_DEFAUT = "LabFlow LIMS";
+    public static final BigDecimal TVA_DEFAUT = new BigDecimal("20.00");
 
     public static final int LONGUEUR_MDP_MIN = 10;
     private static final int DUREE_SESSION_DEFAUT = 7;
@@ -62,8 +76,13 @@ public class ParametrePlateformeService {
     private final ReferentielTypeLaboratoireRepository typeLaboratoireRepository;
     private final JournalAuditService journalAuditService;
     private final ObjectMapper objectMapper;
+    private final com.backend.common.tenant.TenantExecutor tenantExecutor;
 
     private volatile Securite securiteEnCache;
+    private volatile Identite identiteEnCache;
+    private volatile Instant chargementIdentite = Instant.EPOCH;
+    private volatile BigDecimal tvaEnCache;
+    private volatile Instant chargementTva = Instant.EPOCH;
     private volatile Instant chargementCache = Instant.EPOCH;
 
     // -------------------------------------------------------------------------
@@ -133,7 +152,114 @@ public class ParametrePlateformeService {
 
     @Transactional(readOnly = true)
     public ParametresPublics parametresPublics() {
-        return new ParametresPublics(politiqueMotDePasse(), typesLaboratoireActifs());
+        return new ParametresPublics(politiqueMotDePasse(), typesLaboratoireActifs(), identite());
+    }
+
+    // -------------------------------------------------------------------------
+    // Identité de la plateforme
+    // -------------------------------------------------------------------------
+
+    public Identite identite() {
+        Identite courant = identiteEnCache;
+        if (courant != null && Instant.now().isBefore(chargementIdentite.plus(DUREE_CACHE))) {
+            return courant;
+        }
+        Map<String, String> valeurs = toutesLesValeurs();
+        Identite charge = new Identite(
+                valeurOuDefaut(valeurs.get(CLE_NOM), NOM_PLATEFORME_DEFAUT),
+                valeurs.getOrDefault(CLE_EMAIL_CONTACT, ""),
+                valeurs.getOrDefault(CLE_TELEPHONE, ""),
+                valeurs.getOrDefault(CLE_ADRESSE, ""),
+                valeurOuDefaut(valeurs.get(CLE_EXPEDITEUR), EXPEDITEUR_DEFAUT));
+        identiteEnCache = charge;
+        chargementIdentite = Instant.now();
+        return charge;
+    }
+
+    /** Nom affiché comme expéditeur des e-mails ; ne lève jamais d'exception. */
+    public String nomExpediteur() {
+        try {
+            return identite().expediteurNom();
+        } catch (RuntimeException ex) {
+            log.warn("Nom d'expéditeur illisible, valeur par défaut utilisée : {}", ex.getMessage());
+            return EXPEDITEUR_DEFAUT;
+        }
+    }
+
+    @Transactional
+    public Identite modifierIdentite(Identite demande, String acteurEmail) {
+        Identite avant = identite();
+        Instant maintenant = Instant.now();
+        Identite apres = new Identite(
+                demande.nom().trim(),
+                texteOuVide(demande.emailContact()),
+                texteOuVide(demande.telephone()),
+                texteOuVide(demande.adresse()),
+                demande.expediteurNom().trim());
+        ecrire(CLE_NOM, apres.nom(), acteurEmail, maintenant);
+        ecrire(CLE_EMAIL_CONTACT, apres.emailContact(), acteurEmail, maintenant);
+        ecrire(CLE_TELEPHONE, apres.telephone(), acteurEmail, maintenant);
+        ecrire(CLE_ADRESSE, apres.adresse(), acteurEmail, maintenant);
+        ecrire(CLE_EXPEDITEUR, apres.expediteurNom(), acteurEmail, maintenant);
+        journalAuditService.enregistrer("MODIFIER_IDENTITE_PLATEFORME", "ParametresPlateforme", null,
+                acteurEmail, json(avant), json(apres), null);
+        identiteEnCache = null;
+        return apres;
+    }
+
+    // -------------------------------------------------------------------------
+    // TVA (les prix du catalogue sont saisis TTC)
+    // -------------------------------------------------------------------------
+
+    /** Taux de TVA de la plateforme, en pourcentage. */
+    public BigDecimal tauxTvaPlateforme() {
+        BigDecimal courant = tvaEnCache;
+        if (courant != null && Instant.now().isBefore(chargementTva.plus(DUREE_CACHE))) {
+            return courant;
+        }
+        BigDecimal charge = TVA_DEFAUT;
+        // Lu dans le schéma central, quel que soit le tenant de la requête en cours.
+        String brut = tenantExecutor.inCentral(() ->
+                parametreRepository.findById(CLE_TVA).map(ParametrePlateforme::getValeur).orElse(null));
+        if (StringUtils.hasText(brut)) {
+            try {
+                charge = new BigDecimal(brut.trim()).setScale(2, RoundingMode.HALF_UP);
+            } catch (NumberFormatException ex) {
+                log.warn("Taux de TVA illisible ({}), 20 % appliqué", brut);
+            }
+        }
+        tvaEnCache = charge;
+        chargementTva = Instant.now();
+        return charge;
+    }
+
+    public Facturation facturation() {
+        return new Facturation(tauxTvaPlateforme());
+    }
+
+    @Transactional
+    public Facturation modifierFacturation(Facturation demande, String acteurEmail) {
+        BigDecimal avant = tauxTvaPlateforme();
+        BigDecimal taux = demande.tauxTva().setScale(2, RoundingMode.HALF_UP);
+        ecrire(CLE_TVA, taux.toPlainString(), acteurEmail, Instant.now());
+        journalAuditService.enregistrer("MODIFIER_TVA_PLATEFORME", "ParametresPlateforme", null, acteurEmail,
+                "{\"tauxTva\":" + avant.toPlainString() + "}", "{\"tauxTva\":" + taux.toPlainString() + "}", null);
+        tvaEnCache = null;
+        return new Facturation(taux);
+    }
+
+    /** Toutes les valeurs, lues dans le schéma central quel que soit le tenant de la requête. */
+    private Map<String, String> toutesLesValeurs() {
+        return tenantExecutor.inCentral(() -> parametreRepository.findAll().stream()
+                .collect(Collectors.toMap(ParametrePlateforme::getCle, ParametrePlateforme::getValeur, (a, b) -> b)));
+    }
+
+    private static String valeurOuDefaut(String valeur, String defaut) {
+        return StringUtils.hasText(valeur) ? valeur.trim() : defaut;
+    }
+
+    private static String texteOuVide(String valeur) {
+        return valeur == null ? "" : valeur.trim();
     }
 
     private Securite chargerSecurite() {

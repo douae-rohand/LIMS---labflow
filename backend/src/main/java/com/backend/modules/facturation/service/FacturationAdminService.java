@@ -56,6 +56,7 @@ public class FacturationAdminService {
     private final JournalAuditService journalAuditService;
     private final TenantExecutor tenantExecutor;
     private final UtilisateurRepository utilisateurRepository;
+    private final com.backend.modules.plateforme.service.TvaService tvaService;
 
     private static final int RETRY_MAX = 3;
 
@@ -111,10 +112,11 @@ public class FacturationAdminService {
             throw new BusinessRuleException("SCHEMA_LABORATOIRE_REQUIS",
                     "Le schéma du laboratoire est obligatoire pour émettre une facture.");
         }
+        java.math.BigDecimal tauxTva = tvaService.tauxEffectifParSchema(nomSchema);
         for (int essai = 0; essai < RETRY_MAX; essai++) {
             try {
                 return tenantExecutor.inTenant(nomSchema,
-                        () -> emettreFactureInterne(demandeId, dateEcheance, acteur, nomSchema, automatique));
+                        () -> emettreFactureInterne(demandeId, dateEcheance, acteur, nomSchema, automatique, tauxTva));
             } catch (DataIntegrityViolationException ex) {
                 if (essai == RETRY_MAX - 1) {
                     throw ex;
@@ -131,7 +133,8 @@ public class FacturationAdminService {
             LocalDate dateEcheance,
             UtilisateurPrincipal acteur,
             String nomSchema,
-            boolean automatique) {
+            boolean automatique,
+            BigDecimal tauxTva) {
         Demande demande = demandeRepository.findByIdForUpdate(demandeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", demandeId));
 
@@ -174,6 +177,7 @@ public class FacturationAdminService {
                 .dateFacture(dateFacture)
                 .dateEcheance(echeance)
                 .montantHt(montantTotal)
+                .tauxTva(tauxTva)
                 .statut(StatutFacture.IMPAYEE.name())
                 .demande(demande)
                 .build();
@@ -356,8 +360,17 @@ public class FacturationAdminService {
                         .build())
                 .toList();
 
+        BigDecimal taux = facture.getTauxTva() != null
+                ? facture.getTauxTva()
+                : tvaService.tauxEffectifParSchema(com.backend.common.tenant.TenantContext.getCurrentTenant());
+        BigDecimal tva = com.backend.modules.plateforme.service.TvaService.tvaComprise(facture.getMontantHt(), taux);
+        BigDecimal horsTaxes = facture.getMontantHt() == null ? null : facture.getMontantHt().subtract(tva);
+
         return FactureAdminDto.builder()
                 .id(facture.getId())
+                .tauxTva(taux)
+                .montantTva(tva)
+                .montantHorsTaxes(horsTaxes)
                 .numero(facture.getNumero())
                 .type(facture.getType())
                 .dateFacture(facture.getDateFacture())

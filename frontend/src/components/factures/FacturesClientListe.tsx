@@ -43,7 +43,7 @@ export function FacturesClientListe({
             <th scope="col" className="w-36 px-4 py-3 font-semibold">Référence demande</th>
             <th scope="col" className="w-32 px-4 py-3 font-semibold">Émise le</th>
             <th scope="col" className="w-32 px-4 py-3 font-semibold">Échéance</th>
-            <th scope="col" className="w-28 px-4 py-3 font-semibold text-right">Montant HT</th>
+            <th scope="col" className="w-28 px-4 py-3 font-semibold text-right">Montant TTC</th>
             <th scope="col" className="w-28 px-4 py-3 font-semibold text-right">Payé</th>
             <th scope="col" className="w-28 px-4 py-3 font-semibold text-right">Reste dû</th>
             <th scope="col" className="w-36 px-4 py-3 font-semibold text-right">Statut</th>

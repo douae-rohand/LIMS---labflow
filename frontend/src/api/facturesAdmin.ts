@@ -8,7 +8,11 @@ export interface FactureAdminDto {
   type: string;
   dateFacture: string;
   dateEcheance: string | null;
+  /** Total TTC (les prix du catalogue sont saisis TTC). */
   montantHt: number;
+  tauxTva: number;
+  montantTva: number;
+  montantHorsTaxes: number;
   statut: string;
   demandeId: number | null;
   demandeReference: string | null;

@@ -15,6 +15,7 @@ import {
 } from "@/api/gestionLaboratoires";
 import { ListeDocuments } from "../documents/ListeDocuments";
 import { Panneau } from "../Fenetres";
+import { OngletFinances } from "./OngletFinances";
 import { formaterDate, messageErreur, texte } from "../texte";
 
 const ETAPES = ["Laboratoire", "Localisation", "Administrateur", "Documents"] as const;
@@ -39,7 +40,7 @@ export function PanneauLaboratoire({
   const [erreurCoordonnees, setErreurCoordonnees] = useState("");
   const [erreurAdmin, setErreurAdmin] = useState("");
   const [confirmerFermeture, setConfirmerFermeture] = useState(false);
-  const [vue, setVue] = useState<"fiche" | "historique">("fiche");
+  const [vue, setVue] = useState<"fiche" | "historique" | "finances">("fiche");
   const sale =
     mode === "modifier" &&
     JSON.stringify(formulaire) !== JSON.stringify(versFormulaire(laboratoire));
@@ -215,6 +216,7 @@ export function PanneauLaboratoire({
                 {([
                   ["fiche", "Fiche"],
                   ["historique", "Historique"],
+                  ["finances", "Finances"],
                 ] as const).map(([valeur, libelle]) => (
                   <button
                     key={valeur}
@@ -401,6 +403,7 @@ export function PanneauLaboratoire({
             </>
             )}
             {mode === "consulter" && vue === "historique" && <OngletHistorique id={laboratoire.id} />}
+            {mode === "consulter" && vue === "finances" && <OngletFinances id={laboratoire.id} code={laboratoire.code} />}
           </div>
         )}
       </Panneau>

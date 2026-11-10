@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Building2, LayoutDashboard, LogOut, ScrollText, Settings, Users } from "lucide-react";
+import { Building2, LayoutDashboard, LogOut, ScrollText, Settings, UserRound, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/lab";
 import { Toaster } from "@/components/ui/sonner";
@@ -54,6 +54,7 @@ export function SuperAdminShell({
             <Lien to="/app/utilisateurs" icone={<Users className="size-4" aria-hidden="true" />} libelle="Administrateurs" />
             <Lien to="/app/journal-audit" icone={<ScrollText className="size-4" aria-hidden="true" />} libelle="Journal d'audit" />
             <Lien to="/app/parametres-plateforme" icone={<Settings className="size-4" aria-hidden="true" />} libelle="Paramètres" />
+            <Lien to="/app/profil" icone={<UserRound className="size-4" aria-hidden="true" />} libelle="Mon compte" />
           </nav>
           <div className="border-t border-brand-900/10 p-3">
             <div className="flex items-center gap-3 rounded-2xl px-3 py-2.5">
@@ -88,6 +89,7 @@ export function SuperAdminShell({
             <Lien to="/app/utilisateurs" icone={<Users className="size-4" aria-hidden="true" />} libelle="Administrateurs" />
             <Lien to="/app/journal-audit" icone={<ScrollText className="size-4" aria-hidden="true" />} libelle="Journal" />
             <Lien to="/app/parametres-plateforme" icone={<Settings className="size-4" aria-hidden="true" />} libelle="Paramètres" />
+            <Lien to="/app/profil" icone={<UserRound className="size-4" aria-hidden="true" />} libelle="Mon compte" />
           </nav>
           <main className="min-w-0 flex-1">
             <div className="mx-auto w-full max-w-[1440px]">{children}</div>
@@ -104,7 +106,7 @@ function Lien({
   icone,
   libelle,
 }: {
-  to: "/app/tableau-de-bord" | "/app/gestion-laboratoires" | "/app/utilisateurs" | "/app/journal-audit" | "/app/parametres-plateforme";
+  to: "/app/tableau-de-bord" | "/app/gestion-laboratoires" | "/app/utilisateurs" | "/app/journal-audit" | "/app/parametres-plateforme" | "/app/profil";
   search?: { onglet: "laboratoires" };
   icone: ReactNode;
   libelle: string;

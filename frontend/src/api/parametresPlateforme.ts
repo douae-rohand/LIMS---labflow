@@ -15,9 +15,23 @@ export interface PolitiqueMotDePasse {
   exigerCaractereSpecial: boolean;
 }
 
+export interface IdentitePlateforme {
+  nom: string;
+  emailContact: string;
+  telephone: string;
+  adresse: string;
+  expediteurNom: string;
+}
+
+export interface FacturationPlateforme {
+  /** Taux de TVA en pourcentage ; les prix du catalogue sont saisis TTC. */
+  tauxTva: number;
+}
+
 export interface ParametresPublics {
   politiqueMotDePasse: PolitiqueMotDePasse;
   typesLaboratoire: string[];
+  identite?: IdentitePlateforme | null;
 }
 
 export interface TypeLaboratoireReference {
@@ -96,5 +110,25 @@ export async function modifierTypeLaboratoire(
     actif,
     ordre,
   });
+  return res.data;
+}
+
+export async function lireIdentite(): Promise<IdentitePlateforme> {
+  const res = await apiClient.get<ApiResponse<IdentitePlateforme>>(`${BASE}/identite`);
+  return res.data;
+}
+
+export async function enregistrerIdentite(valeurs: IdentitePlateforme): Promise<IdentitePlateforme> {
+  const res = await apiClient.put<ApiResponse<IdentitePlateforme>>(`${BASE}/identite`, valeurs);
+  return res.data;
+}
+
+export async function lireFacturation(): Promise<FacturationPlateforme> {
+  const res = await apiClient.get<ApiResponse<FacturationPlateforme>>(`${BASE}/facturation`);
+  return res.data;
+}
+
+export async function enregistrerFacturation(valeurs: FacturationPlateforme): Promise<FacturationPlateforme> {
+  const res = await apiClient.put<ApiResponse<FacturationPlateforme>>(`${BASE}/facturation`, valeurs);
   return res.data;
 }

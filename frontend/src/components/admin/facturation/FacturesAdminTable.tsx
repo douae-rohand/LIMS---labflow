@@ -94,7 +94,7 @@ export function FacturesAdminTable({
               <th scope="col" className="w-[22%] px-1.5 py-3 text-xs font-semibold sm:px-3 sm:text-sm">Réf. demande</th>
               <EnteteTri label="Date" colonne="date" tri={tri} direction={direction} onSortChange={onSortChange} className="w-[13%] px-1.5 py-3 text-xs font-semibold sm:px-3 sm:text-sm" />
               <th scope="col" className="w-[16%] px-1.5 py-3 text-xs font-semibold sm:px-3 sm:text-sm">Client</th>
-              <th scope="col" className="w-[18%] px-1.5 py-3 text-right text-xs font-semibold sm:px-3 sm:text-sm">Montant HT</th>
+              <th scope="col" className="w-[18%] px-1.5 py-3 text-right text-xs font-semibold sm:px-3 sm:text-sm">Montant TTC</th>
               <th scope="col" className="w-[14%] px-1.5 py-3 text-xs font-semibold sm:px-3 sm:text-sm">Statut</th>
             </tr>
           </thead>
@@ -117,7 +117,7 @@ export function FacturesAdminTable({
                 <td className="break-all px-1.5 py-3 text-xs sm:px-3 sm:text-sm">{facture.demandeReference ?? "—"}</td>
                 <td className="break-words px-1.5 py-3 text-xs sm:px-3 sm:text-sm">{facture.dateFacture}</td>
                 <td className="break-words px-1.5 py-3 text-xs sm:px-3 sm:text-sm" title={facture.clientNom ?? undefined}>{facture.clientNom ?? "—"}</td>
-                <td className="break-words px-1.5 py-3 text-right text-xs sm:px-3 sm:text-sm">{facture.montantHt.toFixed(2)} MAD</td>
+                <td className="break-words px-1.5 py-3 text-right text-xs sm:px-3 sm:text-sm">{facture.montantHt.toFixed(2)} MAD<span className="block text-[11px] text-muted-foreground">dont TVA {facture.montantTva.toFixed(2)} ({facture.tauxTva} %)</span></td>
                 <td className="px-1.5 py-3 text-xs sm:px-3 sm:text-sm">
                   <span className={`inline-block rounded-full px-1.5 py-1 text-[10px] font-medium sm:px-3 sm:text-xs ${
                     facture.statut === "PAYEE"

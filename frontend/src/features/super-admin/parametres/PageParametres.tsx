@@ -20,11 +20,14 @@ import type { RoleUtilisateur } from "@/api/session";
 import { Dialogue } from "../Fenetres";
 import { EtatVide } from "../EtatVide";
 import { messageErreur } from "../texte";
+import { SectionIdentite, SectionTva } from "./SectionsIdentiteTva";
 
-export type OngletParametres = "securite" | "documents" | "types";
+export type OngletParametres = "securite" | "identite" | "tva" | "documents" | "types";
 
 const ONGLETS: { id: OngletParametres; libelle: string }[] = [
   { id: "securite", libelle: "Sécurité" },
+  { id: "identite", libelle: "Identité" },
+  { id: "tva", libelle: "TVA" },
   { id: "documents", libelle: "Documents d'intégration" },
   { id: "types", libelle: "Types de laboratoire" },
 ];
@@ -68,6 +71,8 @@ export function PageParametres({
         ))}
       </div>
       {onglet === "securite" && <SectionSecurite />}
+      {onglet === "identite" && <SectionIdentite />}
+      {onglet === "tva" && <SectionTva />}
       {onglet === "documents" && <SectionDocuments />}
       {onglet === "types" && <SectionTypesLaboratoire />}
     </>

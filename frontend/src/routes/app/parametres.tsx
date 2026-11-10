@@ -12,6 +12,7 @@ import {
 import { useLaboParametres } from "@/hooks/useLaboParametres";
 import { getSession } from "@/api/session";
 import { TypeLaboratoireField } from "@/components/admin/parametres/TypeLaboratoireField";
+import { TvaLaboratoireSection } from "@/components/admin/parametres/TvaLaboratoireSection";
 
 export const Route = createFileRoute("/app/parametres")({
   head: () => ({ meta: [{ title: "Paramètres — LabFlow LIMS" }] }),
@@ -199,6 +200,11 @@ function ParametresPage() {
             </Button>
           </div>
         </form>
+      )}
+      {parametres.data && (
+        <div className="mt-5">
+          <TvaLaboratoireSection />
+        </div>
       )}
     </Container>
   );

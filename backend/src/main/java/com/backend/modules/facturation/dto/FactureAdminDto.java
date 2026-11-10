@@ -19,7 +19,14 @@ public class FactureAdminDto {
     private String type;
     private LocalDate dateFacture;
     private LocalDate dateEcheance;
+    /** Total de la facture, TTC (les prix du catalogue sont saisis TTC). */
     private BigDecimal montantHt;
+    /** Taux de TVA appliqué (%), visible uniquement dans l'espace Administrateur. */
+    private BigDecimal tauxTva;
+    /** Part de TVA comprise dans le total TTC. */
+    private BigDecimal montantTva;
+    /** Total hors taxes : total TTC − TVA. */
+    private BigDecimal montantHorsTaxes;
     private String statut;
     private Long demandeId;
     private String demandeReference;
