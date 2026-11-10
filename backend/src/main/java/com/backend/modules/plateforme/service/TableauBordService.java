@@ -2,6 +2,7 @@ package com.backend.modules.plateforme.service;
 
 import com.backend.common.tenant.TenantExecutor;
 import com.backend.integration.sendgrid.SendGridMailClient;
+import com.backend.integration.smtp.SmtpMailClient;
 import com.backend.modules.plateforme.dto.TableauBordDto;
 import com.backend.modules.plateforme.dto.TableauBordDto.ActiviteLaboratoire;
 import com.backend.modules.plateforme.dto.TableauBordDto.AlerteIntegration;
@@ -89,6 +90,7 @@ public class TableauBordService {
     private final TenantExecutor tenantExecutor;
     private final JdbcTemplate jdbcTemplate;
     private final SendGridMailClient sendGridMailClient;
+    private final SmtpMailClient smtpMailClient;
     private final String n8nBaseUrl;
     private final String minioEndpoint;
     private final ExecutorService executants = Executors.newFixedThreadPool(4, runnable -> {
@@ -111,6 +113,7 @@ public class TableauBordService {
             TenantExecutor tenantExecutor,
             JdbcTemplate jdbcTemplate,
             SendGridMailClient sendGridMailClient,
+            SmtpMailClient smtpMailClient,
             @Value("${n8n.webhook-base-url:}") String n8nBaseUrl,
             @Value("${minio.endpoint:}") String minioEndpoint) {
         this.utilisateurRepository = utilisateurRepository;
@@ -119,6 +122,7 @@ public class TableauBordService {
         this.tenantExecutor = tenantExecutor;
         this.jdbcTemplate = jdbcTemplate;
         this.sendGridMailClient = sendGridMailClient;
+        this.smtpMailClient = smtpMailClient;
         this.n8nBaseUrl = n8nBaseUrl;
         this.minioEndpoint = minioEndpoint;
     }
@@ -335,7 +339,8 @@ public class TableauBordService {
                 new EtatService("Base de données", sonderBase()),
                 new EtatService("n8n", sonderHttp(origine(n8nBaseUrl, "/healthz"))),
                 new EtatService("MinIO", sonderHttp(joindre(minioEndpoint, "/minio/health/live"))),
-                new EtatService("SendGrid", sendGridMailClient.sonder())
+                new EtatService("SendGrid", sendGridMailClient.sonder()),
+                new EtatService("SMTP (secours)", smtpMailClient.sonder())
         );
     }
 

@@ -47,23 +47,8 @@ spring:
     # Permet d'appliquer une version intercalée après un merge.
     out-of-order: true
 
-  # SMTP SendGrid conservé uniquement comme repli technique (starter-mail).
-  # L'envoi applicatif utilise l'API HTTP v3 (voir sendgrid.* ci-dessous).
-  mail:
-    host: ${MAIL_HOST:smtp.sendgrid.net}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:apikey}
-    password: ${SENDGRID_API_KEY:${MAIL_PASSWORD:}}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          connectiontimeout: 5000
-          timeout: 5000
-          writetimeout: 5000
+  # L'envoi applicatif utilise l'API HTTP SendGrid v3 (voir sendgrid.*),
+  # avec repli sur SMTP (voir app.mail.smtp.*).
 
   # ============================================================
   # Async (pour JournalAuditService, EmailService)
@@ -184,6 +169,18 @@ app:
   frontend-url: ${APP_FRONTEND_URL:${FRONTEND_URL:http://localhost:5173}}
   storage:
     path: ${APP_STORAGE_PATH:${user.home}/lims-documents}
+  # SMTP de secours (ex. Gmail + mot de passe d'application), utilisé quand SendGrid
+  # n'accepte pas un e-mail. Actif seulement si MAIL_MAILER=smtp et hôte/identifiants renseignés.
+  mail:
+    smtp:
+      mailer: ${MAIL_MAILER:}
+      host: ${MAIL_HOST:}
+      port: ${MAIL_PORT:587}
+      username: ${MAIL_USERNAME:}
+      password: ${MAIL_PASSWORD:}
+      encryption: ${MAIL_ENCRYPTION:tls}
+      from-address: ${MAIL_FROM_ADDRESS:}
+      from-name: ${MAIL_FROM_NAME:${SENDGRID_FROM_NAME:LabFlow LIMS}}
   # Signature électronique des rapports (PAdES + horodatage RFC 3161)
   signature:
     # Mot de passe des coffres de certificats des laboratoires (PKCS#12). À définir en production.

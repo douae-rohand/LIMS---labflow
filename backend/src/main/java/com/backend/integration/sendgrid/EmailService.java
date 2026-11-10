@@ -1,5 +1,6 @@
 package com.backend.integration.sendgrid;
 
+import com.backend.integration.smtp.SmtpMailClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -8,8 +9,8 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Façade métier d'envoi d'e-mails via l'API SendGrid v3.
- * Un seul mécanisme d'envoi : {@link SendGridMailClient}.
+ * Façade métier d'envoi d'e-mails : API SendGrid v3, avec repli sur SMTP ({@link SmtpMailClient}).
+ * Tous les envois passent par {@link #envoyerHtml(List, String, String)}.
  */
 @Slf4j
 @Service
@@ -17,9 +18,26 @@ import java.util.List;
 public class EmailService {
 
     private final SendGridMailClient sendGridMailClient;
+    private final SmtpMailClient smtpMailClient;
 
+    /**
+     * Point d'envoi unique : SendGrid d'abord, puis le SMTP de secours si SendGrid n'a pas
+     * accepté le message (désactivé, non configuré, refus ou panne réseau).
+     */
     public ResultatEnvoiEmail envoyerHtml(List<String> destinataires, String sujet, String corpsHtml) {
-        return sendGridMailClient.envoyer(destinataires, sujet, corpsHtml, EmailTemplates.texteBrut(corpsHtml));
+        String texte = EmailTemplates.texteBrut(corpsHtml);
+        ResultatEnvoiEmail sendGrid = sendGridMailClient.envoyer(destinataires, sujet, corpsHtml, texte);
+        if (sendGrid.accepte() || "ENVOI_IGNORE".equals(sendGrid.code()) || !smtpMailClient.actif()) {
+            return sendGrid;
+        }
+        log.warn("SendGrid n'a pas envoyé l'e-mail [{}] ({}) : repli sur le SMTP de secours", sujet, sendGrid.code());
+        ResultatEnvoiEmail smtp = smtpMailClient.envoyer(
+                sendGridMailClient.normaliserDestinataires(destinataires), sujet, corpsHtml, texte);
+        if (!smtp.accepte()) {
+            log.error("E-mail [{}] non envoyé : SendGrid ({}) et SMTP ({}) ont échoué", sujet, sendGrid.code(), smtp.code());
+            return sendGrid;
+        }
+        return smtp;
     }
 
     public ResultatEnvoiEmail envoyerHtml(String destinataire, String sujet, String corpsHtml) {
