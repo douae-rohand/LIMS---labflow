@@ -340,7 +340,7 @@ public class TableauBordService {
                 new EtatService("n8n", sonderHttp(origine(n8nBaseUrl, "/healthz"))),
                 new EtatService("MinIO", sonderHttp(joindre(minioEndpoint, "/minio/health/live"))),
                 new EtatService("SendGrid", sendGridMailClient.sonder()),
-                new EtatService("SMTP (secours)", smtpMailClient.sonder())
+                new EtatService("SMTP", smtpMailClient.sonder())
         );
     }
 
