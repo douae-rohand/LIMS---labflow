@@ -6,6 +6,7 @@ import { getSession } from "@/api/session";
 import type { RoleUtilisateur } from "@/api/session";
 import { TableauBordClient } from "@/components/demandes/client/TableauBordClient";
 import { TableauBordTechnicien } from "@/components/technicien/dashboard/TableauBordTechnicien";
+import { TableauBordAccueil } from "@/features/accueil/TableauBordAccueil";
 
 export const Route = createFileRoute("/app/")({
   beforeLoad: () => {
@@ -44,6 +45,10 @@ function AppHomePage() {
 
   if (user.role === "TECHNICIEN") {
     return <TableauBordTechnicien />;
+  }
+
+  if (user.role === "ACCUEIL") {
+    return <TableauBordAccueil />;
   }
 
   return (

@@ -9,6 +9,11 @@ import {
   FlaskConical,
   Gauge,
   Inbox,
+  LayoutDashboard,
+  PackageCheck,
+  Receipt,
+  UserPlus,
+  ClipboardList,
   Settings,
   Shield,
   Users,
@@ -151,6 +156,39 @@ const NAV_ITEMS_RESPONSABLE: EntreeAdminNavigation[] = [
   },
 ] as const;
 
+// Entrées de l'agent d'accueil : tableau de bord et réception des échantillons.
+const NAV_ITEMS_ACCUEIL: EntreeAdminNavigation[] = [
+  {
+    to: "/app" as const,
+    label: "Tableau de bord",
+    icon: LayoutDashboard,
+    exact: true,
+  },
+  {
+    to: "/app/reception" as const,
+    label: "Réception",
+    icon: PackageCheck,
+    permission: "ECHANTILLONS_GERER",
+  },
+  {
+    to: "/app/caisse" as const,
+    label: "Caisse",
+    icon: Receipt,
+    permission: "FACTURATION_PAYER",
+  },
+  {
+    to: "/app/clients-accueil" as const,
+    label: "Clients et patients",
+    icon: UserPlus,
+  },
+  {
+    to: "/app/suivi-demandes" as const,
+    label: "Suivi des demandes",
+    icon: ClipboardList,
+    permission: "DEMANDES_SUIVI",
+  },
+];
+
 const LIBELLE_ROLE: Partial<Record<RoleUtilisateur, string>> = {
   ADMINISTRATEUR: "Administrateur",
   RESPONSABLE: "Responsable laboratoire",
@@ -159,7 +197,9 @@ const LIBELLE_ROLE: Partial<Record<RoleUtilisateur, string>> = {
 };
 
 function entreesVisibles(role: RoleUtilisateur, permissions: readonly string[]): EntreeNavigation[] {
-  const items = role === "ADMINISTRATEUR" ? NAV_ITEMS_ADMIN : NAV_ITEMS_RESPONSABLE;
+  const items = role === "ADMINISTRATEUR" ? NAV_ITEMS_ADMIN
+    : role === "ACCUEIL" ? NAV_ITEMS_ACCUEIL
+    : NAV_ITEMS_RESPONSABLE;
   return items.filter((item) => {
     if (item.roles && !item.roles.includes(role)) return false;
     if (item.rolesExclus?.includes(role)) return false;

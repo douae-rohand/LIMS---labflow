@@ -20,7 +20,7 @@ export interface AnalyseTravail {
   unite?: string | null;
   limiteMin?: number | null;
   limiteMax?: number | null;
-  dureeEstimeeJours?: number | null;
+  dureeEstimeeMinutes?: number | null;
   domaineCode?: string | null;
   domaineLibelle?: string | null;
   technicienId?: number | null;

@@ -15,7 +15,6 @@ import { ExportButton } from "@/components/admin/exports/ExportButton";
 import { getSession } from "@/api/session";
 
 /** Le responsable voit arriver les nouvelles demandes sans recharger la page. */
-const ACTUALISATION_RESPONSABLE = 30_000;
 
 export interface DemandesSearch {
   page: number;
@@ -97,7 +96,6 @@ function DemandesClientsPage() {
   }, [search.q]);
 
   const page0 = search.page - 1;
-  const actualisationAuto = getSession()?.user.role === "RESPONSABLE" ? ACTUALISATION_RESPONSABLE : false;
 
   const liste = useQuery({
     queryKey: [
@@ -116,7 +114,6 @@ function DemandesClientsPage() {
     placeholderData: (prev) => prev,
     staleTime: 15_000,
     refetchOnWindowFocus: false,
-    refetchInterval: actualisationAuto,
   });
 
   const indicateurs = useQuery({
@@ -124,7 +121,6 @@ function DemandesClientsPage() {
     queryFn: indicateursDemandes,
     staleTime: 15_000,
     refetchOnWindowFocus: false,
-    refetchInterval: actualisationAuto,
   });
 
   useEffect(() => {

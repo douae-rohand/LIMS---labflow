@@ -108,6 +108,12 @@ public class EmailService {
         return envoyerHtml(email, sujet, html);
     }
 
+    public ResultatEnvoiEmail envoyerInvitationClient(String email, String nomComplet, String nomLaboratoire,
+                                                      String lienActivation, int ttlHeures) {
+        String sujet = "[LabFlow] Votre espace client " + nomLaboratoire;
+        return envoyerHtml(email, sujet, EmailTemplates.invitationClient(nomComplet, nomLaboratoire, lienActivation, ttlHeures));
+    }
+
     public ResultatEnvoiEmail envoyerInvitationEmploye(String email, String nomComplet,
                                                         String nomLaboratoire,
                                                         String lienActivation, int ttlHeures) {
@@ -151,6 +157,13 @@ public class EmailService {
                                            String referenceDemande, String statut) {
         String sujet = "[LabFlow] Demande " + referenceDemande + " – " + statut;
         envoyerHtml(email, sujet, EmailTemplates.notificationDemande(nomClient, referenceDemande, statut));
+    }
+
+    @Async
+    public void envoyerEchantillonsRecus(String email, String nomClient, String referenceDemande, int recus,
+                                         List<String> nonConformes, String lien) {
+        String sujet = "[LabFlow] Échantillons reçus - demande " + referenceDemande;
+        envoyerHtml(email, sujet, EmailTemplates.echantillonsRecus(nomClient, referenceDemande, recus, nonConformes, lien));
     }
 
     @Async

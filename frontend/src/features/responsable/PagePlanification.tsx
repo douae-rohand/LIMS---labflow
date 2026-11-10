@@ -20,7 +20,6 @@ import {
   EnTeteResponsable,
   EtatChargement,
   formaterDate,
-  INTERVALLE_ACTUALISATION,
   messageErreur,
   Recherche,
 } from "./commun";
@@ -30,6 +29,14 @@ const ONGLETS: { id: FiltreAnalyses; libelle: string }[] = [
   { id: "AFFECTEES", libelle: "Affectées" },
   { id: "EN_RETARD", libelle: "En retard" },
 ];
+
+/** Durée estimée du catalogue (minutes) en texte lisible. */
+function duree(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 1440) return minutes % 60 === 0 ? `${minutes / 60} h` : `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+  const jours = Math.round((minutes / 1440) * 10) / 10;
+  return `${jours} j`;
+}
 
 export function PagePlanification({ filtre, onFiltre }: {
   filtre: FiltreAnalyses;
@@ -43,7 +50,6 @@ export function PagePlanification({ filtre, onFiltre }: {
   const analyses = useQuery({
     queryKey: ["responsable-analyses", filtre],
     queryFn: () => listerAnalyses(filtre),
-    refetchInterval: INTERVALLE_ACTUALISATION,
   });
   useEffect(() => setSelection([]), [filtre]);
 
@@ -165,7 +171,7 @@ export function PagePlanification({ filtre, onFiltre }: {
                       <p className="font-semibold text-ink-900">{analyse.essaiLibelle ?? analyse.code}</p>
                       <p className="text-xs text-muted-foreground">
                         {analyse.domaineLibelle ?? "Sans domaine"}
-                        {analyse.dureeEstimeeJours != null ? ` · ${analyse.dureeEstimeeJours} j estimé(s)` : ""}
+                        {analyse.dureeEstimeeMinutes != null ? ` · ${duree(analyse.dureeEstimeeMinutes)} estimé(s)` : ""}
                         {analyse.technicienNom ? ` · ${analyse.technicienNom}` : ""}
                         {analyse.dateAttribution ? ` · affectée le ${formaterDate(analyse.dateAttribution)}` : ""}
                         {analyse.echeance ? ` · échéance ${formaterDate(analyse.echeance)}` : ""}

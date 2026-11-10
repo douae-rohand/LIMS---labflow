@@ -2,6 +2,7 @@ import { RefreshCw, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge, Button } from "@/components/lab";
 import { ApiError } from "@/api/axios";
+import { useTempsReel } from "@/features/shell/TempsReel";
 import type { AnalyseTravail, EtatValidation, StatutAnalyse } from "@/api/responsable";
 
 export function EnTeteResponsable({
@@ -114,21 +115,30 @@ export function EtatChargement({ chargement, erreur, vide, messageVide, onReessa
   return null;
 }
 
-/** Les écrans du responsable se rechargent seuls toutes les 30 secondes. */
-export const INTERVALLE_ACTUALISATION = 30_000;
-
-/** Heure de la dernière mise à jour et bouton « Actualiser ». */
+/**
+ * État de l'actualisation : « En direct » quand la connexion temps réel est active (les changements
+ * arrivent seuls), sinon l'heure du dernier chargement. Le bouton « Actualiser » reste disponible.
+ */
 export function Actualisation({ misAJour, enCours, onActualiser }: {
   misAJour: number;
   enCours: boolean;
   onActualiser: () => void;
 }) {
+  const { connecte } = useTempsReel();
   const heure = misAJour
     ? new Intl.DateTimeFormat("fr-FR", { timeStyle: "medium" }).format(new Date(misAJour))
     : "—";
   return (
     <div className="flex items-center gap-3">
-      <span className="text-xs text-muted-foreground" aria-live="polite">Mis à jour à {heure}</span>
+      {connecte ? (
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-900" aria-live="polite"
+          title={`Dernier chargement à ${heure}`}>
+          <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
+          En direct
+        </span>
+      ) : (
+        <span className="text-xs text-muted-foreground" aria-live="polite">Mis à jour à {heure}</span>
+      )}
       <Button
         variant="secondary"
         size="sm"

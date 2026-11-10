@@ -11,14 +11,12 @@ import {
   EnTeteResponsable,
   EtatChargement,
   formaterDate,
-  INTERVALLE_ACTUALISATION,
 } from "./commun";
 
 export function PageSuivi() {
   const suivi = useQuery({
     queryKey: ["responsable-suivi"],
     queryFn: lireSuivi,
-    refetchInterval: INTERVALLE_ACTUALISATION,
   });
   const donnees = suivi.data;
 

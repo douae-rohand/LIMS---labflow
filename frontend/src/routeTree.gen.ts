@@ -23,8 +23,10 @@ import { Route as ReinitialiserMotDePasseRouteImport } from './routes/reinitiali
 import { Route as UiKitRouteImport } from './routes/ui-kit'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppAuditRouteImport } from './routes/app/audit'
+import { Route as AppCaisseRouteImport } from './routes/app/caisse'
 import { Route as AppCarteRouteImport } from './routes/app/carte'
 import { Route as AppCatalogueRouteImport } from './routes/app/catalogue'
+import { Route as AppClientsAccueilRouteImport } from './routes/app/clients-accueil'
 import { Route as AppDemandesRouteImport } from './routes/app/demandes'
 import { Route as AppDemandesClientsRouteImport } from './routes/app/demandes-clients'
 import { Route as AppEmployesRouteImport } from './routes/app/employes'
@@ -45,9 +47,11 @@ import { Route as AppPlanningRouteImport } from './routes/app/planning'
 import { Route as AppProfilRouteImport } from './routes/app/profil'
 import { Route as AppRapportsRouteImport } from './routes/app/rapports'
 import { Route as AppRapportsLaboratoireRouteImport } from './routes/app/rapports-laboratoire'
+import { Route as AppReceptionRouteImport } from './routes/app/reception'
 import { Route as AppSatisfactionRouteImport } from './routes/app/satisfaction'
 import { Route as AppStockRouteImport } from './routes/app/stock'
 import { Route as AppSuiviRouteImport } from './routes/app/suivi'
+import { Route as AppSuiviDemandesRouteImport } from './routes/app/suivi-demandes'
 import { Route as AppTableauDeBordRouteImport } from './routes/app/tableau-de-bord'
 import { Route as AppValidationResultatsRouteImport } from './routes/app/validation-resultats'
 import { Route as IntegrationComplementsRouteImport } from './routes/integration_.complements'
@@ -149,6 +153,11 @@ const AppAuditRoute = AppAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCaisseRoute = AppCaisseRouteImport.update({
+  id: '/caisse',
+  path: '/caisse',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCarteRoute = AppCarteRouteImport.update({
   id: '/carte',
   path: '/carte',
@@ -157,6 +166,11 @@ const AppCarteRoute = AppCarteRouteImport.update({
 const AppCatalogueRoute = AppCatalogueRouteImport.update({
   id: '/catalogue',
   path: '/catalogue',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClientsAccueilRoute = AppClientsAccueilRouteImport.update({
+  id: '/clients-accueil',
+  path: '/clients-accueil',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDemandesRoute = AppDemandesRouteImport.update({
@@ -259,6 +273,11 @@ const AppRapportsLaboratoireRoute = AppRapportsLaboratoireRouteImport.update({
   path: '/rapports-laboratoire',
   getParentRoute: () => AppRoute,
 } as any)
+const AppReceptionRoute = AppReceptionRouteImport.update({
+  id: '/reception',
+  path: '/reception',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSatisfactionRoute = AppSatisfactionRouteImport.update({
   id: '/satisfaction',
   path: '/satisfaction',
@@ -272,6 +291,11 @@ const AppStockRoute = AppStockRouteImport.update({
 const AppSuiviRoute = AppSuiviRouteImport.update({
   id: '/suivi',
   path: '/suivi',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSuiviDemandesRoute = AppSuiviDemandesRouteImport.update({
+  id: '/suivi-demandes',
+  path: '/suivi-demandes',
   getParentRoute: () => AppRoute,
 } as any)
 const AppTableauDeBordRoute = AppTableauDeBordRouteImport.update({
@@ -445,8 +469,10 @@ export interface FileRoutesByFullPath {
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
   '/app/audit': typeof AppAuditRoute
+  '/app/caisse': typeof AppCaisseRoute
   '/app/carte': typeof AppCarteRoute
   '/app/catalogue': typeof AppCatalogueRouteWithChildren
+  '/app/clients-accueil': typeof AppClientsAccueilRoute
   '/app/demandes': typeof AppDemandesRouteWithChildren
   '/app/demandes-clients': typeof AppDemandesClientsRouteWithChildren
   '/app/employes': typeof AppEmployesRouteWithChildren
@@ -467,9 +493,11 @@ export interface FileRoutesByFullPath {
   '/app/profil': typeof AppProfilRoute
   '/app/rapports': typeof AppRapportsRouteWithChildren
   '/app/rapports-laboratoire': typeof AppRapportsLaboratoireRoute
+  '/app/reception': typeof AppReceptionRoute
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/stock': typeof AppStockRouteWithChildren
   '/app/suivi': typeof AppSuiviRoute
+  '/app/suivi-demandes': typeof AppSuiviDemandesRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
   '/app/validation-resultats': typeof AppValidationResultatsRoute
   '/integration/complements': typeof IntegrationComplementsRoute
@@ -515,7 +543,9 @@ export interface FileRoutesByTo {
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
   '/app/audit': typeof AppAuditRoute
+  '/app/caisse': typeof AppCaisseRoute
   '/app/carte': typeof AppCarteRoute
+  '/app/clients-accueil': typeof AppClientsAccueilRoute
   '/app/exports': typeof AppExportsRoute
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/app/import': typeof AppImportRoute
@@ -526,8 +556,10 @@ export interface FileRoutesByTo {
   '/app/planning': typeof AppPlanningRoute
   '/app/profil': typeof AppProfilRoute
   '/app/rapports-laboratoire': typeof AppRapportsLaboratoireRoute
+  '/app/reception': typeof AppReceptionRoute
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/suivi': typeof AppSuiviRoute
+  '/app/suivi-demandes': typeof AppSuiviDemandesRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
   '/app/validation-resultats': typeof AppValidationResultatsRoute
   '/integration/complements': typeof IntegrationComplementsRoute
@@ -575,8 +607,10 @@ export interface FileRoutesById {
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
   '/app/audit': typeof AppAuditRoute
+  '/app/caisse': typeof AppCaisseRoute
   '/app/carte': typeof AppCarteRoute
   '/app/catalogue': typeof AppCatalogueRouteWithChildren
+  '/app/clients-accueil': typeof AppClientsAccueilRoute
   '/app/demandes': typeof AppDemandesRouteWithChildren
   '/app/demandes-clients': typeof AppDemandesClientsRouteWithChildren
   '/app/employes': typeof AppEmployesRouteWithChildren
@@ -597,9 +631,11 @@ export interface FileRoutesById {
   '/app/profil': typeof AppProfilRoute
   '/app/rapports': typeof AppRapportsRouteWithChildren
   '/app/rapports-laboratoire': typeof AppRapportsLaboratoireRoute
+  '/app/reception': typeof AppReceptionRoute
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/stock': typeof AppStockRouteWithChildren
   '/app/suivi': typeof AppSuiviRoute
+  '/app/suivi-demandes': typeof AppSuiviDemandesRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
   '/app/validation-resultats': typeof AppValidationResultatsRoute
   '/integration_/complements': typeof IntegrationComplementsRoute
@@ -648,8 +684,10 @@ export interface FileRouteTypes {
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
     | '/app/audit'
+    | '/app/caisse'
     | '/app/carte'
     | '/app/catalogue'
+    | '/app/clients-accueil'
     | '/app/demandes'
     | '/app/demandes-clients'
     | '/app/employes'
@@ -670,9 +708,11 @@ export interface FileRouteTypes {
     | '/app/profil'
     | '/app/rapports'
     | '/app/rapports-laboratoire'
+    | '/app/reception'
     | '/app/satisfaction'
     | '/app/stock'
     | '/app/suivi'
+    | '/app/suivi-demandes'
     | '/app/tableau-de-bord'
     | '/app/validation-resultats'
     | '/integration/complements'
@@ -718,7 +758,9 @@ export interface FileRouteTypes {
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
     | '/app/audit'
+    | '/app/caisse'
     | '/app/carte'
+    | '/app/clients-accueil'
     | '/app/exports'
     | '/app/gestion-laboratoires'
     | '/app/import'
@@ -729,8 +771,10 @@ export interface FileRouteTypes {
     | '/app/planning'
     | '/app/profil'
     | '/app/rapports-laboratoire'
+    | '/app/reception'
     | '/app/satisfaction'
     | '/app/suivi'
+    | '/app/suivi-demandes'
     | '/app/tableau-de-bord'
     | '/app/validation-resultats'
     | '/integration/complements'
@@ -777,8 +821,10 @@ export interface FileRouteTypes {
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
     | '/app/audit'
+    | '/app/caisse'
     | '/app/carte'
     | '/app/catalogue'
+    | '/app/clients-accueil'
     | '/app/demandes'
     | '/app/demandes-clients'
     | '/app/employes'
@@ -799,9 +845,11 @@ export interface FileRouteTypes {
     | '/app/profil'
     | '/app/rapports'
     | '/app/rapports-laboratoire'
+    | '/app/reception'
     | '/app/satisfaction'
     | '/app/stock'
     | '/app/suivi'
+    | '/app/suivi-demandes'
     | '/app/tableau-de-bord'
     | '/app/validation-resultats'
     | '/integration_/complements'
@@ -953,6 +1001,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/caisse': {
+      id: '/app/caisse'
+      path: '/caisse'
+      fullPath: '/app/caisse'
+      preLoaderRoute: typeof AppCaisseRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/carte': {
       id: '/app/carte'
       path: '/carte'
@@ -965,6 +1020,13 @@ declare module '@tanstack/react-router' {
       path: '/catalogue'
       fullPath: '/app/catalogue'
       preLoaderRoute: typeof AppCatalogueRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/clients-accueil': {
+      id: '/app/clients-accueil'
+      path: '/clients-accueil'
+      fullPath: '/app/clients-accueil'
+      preLoaderRoute: typeof AppClientsAccueilRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/demandes': {
@@ -1107,6 +1169,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRapportsLaboratoireRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/reception': {
+      id: '/app/reception'
+      path: '/reception'
+      fullPath: '/app/reception'
+      preLoaderRoute: typeof AppReceptionRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/satisfaction': {
       id: '/app/satisfaction'
       path: '/satisfaction'
@@ -1126,6 +1195,13 @@ declare module '@tanstack/react-router' {
       path: '/suivi'
       fullPath: '/app/suivi'
       preLoaderRoute: typeof AppSuiviRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/suivi-demandes': {
+      id: '/app/suivi-demandes'
+      path: '/suivi-demandes'
+      fullPath: '/app/suivi-demandes'
+      preLoaderRoute: typeof AppSuiviDemandesRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/tableau-de-bord': {
@@ -1508,8 +1584,10 @@ const AppStockRouteWithChildren = AppStockRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAuditRoute: typeof AppAuditRoute
+  AppCaisseRoute: typeof AppCaisseRoute
   AppCarteRoute: typeof AppCarteRoute
   AppCatalogueRoute: typeof AppCatalogueRouteWithChildren
+  AppClientsAccueilRoute: typeof AppClientsAccueilRoute
   AppDemandesRoute: typeof AppDemandesRouteWithChildren
   AppDemandesClientsRoute: typeof AppDemandesClientsRouteWithChildren
   AppEmployesRoute: typeof AppEmployesRouteWithChildren
@@ -1530,9 +1608,11 @@ interface AppRouteChildren {
   AppProfilRoute: typeof AppProfilRoute
   AppRapportsRoute: typeof AppRapportsRouteWithChildren
   AppRapportsLaboratoireRoute: typeof AppRapportsLaboratoireRoute
+  AppReceptionRoute: typeof AppReceptionRoute
   AppSatisfactionRoute: typeof AppSatisfactionRoute
   AppStockRoute: typeof AppStockRouteWithChildren
   AppSuiviRoute: typeof AppSuiviRoute
+  AppSuiviDemandesRoute: typeof AppSuiviDemandesRoute
   AppTableauDeBordRoute: typeof AppTableauDeBordRoute
   AppValidationResultatsRoute: typeof AppValidationResultatsRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -1544,8 +1624,10 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAuditRoute: AppAuditRoute,
+  AppCaisseRoute: AppCaisseRoute,
   AppCarteRoute: AppCarteRoute,
   AppCatalogueRoute: AppCatalogueRouteWithChildren,
+  AppClientsAccueilRoute: AppClientsAccueilRoute,
   AppDemandesRoute: AppDemandesRouteWithChildren,
   AppDemandesClientsRoute: AppDemandesClientsRouteWithChildren,
   AppEmployesRoute: AppEmployesRouteWithChildren,
@@ -1566,9 +1648,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfilRoute: AppProfilRoute,
   AppRapportsRoute: AppRapportsRouteWithChildren,
   AppRapportsLaboratoireRoute: AppRapportsLaboratoireRoute,
+  AppReceptionRoute: AppReceptionRoute,
   AppSatisfactionRoute: AppSatisfactionRoute,
   AppStockRoute: AppStockRouteWithChildren,
   AppSuiviRoute: AppSuiviRoute,
+  AppSuiviDemandesRoute: AppSuiviDemandesRoute,
   AppTableauDeBordRoute: AppTableauDeBordRoute,
   AppValidationResultatsRoute: AppValidationResultatsRoute,
   AppIndexRoute: AppIndexRoute,

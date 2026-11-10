@@ -31,7 +31,6 @@ export function TableauDeBord() {
     queryKey: ["tableau-de-bord"],
     queryFn: obtenirTableauBord,
     staleTime: 30_000,
-    refetchInterval: 30_000,
   });
 
   const actualiser = () => {

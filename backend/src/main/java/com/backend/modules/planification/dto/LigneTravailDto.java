@@ -25,7 +25,7 @@ public class LigneTravailDto {
     private String unite;
     private BigDecimal limiteMin;
     private BigDecimal limiteMax;
-    private Integer dureeEstimeeJours;
+    private Integer dureeEstimeeMinutes;
     private String domaineCode;
     private String domaineLibelle;
     private Long technicienId;
