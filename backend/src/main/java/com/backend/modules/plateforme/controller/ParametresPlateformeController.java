@@ -3,8 +3,6 @@ package com.backend.modules.plateforme.controller;
 import com.backend.common.dto.ApiResponse;
 import com.backend.common.security.SecurityUtils;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.CreerTypeLaboratoire;
-import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Domaine;
-import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.EnregistrerDomaine;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.EnregistrerTypeDocument;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.ModifierTypeLaboratoire;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Securite;
@@ -34,7 +32,7 @@ import java.util.List;
 @RequestMapping("/api/plateforme/parametres")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
-@Tag(name = "Paramètres plateforme", description = "Sécurité, documents d'intégration et référentiels")
+@Tag(name = "Paramètres plateforme", description = "Sécurité, documents d'intégration et types de laboratoire")
 public class ParametresPlateformeController {
 
     private final ParametrePlateformeService service;
@@ -94,27 +92,6 @@ public class ParametresPlateformeController {
             @PathVariable Long id, @Valid @RequestBody ModifierTypeLaboratoire demande) {
         return ResponseEntity.ok(ApiResponse.success("Type mis à jour",
                 service.modifierTypeLaboratoire(id, demande, acteur())));
-    }
-
-    @GetMapping("/domaines")
-    @Operation(summary = "Domaines d'analyse de référence")
-    public ResponseEntity<ApiResponse<List<Domaine>>> domaines() {
-        return ResponseEntity.ok(ApiResponse.success(service.listerDomaines()));
-    }
-
-    @PostMapping("/domaines")
-    @Operation(summary = "Ajouter un domaine de référence")
-    public ResponseEntity<ApiResponse<Domaine>> creerDomaine(@Valid @RequestBody EnregistrerDomaine demande) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Domaine ajouté",
-                service.creerDomaine(demande, acteur())));
-    }
-
-    @PutMapping("/domaines/{id}")
-    @Operation(summary = "Modifier un domaine de référence")
-    public ResponseEntity<ApiResponse<Domaine>> modifierDomaine(
-            @PathVariable Long id, @Valid @RequestBody EnregistrerDomaine demande) {
-        return ResponseEntity.ok(ApiResponse.success("Domaine mis à jour",
-                service.modifierDomaine(id, demande, acteur())));
     }
 
     private static String acteur() {

@@ -4,8 +4,6 @@ import com.backend.common.audit.JournalAuditService;
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.CreerTypeLaboratoire;
-import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Domaine;
-import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.EnregistrerDomaine;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.EnregistrerTypeDocument;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.ModifierTypeLaboratoire;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.ParametresPublics;
@@ -14,11 +12,9 @@ import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Securite;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.TypeLaboratoire;
 import com.backend.modules.plateforme.dto.TypeDocumentIntegrationDto;
 import com.backend.modules.plateforme.entity.ParametrePlateforme;
-import com.backend.modules.plateforme.entity.ReferentielDomaine;
 import com.backend.modules.plateforme.entity.ReferentielTypeLaboratoire;
 import com.backend.modules.plateforme.entity.TypeDocumentIntegration;
 import com.backend.modules.plateforme.repository.ParametrePlateformeRepository;
-import com.backend.modules.plateforme.repository.ReferentielDomaineRepository;
 import com.backend.modules.plateforme.repository.ReferentielTypeLaboratoireRepository;
 import com.backend.modules.plateforme.repository.TypeDocumentIntegrationRepository;
 import com.backend.modules.utilisateur.entity.RoleUtilisateur;
@@ -44,7 +40,7 @@ import java.util.stream.Collectors;
 
 /**
  * Paramètres globaux de la plateforme : sécurité, documents d'intégration
- * et référentiels. Les paramètres de sécurité sont lus à chaque connexion :
+ * et types de laboratoire. Les paramètres de sécurité sont lus à chaque connexion :
  * ils sont gardés en mémoire une minute au plus et rechargés après modification.
  */
 @Slf4j
@@ -64,7 +60,6 @@ public class ParametrePlateformeService {
     private final ParametrePlateformeRepository parametreRepository;
     private final TypeDocumentIntegrationRepository typeDocumentRepository;
     private final ReferentielTypeLaboratoireRepository typeLaboratoireRepository;
-    private final ReferentielDomaineRepository domaineRepository;
     private final JournalAuditService journalAuditService;
     private final ObjectMapper objectMapper;
 
@@ -279,51 +274,6 @@ public class ParametrePlateformeService {
     }
 
     // -------------------------------------------------------------------------
-    // Domaines de référence
-    // -------------------------------------------------------------------------
-
-    @Transactional(readOnly = true)
-    public List<Domaine> listerDomaines() {
-        return domaineRepository.findAllByOrderByOrdreAscLibelleAsc().stream()
-                .map(ParametrePlateformeService::versDto)
-                .toList();
-    }
-
-    @Transactional
-    public Domaine creerDomaine(EnregistrerDomaine demande, String acteurEmail) {
-        if (!StringUtils.hasText(demande.code())) {
-            throw new BusinessRuleException("CODE_DOMAINE_OBLIGATOIRE", "Le code du domaine est obligatoire");
-        }
-        if (domaineRepository.existsByCode(demande.code())) {
-            throw new BusinessRuleException("DOMAINE_EXISTANT", "Ce code de domaine existe déjà");
-        }
-        Domaine dto = versDto(domaineRepository.save(ReferentielDomaine.builder()
-                .code(demande.code())
-                .libelle(demande.libelle().trim())
-                .actif(demande.actif())
-                .ordre(demande.ordre())
-                .build()));
-        journalAuditService.enregistrer("CREER_DOMAINE_REFERENCE", "ReferentielDomaine", dto.id(),
-                acteurEmail, null, json(dto), null);
-        return dto;
-    }
-
-    /** Le code n'est pas modifiable : il est recopié dans les catalogues des laboratoires. */
-    @Transactional
-    public Domaine modifierDomaine(Long id, EnregistrerDomaine demande, String acteurEmail) {
-        ReferentielDomaine domaine = domaineRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("ReferentielDomaine", "id", id));
-        Domaine avant = versDto(domaine);
-        domaine.setLibelle(demande.libelle().trim());
-        domaine.setActif(demande.actif());
-        domaine.setOrdre(demande.ordre());
-        Domaine apres = versDto(domaineRepository.save(domaine));
-        journalAuditService.enregistrer("MODIFIER_DOMAINE_REFERENCE", "ReferentielDomaine", id,
-                acteurEmail, json(avant), json(apres), null);
-        return apres;
-    }
-
-    // -------------------------------------------------------------------------
     // Utilitaires
     // -------------------------------------------------------------------------
 
@@ -341,11 +291,6 @@ public class ParametrePlateformeService {
 
     private static TypeLaboratoire versDto(ReferentielTypeLaboratoire type) {
         return new TypeLaboratoire(type.getId(), type.getLibelle(), type.isActif(), type.getOrdre());
-    }
-
-    private static Domaine versDto(ReferentielDomaine domaine) {
-        return new Domaine(domaine.getId(), domaine.getCode(), domaine.getLibelle(), domaine.isActif(),
-                domaine.getOrdre());
     }
 
     private static int entier(String valeur, int defaut) {

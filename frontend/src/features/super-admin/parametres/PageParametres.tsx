@@ -5,18 +5,14 @@ import { toast } from "sonner";
 import { Badge, Button, Input, Label, Textarea } from "@/components/lab";
 import { Switch } from "@/components/ui/switch";
 import {
-  creerDomaine,
   creerTypeDocument,
   creerTypeLaboratoire,
   enregistrerSecurite,
   lireSecurite,
-  listerDomaines,
   listerTypesDocuments,
   listerTypesLaboratoire,
-  modifierDomaine,
   modifierTypeDocument,
   modifierTypeLaboratoire,
-  type DomaineReference,
   type ParametresSecurite,
 } from "@/api/parametresPlateforme";
 import type { TypeDocumentIntegrationDto } from "@/api/plateforme";
@@ -25,13 +21,12 @@ import { Dialogue } from "../Fenetres";
 import { EtatVide } from "../EtatVide";
 import { messageErreur } from "../texte";
 
-export type OngletParametres = "securite" | "documents" | "types" | "domaines";
+export type OngletParametres = "securite" | "documents" | "types";
 
 const ONGLETS: { id: OngletParametres; libelle: string }[] = [
   { id: "securite", libelle: "Sécurité" },
   { id: "documents", libelle: "Documents d'intégration" },
   { id: "types", libelle: "Types de laboratoire" },
-  { id: "domaines", libelle: "Domaines d'analyse" },
 ];
 
 const ROLES: { code: RoleUtilisateur; libelle: string }[] = [
@@ -75,7 +70,6 @@ export function PageParametres({
       {onglet === "securite" && <SectionSecurite />}
       {onglet === "documents" && <SectionDocuments />}
       {onglet === "types" && <SectionTypesLaboratoire />}
-      {onglet === "domaines" && <SectionDomaines />}
     </>
   );
 }
@@ -283,7 +277,7 @@ function SectionDocuments() {
               </p>
               {document.raison && <p className="text-xs text-muted-foreground">{document.raison}</p>}
               <div className="mt-1 flex flex-wrap gap-1">
-                <Badge size="sm" variant={document.actif ? "mint" : "outline"}>{document.actif ? "Demandé" : "Désactivé"}</Badge>
+                <Badge size="sm" variant={document.actif ? "mint" : "outline"}>{document.actif ? "Actif" : "Désactivé"}</Badge>
                 {document.actif && <Badge size="sm" variant="outline">{document.obligatoire ? "Obligatoire" : "Facultatif"}</Badge>}
               </div>
             </div>
@@ -317,8 +311,8 @@ function SectionDocuments() {
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="flex items-center justify-between gap-2 rounded-2xl border border-brand-900/10 px-3 py-2 font-semibold text-ink-900">
-              Demandé
-              <Switch checked={formulaire.actif} onCheckedChange={(actif) => setFormulaire({ ...formulaire, actif })} aria-label="Document demandé" />
+              Désactivé
+              <Switch checked={!formulaire.actif} onCheckedChange={(desactive) => setFormulaire({ ...formulaire, actif: !desactive })} aria-label="Document désactivé" />
             </label>
             <label className="flex items-center justify-between gap-2 rounded-2xl border border-brand-900/10 px-3 py-2 font-semibold text-ink-900">
               Obligatoire
@@ -413,121 +407,6 @@ function SectionTypesLaboratoire() {
           </li>
         ))}
       </ul>
-    </Carte>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Domaines d'analyse de référence
-// ---------------------------------------------------------------------------
-
-type FormulaireDomaine = { code: string; libelle: string; actif: boolean; ordre: number };
-
-function SectionDomaines() {
-  const queryClient = useQueryClient();
-  const domaines = useQuery({ queryKey: ["parametres-domaines"], queryFn: listerDomaines });
-  const [edition, setEdition] = useState<DomaineReference | "nouveau" | null>(null);
-  const [formulaire, setFormulaire] = useState<FormulaireDomaine>({ code: "", libelle: "", actif: true, ordre: 0 });
-
-  const ouvrir = (cible: DomaineReference | "nouveau") => {
-    setEdition(cible);
-    setFormulaire(cible === "nouveau"
-      ? { code: "", libelle: "", actif: true, ordre: (domaines.data?.length ?? 0) + 1 }
-      : { code: cible.code, libelle: cible.libelle, actif: cible.actif, ordre: cible.ordre });
-  };
-
-  const enregistrement = useMutation({
-    mutationFn: () => {
-      const corps = { ...formulaire, libelle: formulaire.libelle.trim(), code: formulaire.code.trim().toUpperCase() };
-      return edition === "nouveau" || edition == null ? creerDomaine(corps) : modifierDomaine(edition.id, corps);
-    },
-    onSuccess: async () => {
-      toast.success("Domaine enregistré.");
-      setEdition(null);
-      await queryClient.invalidateQueries({ queryKey: ["parametres-domaines"] });
-    },
-    onError: (erreur) => toast.error(messageErreur(erreur, "L'enregistrement a échoué.")),
-  });
-
-  return (
-    <Carte
-      titre="Domaines d'analyse de référence"
-      description="Les domaines actifs sont copiés dans le catalogue de chaque nouveau laboratoire, qui peut ensuite les adapter. Les laboratoires existants ne sont pas modifiés."
-      action={
-        <Button size="sm" icon={<Plus className="size-4" aria-hidden="true" />} iconPosition="left" onClick={() => ouvrir("nouveau")}>
-          Ajouter un domaine
-        </Button>
-      }
-    >
-      {domaines.isError && <EtatVide titre="Les domaines n'ont pas pu être chargés." />}
-      <ul className="flex flex-col gap-2">
-        {domaines.data?.map((domaine) => (
-          <li key={domaine.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-900/10 px-4 py-3">
-            <div>
-              <p className="font-semibold text-ink-900">{domaine.libelle}</p>
-              <p className="text-xs text-muted-foreground">{domaine.code}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge size="sm" variant={domaine.actif ? "mint" : "outline"}>{domaine.actif ? "Actif" : "Inactif"}</Badge>
-              <Button variant="ghost" size="sm" icon={<Pencil className="size-4" aria-hidden="true" />} iconPosition="left" onClick={() => ouvrir(domaine)}>
-                Modifier
-              </Button>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      <Dialogue
-        ouvert={edition != null}
-        titre={edition === "nouveau" ? "Ajouter un domaine" : "Modifier le domaine"}
-        onFermer={() => setEdition(null)}
-      >
-        <form
-          className="flex flex-col gap-4 text-sm"
-          onSubmit={(event) => {
-            event.preventDefault();
-            enregistrement.mutate();
-          }}
-        >
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="code-domaine">Code *</Label>
-            <Input
-              id="code-domaine"
-              required
-              maxLength={50}
-              disabled={edition !== "nouveau"}
-              value={formulaire.code}
-              onChange={(event) => setFormulaire({ ...formulaire, code: event.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, "_") })}
-              placeholder="Ex. IMMUNOLOGIE"
-            />
-            <p className="text-xs text-muted-foreground">Lettres majuscules, chiffres et _. Le code ne peut plus être modifié ensuite.</p>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="libelle-domaine">Libellé *</Label>
-            <Input id="libelle-domaine" required maxLength={100} value={formulaire.libelle} onChange={(event) => setFormulaire({ ...formulaire, libelle: event.target.value })} />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="flex items-center justify-between gap-2 rounded-2xl border border-brand-900/10 px-3 py-2 font-semibold text-ink-900">
-              Actif
-              <Switch checked={formulaire.actif} onCheckedChange={(actif) => setFormulaire({ ...formulaire, actif })} aria-label="Domaine actif" />
-            </label>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="ordre-domaine">Ordre</Label>
-              <Input id="ordre-domaine" type="number" min={0} max={999} value={formulaire.ordre} onChange={(event) => setFormulaire({ ...formulaire, ordre: Number(event.target.value) })} />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => setEdition(null)}>Annuler</Button>
-            <Button
-              type="submit"
-              loading={enregistrement.isPending}
-              disabled={!formulaire.libelle.trim() || formulaire.code.trim().length < 2}
-            >
-              Enregistrer
-            </Button>
-          </div>
-        </form>
-      </Dialogue>
     </Carte>
   );
 }
