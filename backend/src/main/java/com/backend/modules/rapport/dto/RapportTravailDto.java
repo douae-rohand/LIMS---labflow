@@ -4,7 +4,7 @@ import com.backend.modules.rapport.entity.StatutRapport;
 
 import java.time.Instant;
 
-/** Demande terminée et son dernier rapport (absent, projet ou signé). */
+/** Demande terminée et son rapport : à signer (aucun rapport ou projet) ou signé. */
 public record RapportTravailDto(
         Long demandeId,
         String demandeReference,
@@ -16,9 +16,5 @@ public record RapportTravailDto(
         StatutRapport statut,
         Instant dateEmission,
         Instant dateSignature,
-        String signataire,
-        /** Empreinte SHA-256 du PDF signé. */
-        String empreinte,
-        /** Page publique de vérification (rapport libéré avec PDF signé). */
-        String urlVerification) {
+        String signataire) {
 }

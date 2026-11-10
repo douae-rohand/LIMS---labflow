@@ -20,7 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/rapports")
 @RequiredArgsConstructor
-@Tag(name = "Rapports", description = "Génération, signature et libération des rapports d'analyse (M07)")
+@Tag(name = "Rapports", description = "Signature des rapports d'analyse (M07)")
 public class RapportController {
 
     private final RapportService rapportService;
@@ -39,36 +39,25 @@ public class RapportController {
 
     @GetMapping("/travail")
     @PreAuthorize("hasAuthority('PERM_RAPPORTS_GERER')")
-    @Operation(summary = "Demandes terminées avec leur rapport (à générer, à signer, libéré)")
+    @Operation(summary = "Demandes terminées avec leur rapport (à signer ou signé)")
     public ResponseEntity<ApiResponse<List<RapportTravailDto>>> travail() {
         return ResponseEntity.ok(ApiResponse.success(rapportService.travail()));
     }
 
-    @PostMapping("/generer/{demandeId}")
+    @GetMapping("/demande/{demandeId}/apercu")
     @PreAuthorize("hasAuthority('PERM_RAPPORTS_GERER')")
-    @Operation(summary = "Générer le projet de rapport d'une demande terminée")
-    public ResponseEntity<ApiResponse<RapportDto>> generer(@PathVariable Long demandeId) {
-        return ResponseEntity.ok(ApiResponse.success("Rapport généré", rapportService.generer(demandeId)));
+    @Operation(summary = "Aperçu PDF du rapport avant signature")
+    public ResponseEntity<byte[]> apercu(@PathVariable Long demandeId) {
+        return pdf("apercu-rapport.pdf", rapportService.apercuDemande(demandeId), false);
     }
 
-    @GetMapping("/{id}/apercu")
-    @PreAuthorize("hasAuthority('PERM_RAPPORTS_GERER')")
-    @Operation(summary = "Aperçu PDF du projet de rapport (non signé)")
-    public ResponseEntity<byte[]> apercu(@PathVariable Long id) {
-        return pdf("apercu-rapport-" + id + ".pdf", rapportService.apercu(id), false);
-    }
-
-    @PostMapping("/{id}/signer")
+    @PostMapping("/demande/{demandeId}/signer")
     @PreAuthorize("hasRole('RESPONSABLE') and hasAuthority('PERM_RAPPORTS_GERER')")
-    @Operation(summary = "Signer et libérer le rapport (visible du client)")
-    public ResponseEntity<ApiResponse<RapportTravailDto>> signer(@PathVariable Long id,
+    @Operation(summary = "Signer le rapport de la demande (visible du client)")
+    public ResponseEntity<ApiResponse<RapportTravailDto>> signer(@PathVariable Long demandeId,
                                                                @RequestBody(required = false) SignerRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Rapport signé et libéré",
-                rapportService.signerEtLiberer(id, request == null ? null : request.motDePasse())));
-    }
-
-    /** Confirmation de l'identité du signataire. */
-    public record SignerRequest(String motDePasse) {
+        return ResponseEntity.ok(ApiResponse.success("Rapport signé",
+                rapportService.signerDemande(demandeId, request == null ? null : request.motDePasse())));
     }
 
     @GetMapping("/{id}/pdf")
@@ -77,6 +66,10 @@ public class RapportController {
     public ResponseEntity<byte[]> telecharger(@PathVariable Long id) {
         RapportService.FichierRapport fichier = rapportService.telecharger(id);
         return pdf(fichier.nom(), fichier.contenu(), true);
+    }
+
+    /** Confirmation de l'identité du signataire. */
+    public record SignerRequest(String motDePasse) {
     }
 
     private static ResponseEntity<byte[]> pdf(String nom, byte[] contenu, boolean telechargement) {

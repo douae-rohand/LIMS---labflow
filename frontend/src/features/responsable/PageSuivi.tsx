@@ -52,7 +52,7 @@ export function PageSuivi() {
               lien={{ to: "/app/planification", search: { filtre: "EN_RETARD" } }} />
             <Indicateur icone={ClipboardCheck} libelle="Résultats à valider" valeur={donnees.indicateurs.resultatsAValider}
               lien={{ to: "/app/validation-resultats" }} />
-            <Indicateur icone={FileSignature} libelle="Rapports à préparer ou signer" valeur={donnees.indicateurs.rapportsAPreparer}
+            <Indicateur icone={FileSignature} libelle="Rapports à signer" valeur={donnees.indicateurs.rapportsAPreparer}
               lien={{ to: "/app/rapports-laboratoire" }} />
           </div>
 
