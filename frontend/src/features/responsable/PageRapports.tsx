@@ -21,7 +21,6 @@ import {
   EnTeteResponsable,
   EtatChargement,
   formaterDate,
-  INTERVALLE_ACTUALISATION,
   messageErreur,
   Recherche,
 } from "./commun";
@@ -47,7 +46,6 @@ export function PageRapports() {
   const rapports = useQuery({
     queryKey: ["responsable-rapports"],
     queryFn: listerRapportsTravail,
-    refetchInterval: INTERVALLE_ACTUALISATION,
   });
 
   const signatureImage = useQuery({ queryKey: ["signature-responsable"], queryFn: lireStatutSignature });

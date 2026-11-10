@@ -10,7 +10,6 @@ import {
   EnTeteResponsable,
   EtatChargement,
   formaterDate,
-  INTERVALLE_ACTUALISATION,
 } from "@/features/responsable/commun";
 import { BadgeEtatReception, demandeur, formaterMontant } from "./commun";
 
@@ -18,7 +17,6 @@ export function TableauBordAccueil() {
   const tableau = useQuery({
     queryKey: ["accueil-tableau"],
     queryFn: lireTableauAccueil,
-    refetchInterval: INTERVALLE_ACTUALISATION,
   });
   const donnees = tableau.data;
 

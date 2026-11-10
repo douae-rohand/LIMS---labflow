@@ -18,7 +18,6 @@ import {
   EnTeteResponsable,
   EtatChargement,
   formaterDate,
-  INTERVALLE_ACTUALISATION,
   messageErreur,
   Recherche,
   reference,
@@ -37,7 +36,6 @@ export function PageValidation() {
   const resultats = useQuery({
     queryKey: ["responsable-a-valider"],
     queryFn: listerResultatsAValider,
-    refetchInterval: INTERVALLE_ACTUALISATION,
   });
   // Le serveur trie déjà : la dernière validation technique en haut.
   const visibles = (resultats.data ?? []).filter((a) => !recherche.trim()

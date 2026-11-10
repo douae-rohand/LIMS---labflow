@@ -10,7 +10,6 @@ import {
   EnTeteResponsable,
   EtatChargement,
   formaterDate,
-  INTERVALLE_ACTUALISATION,
   Recherche,
 } from "@/features/responsable/commun";
 import { BadgeEtatReception, demandeur } from "./commun";
@@ -34,7 +33,6 @@ export function PageReception({ demandeInitiale, onDemande }: {
   const receptions = useQuery({
     queryKey: ["accueil-receptions"],
     queryFn: listerReceptions,
-    refetchInterval: INTERVALLE_ACTUALISATION,
   });
 
   const compteurs = useMemo(() => Object.fromEntries(FILTRES.map((f) =>

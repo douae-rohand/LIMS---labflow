@@ -33,6 +33,12 @@ export default defineConfig(({ mode }) => {
           target: backendUrl,
           changeOrigin: true,
         },
+        // WebSocket (STOMP) de l'actualisation en temps réel
+        "/ws": {
+          target: backendUrl,
+          ws: true,
+          changeOrigin: true,
+        },
         "/actuator": {
           target: backendUrl,
           changeOrigin: true,

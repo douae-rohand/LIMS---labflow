@@ -20,7 +20,6 @@ import {
   EnTeteResponsable,
   EtatChargement,
   formaterDate,
-  INTERVALLE_ACTUALISATION,
   messageErreur,
   Recherche,
 } from "./commun";
@@ -51,7 +50,6 @@ export function PagePlanification({ filtre, onFiltre }: {
   const analyses = useQuery({
     queryKey: ["responsable-analyses", filtre],
     queryFn: () => listerAnalyses(filtre),
-    refetchInterval: INTERVALLE_ACTUALISATION,
   });
   useEffect(() => setSelection([]), [filtre]);
 

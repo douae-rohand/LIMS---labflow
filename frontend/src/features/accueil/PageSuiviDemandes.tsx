@@ -11,7 +11,6 @@ import {
   EnTeteResponsable,
   EtatChargement,
   formaterDate,
-  INTERVALLE_ACTUALISATION,
   Recherche,
 } from "@/features/responsable/commun";
 import { formaterMontant } from "./commun";
@@ -54,7 +53,6 @@ export function PageSuiviDemandes() {
     queryKey: ["accueil-demandes", recherche, statut, page],
     queryFn: () => listerDemandesSuivi({ q: recherche, statut: statut || undefined, page }),
     placeholderData: keepPreviousData,
-    refetchInterval: INTERVALLE_ACTUALISATION,
   });
   const liste = demandes.data?.content ?? [];
 

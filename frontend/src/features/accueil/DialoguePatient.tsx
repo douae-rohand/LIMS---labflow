@@ -49,7 +49,9 @@ export function DialoguePatient({ ouvert, patient, onFermer }: {
       setFiche(ficheDe(patient));
       setTente(false);
     }
-  }, [ouvert, patient]);
+    // Dépend de l'identifiant : une actualisation en direct ne doit pas effacer la saisie.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ouvert, patient?.id]);
 
   const envoi = useMutation({
     mutationFn: () => enregistrerPatient({ ...fiche, dateNaissance: fiche.dateNaissance || null }, patient?.id),

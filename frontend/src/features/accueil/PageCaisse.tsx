@@ -10,7 +10,6 @@ import {
   EnTeteResponsable,
   EtatChargement,
   formaterDate,
-  INTERVALLE_ACTUALISATION,
   Recherche,
 } from "@/features/responsable/commun";
 import { formaterMontant } from "./commun";
@@ -35,7 +34,6 @@ export function PageCaisse() {
   const factures = useQuery({
     queryKey: ["accueil-caisse"],
     queryFn: listerFacturesCaisse,
-    refetchInterval: INTERVALLE_ACTUALISATION,
   });
 
   const donnees = factures.data ?? [];

@@ -59,17 +59,26 @@ export function PanneauReception({ demandeId, onFermer }: { demandeId: number | 
   });
   const [brouillons, setBrouillons] = useState<Brouillon[]>([]);
 
-  // Une proposition par nature attendue, à l'ouverture et après chaque réception.
+  // Une proposition par nature attendue, à l'ouverture d'une demande et après chaque réception :
+  // une actualisation en direct ne doit pas effacer la saisie en cours.
   const donnees = detail.data;
+  const [initialisePour, setInitialisePour] = useState<number | null>(null);
   useEffect(() => {
-    if (donnees) setBrouillons(brouillonsInitiaux(donnees));
-  }, [donnees]);
+    if (donnees && initialisePour !== donnees.demande.demandeId) {
+      setBrouillons(brouillonsInitiaux(donnees));
+      setInitialisePour(donnees.demande.demandeId);
+    }
+  }, [donnees, initialisePour]);
+  useEffect(() => {
+    if (demandeId == null) setInitialisePour(null);
+  }, [demandeId]);
 
   const envoi = useMutation({
     mutationFn: (echantillons: EchantillonARecevoir[]) => receptionner(demandeId as number, echantillons),
     onSuccess: async (resultat) => {
       toast.success("Réception enregistrée. Le client et les techniciens ont été prévenus.");
       queryClient.setQueryData(["accueil-reception", demandeId], resultat);
+      setBrouillons(brouillonsInitiaux(resultat));
       await queryClient.invalidateQueries({ queryKey: ["accueil-receptions"] });
       await queryClient.invalidateQueries({ queryKey: ["accueil-tableau"] });
     },
