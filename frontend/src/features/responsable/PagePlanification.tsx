@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, UserCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -12,7 +13,17 @@ import {
   type FiltreAnalyses,
 } from "@/api/responsable";
 import { Dialogue } from "@/features/super-admin/Fenetres";
-import { BadgeStatutAnalyse, EnTeteResponsable, EtatChargement, formaterDate, messageErreur } from "./commun";
+import {
+  Actualisation,
+  BadgeStatutAnalyse,
+  contient,
+  EnTeteResponsable,
+  EtatChargement,
+  formaterDate,
+  INTERVALLE_ACTUALISATION,
+  messageErreur,
+  Recherche,
+} from "./commun";
 
 const ONGLETS: { id: FiltreAnalyses; libelle: string }[] = [
   { id: "A_AFFECTER", libelle: "À affecter" },
@@ -20,68 +31,93 @@ const ONGLETS: { id: FiltreAnalyses; libelle: string }[] = [
   { id: "EN_RETARD", libelle: "En retard" },
 ];
 
-export function PagePlanification() {
+export function PagePlanification({ filtre, onFiltre }: {
+  filtre: FiltreAnalyses;
+  onFiltre: (filtre: FiltreAnalyses) => void;
+}) {
   const queryClient = useQueryClient();
-  const [filtre, setFiltre] = useState<FiltreAnalyses>("A_AFFECTER");
   const [selection, setSelection] = useState<number[]>([]);
   const [dialogue, setDialogue] = useState(false);
+  const [recherche, setRecherche] = useState("");
 
-  const analyses = useQuery({ queryKey: ["responsable-analyses", filtre], queryFn: () => listerAnalyses(filtre) });
+  const analyses = useQuery({
+    queryKey: ["responsable-analyses", filtre],
+    queryFn: () => listerAnalyses(filtre),
+    refetchInterval: INTERVALLE_ACTUALISATION,
+  });
   useEffect(() => setSelection([]), [filtre]);
 
-  // Regroupe les analyses par demande pour une lecture « dossier ».
+  // Le serveur renvoie les demandes les plus récentes d'abord ; on garde cet ordre en regroupant.
   const groupes = useMemo(() => {
     const parDemande = new Map<number, AnalyseTravail[]>();
-    (analyses.data ?? []).forEach((analyse) => {
-      parDemande.set(analyse.demandeId, [...(parDemande.get(analyse.demandeId) ?? []), analyse]);
-    });
+    (analyses.data ?? [])
+      .filter((a) => !recherche.trim()
+        || contient(a.demandeReference, recherche)
+        || contient(a.demandeTitre, recherche)
+        || contient(a.essaiLibelle, recherche)
+        || contient(a.technicienNom, recherche))
+      .forEach((analyse) => {
+        parDemande.set(analyse.demandeId, [...(parDemande.get(analyse.demandeId) ?? []), analyse]);
+      });
     return [...parDemande.values()];
-  }, [analyses.data]);
+  }, [analyses.data, recherche]);
 
   const choisies = (analyses.data ?? []).filter((analyse) => selection.includes(analyse.id));
   const basculer = (id: number, coche: boolean) =>
-    setSelection((courant) => (coche ? [...courant, id] : courant.filter((element) => element !== id)));
+    setSelection((courant) => (coche ? [...new Set([...courant, id])] : courant.filter((element) => element !== id)));
 
   return (
     <Container className="py-8">
       <EnTeteResponsable
         icone={CalendarClock}
         titre="Planification"
-        description="Affectez les analyses des demandes acceptées aux techniciens de votre laboratoire."
+        description="Affectez les analyses des demandes acceptées aux techniciens. Les demandes les plus récentes sont en haut."
         action={
+          <Actualisation
+            misAJour={analyses.dataUpdatedAt}
+            enCours={analyses.isFetching}
+            onActualiser={() => void analyses.refetch()}
+          />
+        }
+      />
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex w-full gap-1 rounded-2xl border border-brand-900/10 bg-card p-1 sm:w-auto" role="tablist" aria-label="Filtrer les analyses">
+          {ONGLETS.map((onglet) => (
+            <button
+              key={onglet.id}
+              type="button"
+              role="tab"
+              aria-selected={filtre === onglet.id}
+              onClick={() => onFiltre(onglet.id)}
+              className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold sm:flex-none ${
+                filtre === onglet.id ? "bg-brand-900 text-primary-foreground" : "text-brand-900 hover:bg-surface-alt"
+              }`}
+            >
+              {onglet.libelle}
+            </button>
+          ))}
+        </div>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <Recherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, une analyse…" />
           <Button
             icon={<UserCheck className="size-4" aria-hidden="true" />}
             iconPosition="left"
             disabled={selection.length === 0}
             onClick={() => setDialogue(true)}
           >
-            Affecter {selection.length > 0 ? `(${selection.length})` : ""}
+            {filtre === "A_AFFECTER" ? "Affecter" : "Réaffecter"} {selection.length > 0 ? `(${selection.length})` : ""}
           </Button>
-        }
-      />
-
-      <div className="mb-4 inline-flex w-full gap-1 rounded-2xl border border-brand-900/10 bg-card p-1 sm:w-auto" role="tablist" aria-label="Filtrer les analyses">
-        {ONGLETS.map((onglet) => (
-          <button
-            key={onglet.id}
-            type="button"
-            role="tab"
-            aria-selected={filtre === onglet.id}
-            onClick={() => setFiltre(onglet.id)}
-            className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold sm:flex-none ${
-              filtre === onglet.id ? "bg-brand-900 text-primary-foreground" : "text-brand-900 hover:bg-surface-alt"
-            }`}
-          >
-            {onglet.libelle}
-          </button>
-        ))}
+        </div>
       </div>
 
       <EtatChargement
         chargement={analyses.isLoading}
         erreur={analyses.isError}
-        vide={!analyses.isLoading && (analyses.data?.length ?? 0) === 0}
-        messageVide={filtre === "A_AFFECTER" ? "Toutes les analyses sont affectées." : filtre === "EN_RETARD" ? "Aucune analyse en retard." : "Aucune analyse affectée en cours."}
+        vide={!analyses.isLoading && groupes.length === 0}
+        messageVide={recherche.trim() ? "Aucune analyse ne correspond à la recherche."
+          : filtre === "A_AFFECTER" ? "Toutes les analyses sont affectées."
+            : filtre === "EN_RETARD" ? "Aucune analyse en retard." : "Aucune analyse affectée en cours."}
         onReessayer={() => void analyses.refetch()}
       />
 
@@ -104,7 +140,16 @@ export function PagePlanification() {
                   {premiere.demandeReference}
                   {premiere.demandeTitre && <span className="font-normal text-muted-foreground">· {premiere.demandeTitre}</span>}
                 </label>
-                <span className="text-xs text-muted-foreground">{groupe.length} analyse(s)</span>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span>Reçue le {formaterDate(premiere.demandeDateSoumission)} · {groupe.length} analyse(s)</span>
+                  <Link
+                    to="/app/demandes-clients"
+                    search={{ page: 1, tri: "dateSoumission", direction: "desc", demande: premiere.demandeId }}
+                    className="font-semibold text-brand-900 underline-offset-4 hover:underline"
+                  >
+                    Voir la demande
+                  </Link>
+                </div>
               </header>
               <ul>
                 {groupe.map((analyse) => (
@@ -122,6 +167,7 @@ export function PagePlanification() {
                         {analyse.domaineLibelle ?? "Sans domaine"}
                         {analyse.dureeEstimeeJours != null ? ` · ${analyse.dureeEstimeeJours} j estimé(s)` : ""}
                         {analyse.technicienNom ? ` · ${analyse.technicienNom}` : ""}
+                        {analyse.dateAttribution ? ` · affectée le ${formaterDate(analyse.dateAttribution)}` : ""}
                         {analyse.echeance ? ` · échéance ${formaterDate(analyse.echeance)}` : ""}
                       </p>
                     </div>
@@ -143,6 +189,7 @@ export function PagePlanification() {
           setSelection([]);
           await queryClient.invalidateQueries({ queryKey: ["responsable-analyses"] });
           await queryClient.invalidateQueries({ queryKey: ["responsable-suivi"] });
+          await queryClient.invalidateQueries({ queryKey: ["responsable-techniciens"] });
         }}
       />
     </Container>
@@ -180,7 +227,7 @@ function DialogueAffectation({ ouvert, analyses, onFermer, onAffecte }: {
     <Dialogue
       ouvert={ouvert}
       titre={`Affecter ${analyses.length} analyse(s)`}
-      description="Choisissez un technicien. Ceux qui ne couvrent pas le domaine des analyses ne peuvent pas être choisis."
+      description="Les techniciens les moins chargés sont proposés en premier. Ceux qui ne couvrent pas le domaine des analyses ne peuvent pas être choisis."
       onFermer={onFermer}
     >
       <div className="flex flex-col gap-4 text-sm">

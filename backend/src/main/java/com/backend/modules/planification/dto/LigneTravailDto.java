@@ -18,6 +18,7 @@ public class LigneTravailDto {
     private String demandeReference;
     private String demandeTitre;
     private String demandeStatut;
+    private Instant demandeDateSoumission;
     private String essaiCode;
     private String essaiLibelle;
     private String methode;

@@ -59,6 +59,30 @@ public class LigneTravailAssembleur {
                 .toList();
     }
 
+    /** État de validation de plusieurs analyses, en une seule requête. */
+    public Map<Long, String> etats(Collection<Long> ligneIds) {
+        if (ligneIds == null || ligneIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, List<Validation>> historiques = validationRepository
+                .findByLigneEssai_IdInOrderByDateValidationAscIdAsc(ligneIds).stream()
+                .collect(Collectors.groupingBy(v -> v.getLigneEssai().getId()));
+        Map<Long, String> etats = new HashMap<>();
+        for (Long id : ligneIds) {
+            etats.put(id, etatValidation(historiques.getOrDefault(id, List.of())));
+        }
+        return etats;
+    }
+
+    /** Historiques de validation de plusieurs analyses, en une seule requête. */
+    public Map<Long, List<Validation>> historiques(Collection<Long> ligneIds) {
+        if (ligneIds == null || ligneIds.isEmpty()) {
+            return Map.of();
+        }
+        return validationRepository.findByLigneEssai_IdInOrderByDateValidationAscIdAsc(ligneIds).stream()
+                .collect(Collectors.groupingBy(v -> v.getLigneEssai().getId()));
+    }
+
     public Map<Long, String> nomsUtilisateurs(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return Map.of();
@@ -123,6 +147,7 @@ public class LigneTravailAssembleur {
                 .demandeReference(demande == null ? null : demande.getNumero())
                 .demandeTitre(demande == null ? null : demande.getTitre())
                 .demandeStatut(demande == null ? null : demande.getStatut())
+                .demandeDateSoumission(demande == null ? null : demande.getDateSoumission())
                 .essaiCode(essai == null ? null : essai.getCode())
                 .essaiLibelle(essai == null ? null : essai.getDesignation())
                 .methode(essai == null ? null : essai.getMethode())

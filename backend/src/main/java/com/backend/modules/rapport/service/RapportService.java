@@ -79,7 +79,7 @@ public class RapportService {
     private final EmailService emailService;
     private final com.backend.modules.rapport.signature.SignatureNumeriqueService signatureNumeriqueService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
-    private final com.backend.common.tenant.TenantResolver tenantResolver;
+    private final com.backend.modules.rapport.signature.SignatureManuscriteService signatureManuscriteService;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -100,20 +100,21 @@ public class RapportService {
         return rapportRepository.findByDemande_Id(demandeId, pageable).map(this::toDto);
     }
 
-    /** Demandes terminées et leur dernier rapport : à générer, à signer ou libéré. */
+    /**
+     * Demandes terminées et leur dernier rapport (à générer, à signer ou libéré),
+     * la dernière activité en haut. Requêtes groupées : aucune requête par demande.
+     */
     @Transactional(readOnly = true)
     public List<RapportTravailDto> travail() {
-        List<Demande> demandes = new ArrayList<>();
-        for (String statut : StatutDemande.TERMINEE.aliasesPersistés()) {
-            demandes.addAll(demandeRepository.findByStatut(statut, Pageable.unpaged()).getContent());
-        }
+        List<Demande> demandes = demandeRepository.findAvecClientParStatuts(StatutDemande.TERMINEE.aliasesPersistés());
         if (demandes.isEmpty()) {
             return List.of();
         }
-        Map<Long, Rapport> derniers = new HashMap<>();
-        for (Rapport rapport : rapportRepository.findByDemande_IdInOrderByIdDesc(
-                demandes.stream().map(Demande::getId).toList())) {
-            derniers.putIfAbsent(rapport.getDemande().getId(), rapport);
+        List<Long> ids = demandes.stream().map(Demande::getId).toList();
+        Map<Long, Rapport> derniers = derniersRapports(ids);
+        Map<Long, Long> analyses = new HashMap<>();
+        for (Object[] ligne : ligneEssaiRepository.compterParDemande(ids, StatutEssai.NON_REALISABLE)) {
+            analyses.put((Long) ligne[0], (Long) ligne[1]);
         }
         Set<Long> utilisateurs = new HashSet<>();
         demandes.forEach(d -> {
@@ -126,7 +127,6 @@ public class RapportService {
         });
         Map<Long, String> noms = assembleur.nomsUtilisateurs(utilisateurs);
         return demandes.stream()
-                .sorted(Comparator.comparing(Demande::getDateSoumission, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(d -> {
                     Rapport rapport = derniers.get(d.getId());
                     return new RapportTravailDto(
@@ -134,88 +134,105 @@ public class RapportService {
                             d.getNumero(),
                             d.getTitre(),
                             nomClient(d, noms),
-                            ligneEssaiRepository.findByDemande_Id(d.getId()).stream()
-                                    .filter(l -> l.getStatut() != StatutEssai.NON_REALISABLE).count(),
+                            analyses.getOrDefault(d.getId(), 0L),
                             rapport == null ? null : rapport.getId(),
                             rapport == null ? null : rapport.getNumero(),
                             rapport == null ? null : enumOuNull(rapport.getStatut()),
                             rapport == null ? null : rapport.getDateEmission(),
                             rapport == null ? null : rapport.getDateSignature(),
-                            rapport == null || rapport.getSignataireId() == null ? null : noms.get(rapport.getSignataireId()),
-                            rapport == null ? null : empreinteDepuisCle(rapport.getClePdf()));
+                            rapport == null || rapport.getSignataireId() == null ? null : noms.get(rapport.getSignataireId()));
                 })
+                .sorted(Comparator.comparing(RapportService::derniereActivite,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
     }
 
-    /**
-     * Crée le projet de rapport d'une demande terminée dont toutes les analyses réalisables
-     * ont été validées par le responsable. Un projet non signé existant est réutilisé.
-     */
-    @Transactional
-    public RapportDto generer(Long demandeId) {
-        UtilisateurPrincipal acteur = SecurityUtils.principalCourant();
-        Demande demande = demandeRepository.findById(demandeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", demandeId));
-        if (StatutDemande.depuis(demande.getStatut()) != StatutDemande.TERMINEE) {
-            throw new BusinessRuleException("DEMANDE_NON_TERMINEE",
-                    "Le rapport ne peut être généré qu'une fois tous les résultats validés.");
-        }
-        List<LigneEssai> lignes = lignesValidees(demande);
-        List<Rapport> existants = rapportRepository.findByDemande_IdInOrderByIdDesc(List.of(demandeId));
-        Rapport dernier = existants.isEmpty() ? null : existants.getFirst();
-        if (dernier != null && StatutRapport.GENERE.name().equals(dernier.getStatut())) {
-            return toDto(dernier);
-        }
-        int version = existants.size() + 1;
-        Rapport rapport = rapportRepository.save(Rapport.builder()
-                .numero("RAP-" + demande.getNumero() + (version > 1 ? "-V" + version : ""))
-                .type("ANALYSE")
-                .version((short) version)
-                .demande(demande)
-                .statut(StatutRapport.GENERE.name())
-                .dateEmission(Instant.now())
-                .diffuse(false)
-                .build());
-        for (LigneEssai ligne : lignes) {
-            rapportLigneRepository.save(RapportLigne.builder().rapport(rapport).ligneEssai(ligne).build());
-        }
-        journalAuditService.enregistrer("GENERER_RAPPORT", "Rapport", rapport.getId(), acteur.getEmail(),
-                null, "{\"numero\":\"" + rapport.getNumero() + "\"}", null, acteur.getLaboratoireId());
-        return toDto(rapport);
-    }
-
-    /** Aperçu PDF du projet, marqué « non signé ». */
+    /** Rapports à signer, pour le tableau de suivi (sans charger les détails). */
     @Transactional(readOnly = true)
-    public byte[] apercu(Long rapportId) {
-        Rapport rapport = charger(rapportId);
-        return rapportPdfService.generer(donnees(rapport, laboratoireCourant(), null, null, true, null));
+    public long compterAPreparer() {
+        List<Long> ids = demandeRepository.findIdsParStatuts(StatutDemande.TERMINEE.aliasesPersistés());
+        if (ids.isEmpty()) {
+            return 0;
+        }
+        Map<Long, Rapport> derniers = derniersRapports(ids);
+        return ids.stream().filter(id -> {
+            Rapport rapport = derniers.get(id);
+            return rapport == null
+                    || StatutRapport.GENERE.name().equals(rapport.getStatut())
+                    || StatutRapport.BROUILLON.name().equals(rapport.getStatut());
+        }).count();
+    }
+
+    private Map<Long, Rapport> derniersRapports(Collection<Long> demandeIds) {
+        Map<Long, Rapport> derniers = new HashMap<>();
+        for (Rapport rapport : rapportRepository.findByDemande_IdInOrderByIdDesc(demandeIds)) {
+            derniers.putIfAbsent(rapport.getDemande().getId(), rapport);
+        }
+        return derniers;
+    }
+
+    private static Instant derniereActivite(RapportTravailDto dto) {
+        if (dto.dateSignature() != null) return dto.dateSignature();
+        if (dto.dateEmission() != null) return dto.dateEmission();
+        return null;
     }
 
     /**
-     * Signe et libère le rapport : PDF définitif conservé avec son empreinte SHA-256
-     * dans le nom de fichier, statut ENVOYE, visible du client, qui est prévenu par e-mail.
+     * Aperçu du rapport d'une demande terminée, avant signature (rien n'est enregistré).
+     * Le PDF porte la mention « PROJET — non signé ».
+     */
+    @Transactional(readOnly = true)
+    public byte[] apercuDemande(Long demandeId) {
+        Demande demande = demandeTerminee(demandeId);
+        List<LigneEssai> lignes = lignesValidees(demande);
+        return rapportPdfService.generer(donnees(demande, lignes, "RAP-" + demande.getNumero(), 1, Instant.now(),
+                laboratoireCourant(), null, null, true, null));
+    }
+
+    /**
+     * Signe le rapport d'une demande en une seule action : le rapport est créé s'il n'existe pas,
+     * le PDF est produit avec le cadre de signature, signé numériquement (PAdES), enregistré
+     * et rendu visible au client, qui est prévenu par e-mail.
      */
     @Transactional
-    public RapportTravailDto signerEtLiberer(Long rapportId, String motDePasse) {
+    public RapportTravailDto signerDemande(Long demandeId, String motDePasse) {
         UtilisateurPrincipal acteur = SecurityUtils.principalCourant();
         confirmerIdentite(acteur, motDePasse);
-        Rapport rapport = charger(rapportId);
-        if (!StatutRapport.GENERE.name().equals(rapport.getStatut())) {
-            throw new BusinessRuleException("RAPPORT_DEJA_SIGNE", "Ce rapport est déjà signé.");
+        Demande demande = demandeTerminee(demandeId);
+        List<LigneEssai> lignes = lignesValidees(demande);
+
+        List<Rapport> existants = rapportRepository.findByDemande_IdInOrderByIdDesc(List.of(demandeId));
+        Rapport dernier = existants.isEmpty() ? null : existants.getFirst();
+        Rapport rapport;
+        if (dernier != null && (StatutRapport.GENERE.name().equals(dernier.getStatut())
+                || StatutRapport.BROUILLON.name().equals(dernier.getStatut()))) {
+            rapport = dernier;
+        } else if (dernier != null) {
+            throw new BusinessRuleException("RAPPORT_DEJA_SIGNE", "Le rapport de cette demande est déjà signé.");
+        } else {
+            rapport = rapportRepository.save(Rapport.builder()
+                    .numero("RAP-" + demande.getNumero())
+                    .type("ANALYSE")
+                    .version((short) 1)
+                    .demande(demande)
+                    .statut(StatutRapport.GENERE.name())
+                    .dateEmission(Instant.now())
+                    .diffuse(false)
+                    .build());
+            for (LigneEssai ligne : lignes) {
+                rapportLigneRepository.save(RapportLigne.builder().rapport(rapport).ligneEssai(ligne).build());
+            }
         }
+
         Instant maintenant = Instant.now();
         String schema = TenantContext.getCurrentTenant() == null ? "laboratoire" : TenantContext.getCurrentTenant();
         LaboratoireInfo labo = laboratoireCourant();
-        String urlVerification = frontendUrl.replaceAll("/$", "") + "/verifier-rapport?laboratoire="
-                + java.net.URLEncoder.encode(labo.code(), java.nio.charset.StandardCharsets.UTF_8)
-                + "&numero=" + java.net.URLEncoder.encode(rapport.getNumero(), java.nio.charset.StandardCharsets.UTF_8);
-        byte[] brouillon = rapportPdfService.generer(
-                donnees(rapport, labo, acteur.getNomComplet(), maintenant, false, urlVerification));
+        byte[] pdfNonSigne = rapportPdfService.generer(donnees(rapport, labo, acteur.getNomComplet(), maintenant, false,
+                signatureManuscriteService.lire(acteur.getId()).orElse(null)));
         com.backend.modules.rapport.signature.SignatureNumeriqueService.PdfSigne signe = signatureNumeriqueService.signer(
-                brouillon, schema, labo.pdf().nom(), acteur.getNomComplet(), labo.ville(), maintenant);
+                pdfNonSigne, schema, labo.pdf().nom(), acteur.getNomComplet(), labo.ville(), maintenant);
         byte[] pdf = signe.contenu();
-        String empreinte = sha256(pdf);
-        String cle = "rapports/" + schema + "/" + rapport.getNumero() + "_" + empreinte + ".pdf";
+        String cle = "rapports/" + schema + "/" + rapport.getNumero() + "_" + sha256(pdf) + ".pdf";
         try (InputStream contenu = new ByteArrayInputStream(pdf)) {
             stockageFichierService.televerser(cle, contenu, pdf.length, "application/pdf");
         } catch (IOException ex) {
@@ -227,12 +244,10 @@ public class RapportService {
         rapport.setStatut(StatutRapport.ENVOYE.name());
         rapport.setDiffuse(true);
         rapportRepository.save(rapport);
-        journalAuditService.enregistrer("SIGNER_LIBERER_RAPPORT", "Rapport", rapport.getId(), acteur.getEmail(),
-                "{\"statut\":\"GENERE\"}", "{\"statut\":\"ENVOYE\",\"empreinte\":\"" + empreinte
-                        + "\",\"horodate\":" + (signe.horodatage() != null) + "}",
+        journalAuditService.enregistrer("SIGNER_RAPPORT", "Rapport", rapport.getId(), acteur.getEmail(),
+                null, "{\"numero\":\"" + rapport.getNumero() + "\",\"statut\":\"ENVOYE\"}",
                 null, acteur.getLaboratoireId());
 
-        Demande demande = rapport.getDemande();
         Long clientId = demande.getClient() == null ? null : demande.getClient().getUtilisateurId();
         String numero = rapport.getNumero();
         String lien = frontendUrl.replaceAll("/$", "") + "/app/rapports";
@@ -252,8 +267,18 @@ public class RapportService {
         Map<Long, String> noms = assembleur.nomsUtilisateurs(
                 clientId == null ? List.of(acteur.getId()) : List.of(acteur.getId(), clientId));
         return new RapportTravailDto(demande.getId(), demande.getNumero(), demande.getTitre(), nomClient(demande, noms),
-                rapportLigneRepository.findByRapport_Id(rapport.getId()).size(), rapport.getId(), numero,
-                StatutRapport.ENVOYE, rapport.getDateEmission(), maintenant, acteur.getNomComplet(), empreinte);
+                lignes.size(), rapport.getId(), numero, StatutRapport.ENVOYE, rapport.getDateEmission(), maintenant,
+                acteur.getNomComplet());
+    }
+
+    private Demande demandeTerminee(Long demandeId) {
+        Demande demande = demandeRepository.findById(demandeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", demandeId));
+        if (StatutDemande.depuis(demande.getStatut()) != StatutDemande.TERMINEE) {
+            throw new BusinessRuleException("DEMANDE_NON_TERMINEE",
+                    "Le rapport ne peut être signé qu'une fois tous les résultats validés.");
+        }
+        return demande;
     }
 
     /**
@@ -281,49 +306,11 @@ public class RapportService {
         Instant dateSignature = rapport.getDateSignature() != null ? rapport.getDateSignature() : rapport.getDateEmission();
         return new FichierRapport(nom, rapportPdfService.generer(
                 donnees(rapport, laboratoireCourant(), signataire,
-                        dateSignature == null ? Instant.now() : dateSignature, false, null)));
+                        dateSignature == null ? Instant.now() : dateSignature, false,
+                        signatureManuscriteService.lire(rapport.getSignataireId()).orElse(null))));
     }
 
     public record FichierRapport(String nom, byte[] contenu) {
-    }
-
-    /** Ce que la page publique de vérification affiche : aucune donnée de patient ni résultat. */
-    public record VerificationPublique(
-            String laboratoire,
-            String numero,
-            String statut,
-            Instant dateSignature,
-            String signataire,
-            /** Renseignés seulement quand un fichier a été déposé. */
-            Boolean fichierAuthentique,
-            Boolean signatureValide,
-            Boolean documentComplet,
-            Instant horodatage,
-            String certificat) {
-    }
-
-    /** Statut public d'un rapport, à partir du QR code (code du laboratoire + numéro). */
-    public VerificationPublique verifierPublic(String codeLaboratoire, String numero, byte[] fichier) {
-        com.backend.modules.plateforme.entity.Laboratoire labo = tenantResolver.exigerActif(codeLaboratoire);
-        return tenantExecutor.inTenant(labo.getNomSchema(), () -> {
-            Rapport rapport = rapportRepository.findByNumero(numero)
-                    .filter(r -> Boolean.TRUE.equals(r.getDiffuse()))
-                    .orElseThrow(() -> new BusinessRuleException("RAPPORT_INCONNU",
-                            "Aucun rapport signé ne porte ce numéro dans ce laboratoire."));
-            String signataire = rapport.getSignataireId() == null ? null
-                    : assembleur.nomsUtilisateurs(List.of(rapport.getSignataireId())).get(rapport.getSignataireId());
-            if (fichier == null) {
-                return new VerificationPublique(labo.getRaisonSociale(), rapport.getNumero(), rapport.getStatut(),
-                        rapport.getDateSignature(), signataire, null, null, null, null, null);
-            }
-            String attendue = empreinteDepuisCle(rapport.getClePdf());
-            boolean authentique = attendue != null && attendue.equals(sha256(fichier));
-            var verification = signatureNumeriqueService.verifier(fichier);
-            return new VerificationPublique(labo.getRaisonSociale(), rapport.getNumero(), rapport.getStatut(),
-                    rapport.getDateSignature(), signataire, authentique,
-                    verification.signaturePresente() && verification.signatureValide(),
-                    verification.documentComplet(), verification.horodatage(), verification.certificat());
-        });
     }
 
     // -------------------------------------------------------------------------
@@ -332,13 +319,13 @@ public class RapportService {
         List<LigneEssai> lignes = ligneEssaiRepository.findByDemande_Id(demande.getId()).stream()
                 .filter(l -> l.getStatut() != StatutEssai.NON_REALISABLE)
                 .toList();
+        Map<Long, String> etats = assembleur.etats(lignes.stream().map(LigneEssai::getId).toList());
         List<LigneEssai> nonValidees = lignes.stream()
-                .filter(l -> !LigneTravailAssembleur.VALIDEE.equals(LigneTravailAssembleur.etatValidation(
-                        validationRepository.findByLigneEssai_IdOrderByDateValidationAscIdAsc(l.getId()))))
+                .filter(l -> !LigneTravailAssembleur.VALIDEE.equals(etats.get(l.getId())))
                 .toList();
         if (lignes.isEmpty() || !nonValidees.isEmpty()) {
             throw new BusinessRuleException("RESULTATS_NON_VALIDES",
-                    "Toutes les analyses doivent être validées par le responsable avant de générer le rapport.");
+                    "Toutes les analyses doivent être validées par le responsable avant de signer le rapport.");
         }
         return lignes;
     }
@@ -373,22 +360,29 @@ public class RapportService {
     }
 
     private DonneesRapport donnees(Rapport rapport, LaboratoireInfo laboratoire, String signataire,
-                                   Instant dateSignature, boolean projet, String urlVerification) {
-        Demande demande = rapport.getDemande();
-        RapportPdfService.Laboratoire labo = laboratoire.pdf();
-
+                                   Instant dateSignature, boolean projet, byte[] imageSignature) {
         List<LigneEssai> lignes = rapportLigneRepository.findByRapport_Id(rapport.getId()).stream()
                 .map(RapportLigne::getLigneEssai)
+                .toList();
+        return donnees(rapport.getDemande(), lignes, rapport.getNumero(),
+                rapport.getVersion() == null ? 1 : rapport.getVersion(), rapport.getDateEmission(),
+                laboratoire, signataire, dateSignature, projet, imageSignature);
+    }
+
+    private DonneesRapport donnees(Demande demande, List<LigneEssai> lignesNonTriees, String numero, int version,
+                                   Instant dateEmission, LaboratoireInfo laboratoire, String signataire,
+                                   Instant dateSignature, boolean projet, byte[] imageSignature) {
+        RapportPdfService.Laboratoire labo = laboratoire.pdf();
+        List<LigneEssai> lignes = lignesNonTriees.stream()
                 .sorted(Comparator.comparing(LigneEssai::getId))
                 .toList();
         Map<Long, Validation> decisions = new HashMap<>();
-        for (LigneEssai ligne : lignes) {
-            validationRepository.findByLigneEssai_IdOrderByDateValidationAscIdAsc(ligne.getId()).stream()
-                    .filter(v -> v.getNiveau() != null && v.getNiveau() >= 2
-                            && StatutValidation.VALIDEE.name().equals(v.getDecision()))
-                    .reduce((a, b) -> b)
-                    .ifPresent(v -> decisions.put(ligne.getId(), v));
-        }
+        assembleur.historiques(lignes.stream().map(LigneEssai::getId).toList()).forEach((ligneId, historique) ->
+                historique.stream()
+                        .filter(v -> v.getNiveau() != null && v.getNiveau() >= 2
+                                && StatutValidation.VALIDEE.name().equals(v.getDecision()))
+                        .reduce((a, b) -> b)
+                        .ifPresent(v -> decisions.put(ligneId, v)));
         Set<Long> utilisateurs = decisions.values().stream().map(Validation::getValidateurId).collect(Collectors.toSet());
         if (demande.getClient() != null && demande.getClient().getUtilisateurId() != null) {
             utilisateurs.add(demande.getClient().getUtilisateurId());
@@ -406,10 +400,9 @@ public class RapportService {
                     ligne.getConformite() == null ? "—" : (ligne.getConformite() ? "Conforme" : "Non conforme"),
                     decision == null ? null : noms.get(decision.getValidateurId()));
         }).toList();
-        return new DonneesRapport(labo, rapport.getNumero(),
-                rapport.getVersion() == null ? 1 : rapport.getVersion(),
+        return new DonneesRapport(labo, numero, version,
                 demande.getNumero(), demande.getTitre(), nomClient(demande, noms),
-                rapport.getDateEmission(), lignesRapport, signataire, dateSignature, projet, urlVerification);
+                dateEmission, lignesRapport, signataire, dateSignature, projet, imageSignature);
     }
 
     private static String reference(BigDecimal min, BigDecimal max) {
@@ -427,13 +420,6 @@ public class RapportService {
             return demande.getClient().getRaisonSociale();
         }
         return noms.get(demande.getClient().getUtilisateurId());
-    }
-
-    private static String empreinteDepuisCle(String cle) {
-        if (!StringUtils.hasText(cle) || !cle.contains("_") || !cle.endsWith(".pdf")) {
-            return null;
-        }
-        return cle.substring(cle.lastIndexOf('_') + 1, cle.length() - 4);
     }
 
     private static String sha256(byte[] contenu) {

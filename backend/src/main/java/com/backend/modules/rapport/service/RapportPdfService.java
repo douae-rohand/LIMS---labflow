@@ -44,7 +44,7 @@ public class RapportPdfService {
     public record DonneesRapport(Laboratoire laboratoire, String numero, int version, String demandeReference,
                                  String demandeTitre, String client, Instant dateEmission,
                                  List<LigneRapport> lignes, String signataire, Instant dateSignature,
-                                 boolean projet, String urlVerification) {
+                                 boolean projet, byte[] imageSignature) {
     }
 
     public byte[] generer(DonneesRapport donnees) {
@@ -108,17 +108,7 @@ public class RapportPdfService {
             if (donnees.projet()) {
                 document.add(new Paragraph("Signature : en attente de signature par le responsable du laboratoire.", discret));
             } else {
-                Paragraph signature = new Paragraph();
-                signature.setAlignment(Element.ALIGN_RIGHT);
-                signature.add(new Phrase("Signé électroniquement par " + texte(donnees.signataire())
-                        + ", responsable du laboratoire\n", gras));
-                signature.add(new Phrase("le " + DATE.format(donnees.dateSignature())
-                        + ". Les résultats ont été validés en deux niveaux (technique puis responsable).", discret));
-                document.add(signature);
-                if (donnees.urlVerification() != null) {
-                    document.add(Chunk.NEWLINE);
-                    document.add(blocVerification(donnees.urlVerification(), gras, discret));
-                }
+                document.add(cadreSignature(donnees, labo, gras, normal, discret));
             }
             document.close();
             return sortie.toByteArray();
@@ -127,45 +117,34 @@ public class RapportPdfService {
         }
     }
 
-    /** QR code et adresse permettant à quiconque de vérifier l'authenticité du rapport. */
-    private static PdfPTable blocVerification(String url, Font gras, Font discret)
-            throws IOException, DocumentException {
-        PdfPTable bloc = new PdfPTable(new float[]{1f, 4f});
-        bloc.setWidthPercentage(100);
-        Image qr = Image.getInstance(qrCode(url), null);
-        qr.scaleToFit(80, 80);
-        PdfPCell celluleQr = new PdfPCell(qr, false);
-        celluleQr.setBorder(0);
-        celluleQr.setPadding(2);
+    /** Cadre de signature lisible par tous, aligné à droite en bas du rapport. */
+    private static PdfPTable cadreSignature(DonneesRapport donnees, Laboratoire labo, Font gras, Font normal, Font discret) {
+        PdfPTable cadre = new PdfPTable(1);
+        cadre.setWidthPercentage(55);
+        cadre.setHorizontalAlignment(Element.ALIGN_RIGHT);
         Paragraph texte = new Paragraph();
-        texte.add(new Phrase("Vérifier l'authenticité de ce rapport\n", gras));
-        texte.add(new Phrase("Ce document est signé électroniquement (PAdES). Scannez le QR code ou ouvrez l'adresse "
-                + "ci-dessous, puis déposez ce PDF : toute modification après signature sera détectée.\n", discret));
-        texte.add(new Phrase(url, discret));
-        PdfPCell celluleTexte = new PdfPCell(texte);
-        celluleTexte.setBorder(0);
-        celluleTexte.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        bloc.addCell(celluleQr);
-        bloc.addCell(celluleTexte);
-        return bloc;
-    }
-
-    private static java.awt.image.BufferedImage qrCode(String contenu) {
-        try {
-            com.google.zxing.common.BitMatrix matrice = new com.google.zxing.qrcode.QRCodeWriter()
-                    .encode(contenu, com.google.zxing.BarcodeFormat.QR_CODE, 240, 240,
-                            java.util.Map.of(com.google.zxing.EncodeHintType.MARGIN, 1));
-            java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(
-                    matrice.getWidth(), matrice.getHeight(), java.awt.image.BufferedImage.TYPE_INT_RGB);
-            for (int x = 0; x < matrice.getWidth(); x++) {
-                for (int y = 0; y < matrice.getHeight(); y++) {
-                    image.setRGB(x, y, matrice.get(x, y) ? 0x000000 : 0xFFFFFF);
-                }
+        texte.add(new Phrase("Signé électroniquement par\n", discret));
+        texte.add(new Phrase(texte(donnees.signataire()) + "\n", gras));
+        texte.add(new Phrase("Responsable du laboratoire\n", normal));
+        texte.add(new Phrase(texte(labo.nom()) + "\n", normal));
+        texte.add(new Phrase("Le " + DATE.format(donnees.dateSignature()), normal));
+        PdfPCell cellule = new PdfPCell();
+        cellule.addElement(texte);
+        if (donnees.imageSignature() != null) {
+            try {
+                Image signature = Image.getInstance(donnees.imageSignature());
+                signature.scaleToFit(160, 60);
+                signature.setSpacingBefore(6);
+                cellule.addElement(signature);
+            } catch (Exception ex) {
+                // Image illisible : le cadre reste valable sans elle.
             }
-            return image;
-        } catch (com.google.zxing.WriterException ex) {
-            throw new BusinessRuleException("QR_CODE_ECHOUE", "Le QR code de vérification n'a pas pu être généré.");
         }
+        cellule.setBorderColor(MARQUE);
+        cellule.setBorderWidth(1.2f);
+        cellule.setPadding(10);
+        cadre.addCell(cellule);
+        return cadre;
     }
 
     private static void ligneInfo(PdfPTable table, String libelle, String valeur, Font gras, Font normal) {

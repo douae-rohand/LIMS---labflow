@@ -95,11 +95,16 @@ public class PlanificationService {
     /** Techniciens actifs du laboratoire avec leur charge actuelle. */
     @Transactional(readOnly = true)
     public List<TechnicienChargeDto> techniciens() {
+        return techniciens(ligneEssaiRepository.findLignesDesDemandes(STATUTS_DEMANDES_ACTIVES));
+    }
+
+    /** Charge des techniciens calculée sur des analyses déjà chargées (évite une seconde requête). */
+    @Transactional(readOnly = true)
+    public List<TechnicienChargeDto> techniciens(List<LigneEssai> lignes) {
         Long laboratoireId = laboratoireCourant();
         List<Utilisateur> techniciens = tenantExecutor.inCentral(() ->
                 utilisateurRepository.findActifsParRoleEtLaboratoire(RoleUtilisateur.TECHNICIEN.name(), laboratoireId));
         Map<Long, List<String>> domaines = domainesDes(techniciens.stream().map(Utilisateur::getId).toList());
-        List<LigneEssai> lignes = ligneEssaiRepository.findLignesDesDemandes(STATUTS_DEMANDES_ACTIVES);
         Instant maintenant = Instant.now();
         return techniciens.stream()
                 .map(technicien -> {

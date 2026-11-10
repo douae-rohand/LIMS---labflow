@@ -69,8 +69,11 @@ public class ValidationService {
         List<LigneEssai> lignes = ligneEssaiRepository.findLignesDesDemandes(statutsDemandesSuivies()).stream()
                 .filter(l -> l.getStatut() == StatutEssai.TERMINE)
                 .toList();
+        // Les plus récemment soumis d'abord.
         return assembleur.assembler(lignes).stream()
                 .filter(l -> LigneTravailAssembleur.TECHNIQUE_VALIDEE.equals(l.getEtatValidation()))
+                .sorted(Comparator.comparing(LigneTravailDto::getDerniereDecisionDate,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
     }
 
@@ -149,17 +152,16 @@ public class ValidationService {
         List<LigneEssai> lignes = ligneEssaiRepository.findByDemande_Id(demande.getId()).stream()
                 .filter(l -> l.getStatut() != StatutEssai.NON_REALISABLE)
                 .toList();
-        boolean toutesValidees = !lignes.isEmpty() && lignes.stream()
-                .allMatch(l -> LigneTravailAssembleur.VALIDEE.equals(
-                        LigneTravailAssembleur.etatValidation(historique(l.getId()))));
+        Map<Long, String> etats = assembleur.etats(lignes.stream().map(LigneEssai::getId).toList());
+        boolean toutesValidees = !lignes.isEmpty() && etats.values().stream()
+                .allMatch(LigneTravailAssembleur.VALIDEE::equals);
         StatutDemande actuel = StatutDemande.depuis(demande.getStatut());
         if (toutesValidees) {
             demande.setStatut(StatutDemande.TERMINEE.name());
             demandeRepository.save(demande);
             return;
         }
-        boolean enAttente = lignes.stream().anyMatch(l -> LigneTravailAssembleur.TECHNIQUE_VALIDEE.equals(
-                LigneTravailAssembleur.etatValidation(historique(l.getId()))));
+        boolean enAttente = etats.values().stream().anyMatch(LigneTravailAssembleur.TECHNIQUE_VALIDEE::equals);
         if (actuel == StatutDemande.EN_VALIDATION && !enAttente) {
             demande.setStatut(StatutDemande.EN_COURS.name());
             demandeRepository.save(demande);

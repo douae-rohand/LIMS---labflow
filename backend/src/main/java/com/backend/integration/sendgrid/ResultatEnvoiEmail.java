@@ -24,6 +24,12 @@ public record ResultatEnvoiEmail(
                 "E-mail accepté par SendGrid");
     }
 
+    /** Message remis au serveur SMTP de secours. */
+    public static ResultatEnvoiEmail accepteSmtp() {
+        return new ResultatEnvoiEmail(true, false, true, 250, "ACCEPTE_SMTP",
+                "E-mail envoyé par le serveur SMTP de secours");
+    }
+
     public static ResultatEnvoiEmail echec(boolean temporaire, int statutHttp, String code, String message) {
         return new ResultatEnvoiEmail(false, temporaire, true, statutHttp, code, message);
     }
