@@ -16,7 +16,6 @@ export const footerLinks = [
       { label: "Fonctionnalités", href: "/#fonctionnalites" },
       { label: "Workflow", href: "/#workflow" },
       { label: "Espaces par rôle", href: "/#roles" },
-      { label: "Design system", href: "/ui-kit" },
     ],
   },
   {
