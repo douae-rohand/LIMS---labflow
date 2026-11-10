@@ -36,6 +36,17 @@ public interface DemandeRepository extends JpaRepository<Demande, Long> {
 
     long countByStatut(String statut);
 
+    /** Demandes dans ces statuts, client chargé en une requête, les plus récentes d'abord. */
+    @Query("""
+            SELECT d FROM Demande d LEFT JOIN FETCH d.client
+            WHERE d.statut IN :statuts
+            ORDER BY d.dateSoumission DESC
+            """)
+    List<Demande> findAvecClientParStatuts(@Param("statuts") Collection<String> statuts);
+
+    @Query("SELECT d.id FROM Demande d WHERE d.statut IN :statuts")
+    List<Long> findIdsParStatuts(@Param("statuts") Collection<String> statuts);
+
     /**
      * Recherche les demandes du schéma courant.
      * {@code q} et {@code statut} vides signifient « sans filtre ».

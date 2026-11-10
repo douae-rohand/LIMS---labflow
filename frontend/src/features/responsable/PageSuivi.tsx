@@ -1,14 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { AlarmClock, ClipboardCheck, FileSignature, Gauge, Inbox, ListTodo, RefreshCw, Users } from "lucide-react";
+import { AlarmClock, ClipboardCheck, FileSignature, Gauge, Inbox, ListTodo, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { Button, Card } from "@/components/lab";
+import { Card } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import { lireSuivi } from "@/api/responsable";
-import { BadgeStatutAnalyse, EnTeteResponsable, EtatChargement, formaterDate } from "./commun";
+import {
+  Actualisation,
+  BadgeStatutAnalyse,
+  EnTeteResponsable,
+  EtatChargement,
+  formaterDate,
+  INTERVALLE_ACTUALISATION,
+} from "./commun";
 
 export function PageSuivi() {
-  const suivi = useQuery({ queryKey: ["responsable-suivi"], queryFn: lireSuivi, refetchInterval: 60_000 });
+  const suivi = useQuery({
+    queryKey: ["responsable-suivi"],
+    queryFn: lireSuivi,
+    refetchInterval: INTERVALLE_ACTUALISATION,
+  });
   const donnees = suivi.data;
 
   return (
@@ -18,9 +29,11 @@ export function PageSuivi() {
         titre="Tableau de suivi"
         description="Charge de l'équipe, dossiers en retard et travail en attente de votre décision."
         action={
-          <Button variant="secondary" size="sm" icon={<RefreshCw className="size-4" aria-hidden="true" />} iconPosition="left" onClick={() => void suivi.refetch()}>
-            Actualiser
-          </Button>
+          <Actualisation
+            misAJour={suivi.dataUpdatedAt}
+            enCours={suivi.isFetching}
+            onActualiser={() => void suivi.refetch()}
+          />
         }
       />
 
@@ -29,12 +42,18 @@ export function PageSuivi() {
       {donnees && (
         <div className="flex flex-col gap-6">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <Indicateur icone={Inbox} libelle="Demandes à décider" valeur={donnees.indicateurs.demandesADecider} lien="/app/demandes-clients" />
-            <Indicateur icone={ListTodo} libelle="Analyses à affecter" valeur={donnees.indicateurs.analysesAAffecter} lien="/app/planification" />
-            <Indicateur icone={Users} libelle="Analyses en cours" valeur={donnees.indicateurs.analysesEnCours} lien="/app/planification" />
-            <Indicateur icone={AlarmClock} libelle="Analyses en retard" valeur={donnees.indicateurs.analysesEnRetard} lien="/app/planification" alerte />
-            <Indicateur icone={ClipboardCheck} libelle="Résultats à valider" valeur={donnees.indicateurs.resultatsAValider} lien="/app/validation-resultats" />
-            <Indicateur icone={FileSignature} libelle="Rapports à préparer ou signer" valeur={donnees.indicateurs.rapportsAPreparer} lien="/app/rapports-laboratoire" />
+            <Indicateur icone={Inbox} libelle="Demandes à décider" valeur={donnees.indicateurs.demandesADecider}
+              lien={{ to: "/app/demandes-clients", search: { page: 1, tri: "dateSoumission", direction: "desc", statut: "NOUVEAU" } }} />
+            <Indicateur icone={ListTodo} libelle="Analyses à affecter" valeur={donnees.indicateurs.analysesAAffecter}
+              lien={{ to: "/app/planification", search: { filtre: "A_AFFECTER" } }} />
+            <Indicateur icone={Users} libelle="Analyses en cours" valeur={donnees.indicateurs.analysesEnCours}
+              lien={{ to: "/app/planification", search: { filtre: "AFFECTEES" } }} />
+            <Indicateur icone={AlarmClock} libelle="Analyses en retard" valeur={donnees.indicateurs.analysesEnRetard} alerte
+              lien={{ to: "/app/planification", search: { filtre: "EN_RETARD" } }} />
+            <Indicateur icone={ClipboardCheck} libelle="Résultats à valider" valeur={donnees.indicateurs.resultatsAValider}
+              lien={{ to: "/app/validation-resultats" }} />
+            <Indicateur icone={FileSignature} libelle="Rapports à préparer ou signer" valeur={donnees.indicateurs.rapportsAPreparer}
+              lien={{ to: "/app/rapports-laboratoire" }} />
           </div>
 
           <section>
@@ -83,7 +102,14 @@ export function PageSuivi() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-lg font-bold text-ink-900">Dossiers en retard</h2>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="text-lg font-bold text-ink-900">Dossiers en retard</h2>
+              {donnees.retards.length > 0 && (
+                <Link to="/app/planification" search={{ filtre: "EN_RETARD" }} className="text-sm font-semibold text-brand-900 underline-offset-4 hover:underline">
+                  Réaffecter dans la planification
+                </Link>
+              )}
+            </div>
             {donnees.retards.length === 0 ? (
               <EtatChargement chargement={false} erreur={false} vide messageVide="Aucune analyse en retard." />
             ) : (
@@ -93,7 +119,14 @@ export function PageSuivi() {
                     <div className="min-w-0">
                       <p className="font-semibold text-ink-900">{analyse.essaiLibelle ?? analyse.code}</p>
                       <p className="text-xs text-muted-foreground">
-                        {analyse.demandeReference} · {analyse.technicienNom ?? "Non affectée"} · échéance {formaterDate(analyse.echeance)}
+                        <Link
+                          to="/app/demandes-clients"
+                          search={{ page: 1, tri: "dateSoumission", direction: "desc", demande: analyse.demandeId }}
+                          className="font-semibold text-brand-900 underline-offset-4 hover:underline"
+                        >
+                          {analyse.demandeReference}
+                        </Link>
+                        {" "}· {analyse.technicienNom ?? "Non affectée"} · échéance {formaterDate(analyse.echeance)}
                       </p>
                     </div>
                     <BadgeStatutAnalyse analyse={analyse} />
@@ -108,15 +141,21 @@ export function PageSuivi() {
   );
 }
 
+type LienIndicateur =
+  | { to: "/app/demandes-clients"; search: { page: number; tri: "dateSoumission"; direction: "desc"; statut: "NOUVEAU" } }
+  | { to: "/app/planification"; search: { filtre: "A_AFFECTER" | "AFFECTEES" | "EN_RETARD" } }
+  | { to: "/app/validation-resultats" }
+  | { to: "/app/rapports-laboratoire" };
+
 function Indicateur({ icone: Icone, libelle, valeur, lien, alerte }: {
   icone: LucideIcon;
   libelle: string;
   valeur: number;
-  lien: "/app/demandes-clients" | "/app/planification" | "/app/validation-resultats" | "/app/rapports-laboratoire";
+  lien: LienIndicateur;
   alerte?: boolean;
 }) {
   return (
-    <Link to={lien} className="rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900">
+    <Link {...lien} className="rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900">
       <Card className={`flex items-center gap-4 p-4 transition-colors hover:bg-surface-alt ${alerte && valeur > 0 ? "border-red-200" : ""}`}>
         <span className={`flex size-10 items-center justify-center rounded-xl ${alerte && valeur > 0 ? "bg-red-50 text-red-700" : "bg-brand-900/10 text-brand-900"}`}>
           <Icone className="size-5" aria-hidden="true" />

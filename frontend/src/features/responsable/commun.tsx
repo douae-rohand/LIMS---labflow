@@ -1,6 +1,6 @@
-import type { LucideIcon } from "lucide-react";
+import { RefreshCw, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { Badge } from "@/components/lab";
+import { Badge, Button } from "@/components/lab";
 import { ApiError } from "@/api/axios";
 import type { AnalyseTravail, EtatValidation, StatutAnalyse } from "@/api/responsable";
 
@@ -112,4 +112,55 @@ export function EtatChargement({ chargement, erreur, vide, messageVide, onReessa
     );
   }
   return null;
+}
+
+/** Les écrans du responsable se rechargent seuls toutes les 30 secondes. */
+export const INTERVALLE_ACTUALISATION = 30_000;
+
+/** Heure de la dernière mise à jour et bouton « Actualiser ». */
+export function Actualisation({ misAJour, enCours, onActualiser }: {
+  misAJour: number;
+  enCours: boolean;
+  onActualiser: () => void;
+}) {
+  const heure = misAJour
+    ? new Intl.DateTimeFormat("fr-FR", { timeStyle: "medium" }).format(new Date(misAJour))
+    : "—";
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-xs text-muted-foreground" aria-live="polite">Mis à jour à {heure}</span>
+      <Button
+        variant="secondary"
+        size="sm"
+        icon={<RefreshCw className={`size-4 ${enCours ? "animate-spin" : ""}`} aria-hidden="true" />}
+        iconPosition="left"
+        disabled={enCours}
+        onClick={onActualiser}
+      >
+        Actualiser
+      </Button>
+    </div>
+  );
+}
+
+/** Champ de recherche locale (référence, analyse, technicien, client). */
+export function Recherche({ valeur, onChange, placeholder }: {
+  valeur: string;
+  onChange: (valeur: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <input
+      type="search"
+      value={valeur}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder={placeholder}
+      aria-label={placeholder}
+      className="h-10 w-full rounded-xl border border-brand-900/15 bg-card px-3 text-sm text-ink-900 outline-none focus:border-brand-900 focus:ring-2 focus:ring-brand-900/10 sm:w-72"
+    />
+  );
+}
+
+export function contient(texte: string | null | undefined, recherche: string): boolean {
+  return (texte ?? "").toLowerCase().includes(recherche.trim().toLowerCase());
 }

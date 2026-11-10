@@ -13,6 +13,7 @@ export interface AnalyseTravail {
   demandeReference: string;
   demandeTitre?: string | null;
   demandeStatut?: string | null;
+  demandeDateSoumission?: string | null;
   essaiCode?: string | null;
   essaiLibelle?: string | null;
   methode?: string | null;
@@ -89,6 +90,8 @@ export interface RapportTravail {
   dateSignature?: string | null;
   signataire?: string | null;
   empreinte?: string | null;
+  /** Page publique de vérification (rapport libéré avec PDF signé). */
+  urlVerification?: string | null;
 }
 
 // ------------------------------------------------------------- suivi

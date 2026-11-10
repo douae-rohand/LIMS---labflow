@@ -18,5 +18,7 @@ public record RapportTravailDto(
         Instant dateSignature,
         String signataire,
         /** Empreinte SHA-256 du PDF signé. */
-        String empreinte) {
+        String empreinte,
+        /** Page publique de vérification (rapport libéré avec PDF signé). */
+        String urlVerification) {
 }

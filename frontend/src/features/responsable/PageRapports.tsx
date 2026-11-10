@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { Download, Eye, FilePlus2, FileSignature, ShieldCheck } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Download, ExternalLink, Eye, FilePlus2, FileSignature, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Badge, Button, Input, Label } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
@@ -13,19 +13,61 @@ import {
   type RapportTravail,
 } from "@/api/responsable";
 import { Dialogue } from "@/features/super-admin/Fenetres";
-import { EnTeteResponsable, EtatChargement, formaterDate, messageErreur } from "./commun";
+import {
+  Actualisation,
+  contient,
+  EnTeteResponsable,
+  EtatChargement,
+  formaterDate,
+  INTERVALLE_ACTUALISATION,
+  messageErreur,
+  Recherche,
+} from "./commun";
 
-function etape(rapport: RapportTravail): "a-generer" | "a-signer" | "libere" {
+type Etape = "a-generer" | "a-signer" | "libere";
+type Filtre = "tous" | Etape;
+
+function etape(rapport: RapportTravail): Etape {
   if (!rapport.rapportId || !rapport.statut) return "a-generer";
   if (rapport.statut === "GENERE" || rapport.statut === "BROUILLON") return "a-signer";
   return "libere";
 }
 
+const FILTRES: { id: Filtre; libelle: string }[] = [
+  { id: "tous", libelle: "Tous" },
+  { id: "a-generer", libelle: "À générer" },
+  { id: "a-signer", libelle: "À signer" },
+  { id: "libere", libelle: "Libérés" },
+];
+
 export function PageRapports() {
   const queryClient = useQueryClient();
   const [aSigner, setASigner] = useState<RapportTravail | null>(null);
   const [motDePasse, setMotDePasse] = useState("");
-  const rapports = useQuery({ queryKey: ["responsable-rapports"], queryFn: listerRapportsTravail });
+  const [filtre, setFiltre] = useState<Filtre>("tous");
+  const [recherche, setRecherche] = useState("");
+  const rapports = useQuery({
+    queryKey: ["responsable-rapports"],
+    queryFn: listerRapportsTravail,
+    refetchInterval: INTERVALLE_ACTUALISATION,
+  });
+
+  // Le serveur trie par dernière activité (signature, génération), la plus récente en haut.
+  const compteurs = useMemo(() => {
+    const total: Record<Filtre, number> = { tous: 0, "a-generer": 0, "a-signer": 0, libere: 0 };
+    (rapports.data ?? []).forEach((r) => {
+      total.tous += 1;
+      total[etape(r)] += 1;
+    });
+    return total;
+  }, [rapports.data]);
+  const visibles = (rapports.data ?? [])
+    .filter((r) => filtre === "tous" || etape(r) === filtre)
+    .filter((r) => !recherche.trim()
+      || contient(r.demandeReference, recherche)
+      || contient(r.numero, recherche)
+      || contient(r.client, recherche)
+      || contient(r.demandeTitre, recherche));
 
   const actualiser = async () => {
     await queryClient.invalidateQueries({ queryKey: ["responsable-rapports"] });
@@ -65,18 +107,48 @@ export function PageRapports() {
         icone={FileSignature}
         titre="Rapports"
         description="Demandes dont tous les résultats sont validés : générez le rapport, vérifiez l'aperçu, puis signez-le pour le libérer au client."
+        action={
+          <Actualisation
+            misAJour={rapports.dataUpdatedAt}
+            enCours={rapports.isFetching}
+            onActualiser={() => void rapports.refetch()}
+          />
+        }
       />
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex w-full flex-wrap gap-1 rounded-2xl border border-brand-900/10 bg-card p-1 sm:w-auto" role="tablist" aria-label="Filtrer les rapports">
+          {FILTRES.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={filtre === item.id}
+              onClick={() => setFiltre(item.id)}
+              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold sm:flex-none ${
+                filtre === item.id ? "bg-brand-900 text-primary-foreground" : "text-brand-900 hover:bg-surface-alt"
+              }`}
+            >
+              {item.libelle}
+              <span className={`rounded-full px-2 py-0.5 text-[11px] ${filtre === item.id ? "bg-white/15" : "bg-surface-alt"}`}>
+                {compteurs[item.id]}
+              </span>
+            </button>
+          ))}
+        </div>
+        <Recherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, un client…" />
+      </div>
 
       <EtatChargement
         chargement={rapports.isLoading}
         erreur={rapports.isError}
-        vide={!rapports.isLoading && (rapports.data?.length ?? 0) === 0}
-        messageVide="Aucune demande terminée pour le moment."
+        vide={!rapports.isLoading && visibles.length === 0}
+        messageVide={(rapports.data?.length ?? 0) === 0 ? "Aucune demande terminée pour le moment." : "Aucun rapport ne correspond."}
         onReessayer={() => void rapports.refetch()}
       />
 
       <ul className="flex flex-col gap-3">
-        {rapports.data?.map((rapport) => {
+        {visibles.map((rapport) => {
           const etat = etape(rapport);
           return (
             <li key={rapport.demandeId} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand-900/10 bg-card px-4 py-4">
@@ -89,9 +161,10 @@ export function PageRapports() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {rapport.demandeTitre ?? "—"} · {rapport.client ?? "Client"} · {rapport.nombreAnalyses} analyse(s)
+                  {etat === "a-signer" && rapport.dateEmission ? ` · généré le ${formaterDate(rapport.dateEmission, true)}` : ""}
                 </p>
                 {etat === "libere" && (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                  <p className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                     <ShieldCheck className="size-3.5 text-brand-900" aria-hidden="true" />
                     {rapport.numero} · signé par {rapport.signataire ?? "—"} le {formaterDate(rapport.dateSignature, true)}
                     {rapport.empreinte && <span className="font-mono" title={rapport.empreinte}> · SHA-256 {rapport.empreinte.slice(0, 12)}…</span>}
@@ -105,6 +178,7 @@ export function PageRapports() {
                     icon={<FilePlus2 className="size-4" aria-hidden="true" />}
                     iconPosition="left"
                     loading={generation.isPending && generation.variables === rapport.demandeId}
+                    disabled={generation.isPending}
                     onClick={() => generation.mutate(rapport.demandeId)}
                   >
                     Générer le rapport
@@ -135,6 +209,17 @@ export function PageRapports() {
                     >
                       Télécharger
                     </Button>
+                    {rapport.urlVerification && (
+                      <a
+                        href={rapport.urlVerification}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-brand-900 hover:bg-surface-alt"
+                      >
+                        <ExternalLink className="size-4" aria-hidden="true" />
+                        Vérifier
+                      </a>
+                    )}
                   </>
                 )}
               </div>

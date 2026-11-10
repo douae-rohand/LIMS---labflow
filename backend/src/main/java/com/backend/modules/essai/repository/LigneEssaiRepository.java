@@ -41,7 +41,7 @@ public interface LigneEssaiRepository extends JpaRepository<LigneEssai, Long> {
             LEFT JOIN FETCH le.essai e
             LEFT JOIN FETCH e.domaine
             WHERE d.statut IN :statuts
-            ORDER BY d.dateSoumission ASC, le.id ASC
+            ORDER BY d.dateSoumission DESC, le.id ASC
             """)
     List<LigneEssai> findLignesDesDemandes(@Param("statuts") Collection<String> statuts);
 
@@ -53,6 +53,15 @@ public interface LigneEssaiRepository extends JpaRepository<LigneEssai, Long> {
             WHERE le.id IN :ids
             """)
     List<LigneEssai> findAvecDetails(@Param("ids") Collection<Long> ids);
+
+    /** Nombre d'analyses réalisables par demande, en une requête. */
+    @Query("""
+            SELECT le.demande.id, COUNT(le) FROM LigneEssai le
+            WHERE le.demande.id IN :demandeIds AND (le.statut IS NULL OR le.statut <> :exclu)
+            GROUP BY le.demande.id
+            """)
+    List<Object[]> compterParDemande(@Param("demandeIds") Collection<Long> demandeIds,
+                                     @Param("exclu") com.backend.modules.essai.entity.StatutEssai exclu);
 
     Page<LigneEssai> findByStatut(StatutEssai statut, Pageable pageable);
 

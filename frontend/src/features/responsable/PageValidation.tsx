@@ -12,7 +12,17 @@ import {
   type DecisionResultat,
 } from "@/api/responsable";
 import { Panneau } from "@/features/super-admin/Fenetres";
-import { EnTeteResponsable, EtatChargement, formaterDate, messageErreur, reference } from "./commun";
+import {
+  Actualisation,
+  contient,
+  EnTeteResponsable,
+  EtatChargement,
+  formaterDate,
+  INTERVALLE_ACTUALISATION,
+  messageErreur,
+  Recherche,
+  reference,
+} from "./commun";
 
 const LIBELLES_DECISION: Record<DecisionResultat, string> = {
   VALIDER: "Valider",
@@ -23,7 +33,26 @@ const LIBELLES_DECISION: Record<DecisionResultat, string> = {
 export function PageValidation() {
   const queryClient = useQueryClient();
   const [choisie, setChoisie] = useState<AnalyseTravail | null>(null);
-  const resultats = useQuery({ queryKey: ["responsable-a-valider"], queryFn: listerResultatsAValider });
+  const [recherche, setRecherche] = useState("");
+  const resultats = useQuery({
+    queryKey: ["responsable-a-valider"],
+    queryFn: listerResultatsAValider,
+    refetchInterval: INTERVALLE_ACTUALISATION,
+  });
+  // Le serveur trie déjà : la dernière validation technique en haut.
+  const visibles = (resultats.data ?? []).filter((a) => !recherche.trim()
+    || contient(a.demandeReference, recherche)
+    || contient(a.essaiLibelle, recherche)
+    || contient(a.technicienNom, recherche));
+
+  const validationRapide = useMutation({
+    mutationFn: (analyse: AnalyseTravail) => deciderResultat(analyse.id, "VALIDER"),
+    onSuccess: async (_donnees, analyse) => {
+      toast.success(`${analyse.essaiLibelle ?? "Résultat"} validé.`);
+      await actualiser();
+    },
+    onError: (erreur) => toast.error(messageErreur(erreur, "La validation a échoué.")),
+  });
 
   const actualiser = async () => {
     await queryClient.invalidateQueries({ queryKey: ["responsable-a-valider"] });
@@ -36,18 +65,31 @@ export function PageValidation() {
       <EnTeteResponsable
         icone={ClipboardCheck}
         titre="Validation des résultats"
-        description="Résultats validés techniquement par le technicien, en attente de votre décision."
+        description="Résultats validés techniquement par le technicien, en attente de votre décision. Les plus récents sont en haut."
+        action={
+          <Actualisation
+            misAJour={resultats.dataUpdatedAt}
+            enCours={resultats.isFetching}
+            onActualiser={() => void resultats.refetch()}
+          />
+        }
       />
+
+      {(resultats.data?.length ?? 0) > 0 && (
+        <div className="mb-4 flex justify-end">
+          <Recherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, une analyse…" />
+        </div>
+      )}
 
       <EtatChargement
         chargement={resultats.isLoading}
         erreur={resultats.isError}
-        vide={!resultats.isLoading && (resultats.data?.length ?? 0) === 0}
-        messageVide="Aucun résultat en attente de validation."
+        vide={!resultats.isLoading && visibles.length === 0}
+        messageVide={recherche.trim() ? "Aucun résultat ne correspond à la recherche." : "Aucun résultat en attente de validation."}
         onReessayer={() => void resultats.refetch()}
       />
 
-      {(resultats.data?.length ?? 0) > 0 && (
+      {visibles.length > 0 && (
         <div className="overflow-x-auto rounded-2xl border border-brand-900/10 bg-card">
           <table className="w-full min-w-[820px] text-left text-sm">
             <thead>
@@ -57,11 +99,12 @@ export function PageValidation() {
                 <th className="px-4 py-3">Résultat</th>
                 <th className="px-4 py-3">Référence</th>
                 <th className="px-4 py-3">Technicien</th>
-                <th className="px-4 py-3 text-right">Action</th>
+                <th className="px-4 py-3">Soumis le</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {resultats.data?.map((analyse) => (
+              {visibles.map((analyse) => (
                 <tr key={analyse.id} className="border-t border-brand-900/10">
                   <td className="px-4 py-3 font-semibold text-ink-900">{analyse.essaiLibelle ?? analyse.code}</td>
                   <td className="px-4 py-3 text-muted-foreground">{analyse.demandeReference}</td>
@@ -73,8 +116,19 @@ export function PageValidation() {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{reference(analyse)}</td>
                   <td className="px-4 py-3">{analyse.technicienNom ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{formaterDate(analyse.derniereDecisionDate, true)}</td>
                   <td className="px-4 py-3 text-right">
-                    <Button size="sm" variant="secondary" onClick={() => setChoisie(analyse)}>Examiner</Button>
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => setChoisie(analyse)}>Examiner</Button>
+                      <Button
+                        size="sm"
+                        loading={validationRapide.isPending && validationRapide.variables?.id === analyse.id}
+                        disabled={validationRapide.isPending}
+                        onClick={() => validationRapide.mutate(analyse)}
+                      >
+                        Valider
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -100,20 +100,21 @@ public class RapportService {
         return rapportRepository.findByDemande_Id(demandeId, pageable).map(this::toDto);
     }
 
-    /** Demandes terminées et leur dernier rapport : à générer, à signer ou libéré. */
+    /**
+     * Demandes terminées et leur dernier rapport (à générer, à signer ou libéré),
+     * la dernière activité en haut. Requêtes groupées : aucune requête par demande.
+     */
     @Transactional(readOnly = true)
     public List<RapportTravailDto> travail() {
-        List<Demande> demandes = new ArrayList<>();
-        for (String statut : StatutDemande.TERMINEE.aliasesPersistés()) {
-            demandes.addAll(demandeRepository.findByStatut(statut, Pageable.unpaged()).getContent());
-        }
+        List<Demande> demandes = demandeRepository.findAvecClientParStatuts(StatutDemande.TERMINEE.aliasesPersistés());
         if (demandes.isEmpty()) {
             return List.of();
         }
-        Map<Long, Rapport> derniers = new HashMap<>();
-        for (Rapport rapport : rapportRepository.findByDemande_IdInOrderByIdDesc(
-                demandes.stream().map(Demande::getId).toList())) {
-            derniers.putIfAbsent(rapport.getDemande().getId(), rapport);
+        List<Long> ids = demandes.stream().map(Demande::getId).toList();
+        Map<Long, Rapport> derniers = derniersRapports(ids);
+        Map<Long, Long> analyses = new HashMap<>();
+        for (Object[] ligne : ligneEssaiRepository.compterParDemande(ids, StatutEssai.NON_REALISABLE)) {
+            analyses.put((Long) ligne[0], (Long) ligne[1]);
         }
         Set<Long> utilisateurs = new HashSet<>();
         demandes.forEach(d -> {
@@ -125,26 +126,67 @@ public class RapportService {
             if (r.getSignataireId() != null) utilisateurs.add(r.getSignataireId());
         });
         Map<Long, String> noms = assembleur.nomsUtilisateurs(utilisateurs);
+        String codeLaboratoire = derniers.values().stream().anyMatch(r -> StringUtils.hasText(r.getClePdf()))
+                ? laboratoireCourant().code() : null;
         return demandes.stream()
-                .sorted(Comparator.comparing(Demande::getDateSoumission, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(d -> {
                     Rapport rapport = derniers.get(d.getId());
+                    String url = rapport != null && StringUtils.hasText(rapport.getClePdf()) && codeLaboratoire != null
+                            ? urlVerification(codeLaboratoire, rapport.getNumero()) : null;
                     return new RapportTravailDto(
                             d.getId(),
                             d.getNumero(),
                             d.getTitre(),
                             nomClient(d, noms),
-                            ligneEssaiRepository.findByDemande_Id(d.getId()).stream()
-                                    .filter(l -> l.getStatut() != StatutEssai.NON_REALISABLE).count(),
+                            analyses.getOrDefault(d.getId(), 0L),
                             rapport == null ? null : rapport.getId(),
                             rapport == null ? null : rapport.getNumero(),
                             rapport == null ? null : enumOuNull(rapport.getStatut()),
                             rapport == null ? null : rapport.getDateEmission(),
                             rapport == null ? null : rapport.getDateSignature(),
                             rapport == null || rapport.getSignataireId() == null ? null : noms.get(rapport.getSignataireId()),
-                            rapport == null ? null : empreinteDepuisCle(rapport.getClePdf()));
+                            rapport == null ? null : empreinteDepuisCle(rapport.getClePdf()),
+                            url);
                 })
+                .sorted(Comparator.comparing(RapportService::derniereActivite,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
+    }
+
+    /** Rapports à générer ou à signer, pour le tableau de suivi (sans charger les détails). */
+    @Transactional(readOnly = true)
+    public long compterAPreparer() {
+        List<Long> ids = demandeRepository.findIdsParStatuts(StatutDemande.TERMINEE.aliasesPersistés());
+        if (ids.isEmpty()) {
+            return 0;
+        }
+        Map<Long, Rapport> derniers = derniersRapports(ids);
+        return ids.stream().filter(id -> {
+            Rapport rapport = derniers.get(id);
+            return rapport == null
+                    || StatutRapport.GENERE.name().equals(rapport.getStatut())
+                    || StatutRapport.BROUILLON.name().equals(rapport.getStatut());
+        }).count();
+    }
+
+    private Map<Long, Rapport> derniersRapports(Collection<Long> demandeIds) {
+        Map<Long, Rapport> derniers = new HashMap<>();
+        for (Rapport rapport : rapportRepository.findByDemande_IdInOrderByIdDesc(demandeIds)) {
+            derniers.putIfAbsent(rapport.getDemande().getId(), rapport);
+        }
+        return derniers;
+    }
+
+    private static Instant derniereActivite(RapportTravailDto dto) {
+        if (dto.dateSignature() != null) return dto.dateSignature();
+        if (dto.dateEmission() != null) return dto.dateEmission();
+        return null;
+    }
+
+    private String urlVerification(String codeLaboratoire, String numero) {
+        return frontendUrl.replaceAll("/$", "") + "/verifier-rapport?laboratoire="
+                + java.net.URLEncoder.encode(codeLaboratoire, java.nio.charset.StandardCharsets.UTF_8)
+                + "&numero=" + java.net.URLEncoder.encode(numero, java.nio.charset.StandardCharsets.UTF_8);
     }
 
     /**
@@ -206,9 +248,7 @@ public class RapportService {
         Instant maintenant = Instant.now();
         String schema = TenantContext.getCurrentTenant() == null ? "laboratoire" : TenantContext.getCurrentTenant();
         LaboratoireInfo labo = laboratoireCourant();
-        String urlVerification = frontendUrl.replaceAll("/$", "") + "/verifier-rapport?laboratoire="
-                + java.net.URLEncoder.encode(labo.code(), java.nio.charset.StandardCharsets.UTF_8)
-                + "&numero=" + java.net.URLEncoder.encode(rapport.getNumero(), java.nio.charset.StandardCharsets.UTF_8);
+        String urlVerification = urlVerification(labo.code(), rapport.getNumero());
         byte[] brouillon = rapportPdfService.generer(
                 donnees(rapport, labo, acteur.getNomComplet(), maintenant, false, urlVerification));
         com.backend.modules.rapport.signature.SignatureNumeriqueService.PdfSigne signe = signatureNumeriqueService.signer(
@@ -253,7 +293,8 @@ public class RapportService {
                 clientId == null ? List.of(acteur.getId()) : List.of(acteur.getId(), clientId));
         return new RapportTravailDto(demande.getId(), demande.getNumero(), demande.getTitre(), nomClient(demande, noms),
                 rapportLigneRepository.findByRapport_Id(rapport.getId()).size(), rapport.getId(), numero,
-                StatutRapport.ENVOYE, rapport.getDateEmission(), maintenant, acteur.getNomComplet(), empreinte);
+                StatutRapport.ENVOYE, rapport.getDateEmission(), maintenant, acteur.getNomComplet(), empreinte,
+                urlVerification);
     }
 
     /**
@@ -332,9 +373,9 @@ public class RapportService {
         List<LigneEssai> lignes = ligneEssaiRepository.findByDemande_Id(demande.getId()).stream()
                 .filter(l -> l.getStatut() != StatutEssai.NON_REALISABLE)
                 .toList();
+        Map<Long, String> etats = assembleur.etats(lignes.stream().map(LigneEssai::getId).toList());
         List<LigneEssai> nonValidees = lignes.stream()
-                .filter(l -> !LigneTravailAssembleur.VALIDEE.equals(LigneTravailAssembleur.etatValidation(
-                        validationRepository.findByLigneEssai_IdOrderByDateValidationAscIdAsc(l.getId()))))
+                .filter(l -> !LigneTravailAssembleur.VALIDEE.equals(etats.get(l.getId())))
                 .toList();
         if (lignes.isEmpty() || !nonValidees.isEmpty()) {
             throw new BusinessRuleException("RESULTATS_NON_VALIDES",
@@ -382,13 +423,12 @@ public class RapportService {
                 .sorted(Comparator.comparing(LigneEssai::getId))
                 .toList();
         Map<Long, Validation> decisions = new HashMap<>();
-        for (LigneEssai ligne : lignes) {
-            validationRepository.findByLigneEssai_IdOrderByDateValidationAscIdAsc(ligne.getId()).stream()
-                    .filter(v -> v.getNiveau() != null && v.getNiveau() >= 2
-                            && StatutValidation.VALIDEE.name().equals(v.getDecision()))
-                    .reduce((a, b) -> b)
-                    .ifPresent(v -> decisions.put(ligne.getId(), v));
-        }
+        assembleur.historiques(lignes.stream().map(LigneEssai::getId).toList()).forEach((ligneId, historique) ->
+                historique.stream()
+                        .filter(v -> v.getNiveau() != null && v.getNiveau() >= 2
+                                && StatutValidation.VALIDEE.name().equals(v.getDecision()))
+                        .reduce((a, b) -> b)
+                        .ifPresent(v -> decisions.put(ligneId, v)));
         Set<Long> utilisateurs = decisions.values().stream().map(Validation::getValidateurId).collect(Collectors.toSet());
         if (demande.getClient() != null && demande.getClient().getUtilisateurId() != null) {
             utilisateurs.add(demande.getClient().getUtilisateurId());
