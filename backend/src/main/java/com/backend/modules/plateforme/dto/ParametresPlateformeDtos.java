@@ -4,7 +4,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -52,17 +51,5 @@ public final class ParametresPlateformeDtos {
     }
 
     public record ModifierTypeLaboratoire(boolean actif, @Min(0) @Max(999) int ordre) {
-    }
-
-    public record Domaine(Long id, String code, String libelle, boolean actif, int ordre) {
-    }
-
-    public record EnregistrerDomaine(
-            @Pattern(regexp = "^[A-Z0-9_]{2,50}$",
-                    message = "Le code doit contenir 2 à 50 lettres majuscules, chiffres ou _")
-            String code,
-            @NotBlank(message = "Le libellé est obligatoire") @Size(max = 100) String libelle,
-            boolean actif,
-            @Min(0) @Max(999) int ordre) {
     }
 }

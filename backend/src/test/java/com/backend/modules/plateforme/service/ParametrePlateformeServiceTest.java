@@ -5,7 +5,6 @@ import com.backend.common.exception.BusinessRuleException;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Securite;
 import com.backend.modules.plateforme.entity.ParametrePlateforme;
 import com.backend.modules.plateforme.repository.ParametrePlateformeRepository;
-import com.backend.modules.plateforme.repository.ReferentielDomaineRepository;
 import com.backend.modules.plateforme.repository.ReferentielTypeLaboratoireRepository;
 import com.backend.modules.plateforme.repository.TypeDocumentIntegrationRepository;
 import com.backend.modules.utilisateur.entity.RoleUtilisateur;
@@ -40,8 +39,6 @@ class ParametrePlateformeServiceTest {
     @Mock
     private ReferentielTypeLaboratoireRepository typeLaboratoireRepository;
     @Mock
-    private ReferentielDomaineRepository domaineRepository;
-    @Mock
     private JournalAuditService journalAuditService;
 
     private ParametrePlateformeService service;
@@ -50,7 +47,7 @@ class ParametrePlateformeServiceTest {
     @BeforeEach
     void preparer() {
         service = new ParametrePlateformeService(parametreRepository, typeDocumentRepository,
-                typeLaboratoireRepository, domaineRepository, journalAuditService, new ObjectMapper());
+                typeLaboratoireRepository, journalAuditService, new ObjectMapper());
         lenient().when(parametreRepository.findAll()).thenAnswer(invocation -> new ArrayList<>(base.values()));
         lenient().when(parametreRepository.findById(anyString()))
                 .thenAnswer(invocation -> Optional.ofNullable(base.get(invocation.<String>getArgument(0))));

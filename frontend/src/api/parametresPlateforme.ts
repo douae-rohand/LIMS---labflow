@@ -27,25 +27,10 @@ export interface TypeLaboratoireReference {
   ordre: number;
 }
 
-export interface DomaineReference {
-  id: number;
-  code: string;
-  libelle: string;
-  actif: boolean;
-  ordre: number;
-}
-
 export interface EnregistrerTypeDocument {
   libelle: string;
   raison?: string;
   obligatoire: boolean;
-  actif: boolean;
-  ordre: number;
-}
-
-export interface EnregistrerDomaine {
-  code?: string;
-  libelle: string;
   actif: boolean;
   ordre: number;
 }
@@ -111,20 +96,5 @@ export async function modifierTypeLaboratoire(
     actif,
     ordre,
   });
-  return res.data;
-}
-
-export async function listerDomaines(): Promise<DomaineReference[]> {
-  const res = await apiClient.get<ApiResponse<DomaineReference[]>>(`${BASE}/domaines`);
-  return res.data;
-}
-
-export async function creerDomaine(valeurs: EnregistrerDomaine): Promise<DomaineReference> {
-  const res = await apiClient.post<ApiResponse<DomaineReference>>(`${BASE}/domaines`, valeurs);
-  return res.data;
-}
-
-export async function modifierDomaine(id: number, valeurs: EnregistrerDomaine): Promise<DomaineReference> {
-  const res = await apiClient.put<ApiResponse<DomaineReference>>(`${BASE}/domaines/${id}`, valeurs);
   return res.data;
 }
