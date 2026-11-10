@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
+import { FlechesDefilement } from "@/components/layout/FlechesDefilement";
 
 function NotFoundComponent() {
   return (
@@ -83,6 +84,7 @@ function RootComponent() {
       {/* HeadContent injecte les <meta> / <link> déclarés dans head() de chaque route */}
       <HeadContent />
       <Outlet />
+      <FlechesDefilement />
       <Toaster richColors position="top-right" />
     </QueryClientProvider>
   );
