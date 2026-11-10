@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Download, Eye, FilePlus2, FileSignature, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import { Badge, Button } from "@/components/lab";
+import { Badge, Button, Input, Label } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import {
   genererRapport,
@@ -24,6 +24,7 @@ function etape(rapport: RapportTravail): "a-generer" | "a-signer" | "libere" {
 export function PageRapports() {
   const queryClient = useQueryClient();
   const [aSigner, setASigner] = useState<RapportTravail | null>(null);
+  const [motDePasse, setMotDePasse] = useState("");
   const rapports = useQuery({ queryKey: ["responsable-rapports"], queryFn: listerRapportsTravail });
 
   const actualiser = async () => {
@@ -41,13 +42,17 @@ export function PageRapports() {
   });
 
   const signature = useMutation({
-    mutationFn: (rapportId: number) => signerRapport(rapportId),
+    mutationFn: (rapportId: number) => signerRapport(rapportId, motDePasse),
     onSuccess: async () => {
       toast.success("Rapport signé et libéré. Le client a été prévenu par e-mail.");
       setASigner(null);
+      setMotDePasse("");
       await actualiser();
     },
-    onError: (erreur) => toast.error(messageErreur(erreur, "La signature a échoué.")),
+    onError: (erreur) => {
+      setMotDePasse("");
+      toast.error(messageErreur(erreur, "La signature a échoué."));
+    },
   });
 
   const ouvrir = (rapportId: number, signe: boolean) =>
@@ -110,7 +115,7 @@ export function PageRapports() {
                     <Button size="sm" variant="secondary" icon={<Eye className="size-4" aria-hidden="true" />} iconPosition="left" onClick={() => ouvrir(rapport.rapportId as number, false)}>
                       Aperçu
                     </Button>
-                    <Button size="sm" icon={<FileSignature className="size-4" aria-hidden="true" />} iconPosition="left" onClick={() => setASigner(rapport)}>
+                    <Button size="sm" icon={<FileSignature className="size-4" aria-hidden="true" />} iconPosition="left" onClick={() => { setMotDePasse(""); setASigner(rapport); }}>
                       Signer et libérer
                     </Button>
                   </>
@@ -141,18 +146,33 @@ export function PageRapports() {
       <Dialogue
         ouvert={aSigner != null}
         titre="Signer et libérer ce rapport ?"
-        description="Le PDF définitif est produit à votre nom avec la date et une empreinte SHA-256, puis rendu visible au client, qui est prévenu par e-mail. Un rapport signé ne peut plus être modifié."
+        description="Le PDF est signé numériquement (PAdES) au nom du laboratoire, horodaté par une autorité indépendante et muni d'un QR code de vérification. Il devient visible au client, prévenu par e-mail. Un rapport signé ne peut plus être modifié."
         onFermer={() => setASigner(null)}
       >
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setASigner(null)}>Annuler</Button>
-          <Button
-            loading={signature.isPending}
-            onClick={() => aSigner?.rapportId && signature.mutate(aSigner.rapportId)}
-          >
-            Signer et libérer
-          </Button>
-        </div>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (aSigner?.rapportId && motDePasse) signature.mutate(aSigner.rapportId);
+          }}
+        >
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="mot-de-passe-signature">Confirmez avec votre mot de passe</Label>
+            <Input
+              id="mot-de-passe-signature"
+              type="password"
+              autoComplete="current-password"
+              value={motDePasse}
+              onChange={(event) => setMotDePasse(event.target.value)}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setASigner(null)}>Annuler</Button>
+            <Button type="submit" loading={signature.isPending} disabled={!motDePasse}>
+              Signer et libérer
+            </Button>
+          </div>
+        </form>
       </Dialogue>
     </Container>
   );

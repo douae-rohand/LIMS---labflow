@@ -77,6 +77,9 @@ public class RapportService {
     private final UtilisateurRepository utilisateurRepository;
     private final JournalAuditService journalAuditService;
     private final EmailService emailService;
+    private final com.backend.modules.rapport.signature.SignatureNumeriqueService signatureNumeriqueService;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private final com.backend.common.tenant.TenantResolver tenantResolver;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -185,7 +188,7 @@ public class RapportService {
     @Transactional(readOnly = true)
     public byte[] apercu(Long rapportId) {
         Rapport rapport = charger(rapportId);
-        return rapportPdfService.generer(donnees(rapport, null, null, true));
+        return rapportPdfService.generer(donnees(rapport, laboratoireCourant(), null, null, true, null));
     }
 
     /**
@@ -193,16 +196,25 @@ public class RapportService {
      * dans le nom de fichier, statut ENVOYE, visible du client, qui est prévenu par e-mail.
      */
     @Transactional
-    public RapportTravailDto signerEtLiberer(Long rapportId) {
+    public RapportTravailDto signerEtLiberer(Long rapportId, String motDePasse) {
         UtilisateurPrincipal acteur = SecurityUtils.principalCourant();
+        confirmerIdentite(acteur, motDePasse);
         Rapport rapport = charger(rapportId);
         if (!StatutRapport.GENERE.name().equals(rapport.getStatut())) {
             throw new BusinessRuleException("RAPPORT_DEJA_SIGNE", "Ce rapport est déjà signé.");
         }
         Instant maintenant = Instant.now();
-        byte[] pdf = rapportPdfService.generer(donnees(rapport, acteur.getNomComplet(), maintenant, false));
-        String empreinte = sha256(pdf);
         String schema = TenantContext.getCurrentTenant() == null ? "laboratoire" : TenantContext.getCurrentTenant();
+        LaboratoireInfo labo = laboratoireCourant();
+        String urlVerification = frontendUrl.replaceAll("/$", "") + "/verifier-rapport?laboratoire="
+                + java.net.URLEncoder.encode(labo.code(), java.nio.charset.StandardCharsets.UTF_8)
+                + "&numero=" + java.net.URLEncoder.encode(rapport.getNumero(), java.nio.charset.StandardCharsets.UTF_8);
+        byte[] brouillon = rapportPdfService.generer(
+                donnees(rapport, labo, acteur.getNomComplet(), maintenant, false, urlVerification));
+        com.backend.modules.rapport.signature.SignatureNumeriqueService.PdfSigne signe = signatureNumeriqueService.signer(
+                brouillon, schema, labo.pdf().nom(), acteur.getNomComplet(), labo.ville(), maintenant);
+        byte[] pdf = signe.contenu();
+        String empreinte = sha256(pdf);
         String cle = "rapports/" + schema + "/" + rapport.getNumero() + "_" + empreinte + ".pdf";
         try (InputStream contenu = new ByteArrayInputStream(pdf)) {
             stockageFichierService.televerser(cle, contenu, pdf.length, "application/pdf");
@@ -216,7 +228,8 @@ public class RapportService {
         rapport.setDiffuse(true);
         rapportRepository.save(rapport);
         journalAuditService.enregistrer("SIGNER_LIBERER_RAPPORT", "Rapport", rapport.getId(), acteur.getEmail(),
-                "{\"statut\":\"GENERE\"}", "{\"statut\":\"ENVOYE\",\"empreinte\":\"" + empreinte + "\"}",
+                "{\"statut\":\"GENERE\"}", "{\"statut\":\"ENVOYE\",\"empreinte\":\"" + empreinte
+                        + "\",\"horodate\":" + (signe.horodatage() != null) + "}",
                 null, acteur.getLaboratoireId());
 
         Demande demande = rapport.getDemande();
@@ -267,10 +280,50 @@ public class RapportService {
                 : assembleur.nomsUtilisateurs(List.of(rapport.getSignataireId())).get(rapport.getSignataireId());
         Instant dateSignature = rapport.getDateSignature() != null ? rapport.getDateSignature() : rapport.getDateEmission();
         return new FichierRapport(nom, rapportPdfService.generer(
-                donnees(rapport, signataire, dateSignature == null ? Instant.now() : dateSignature, false)));
+                donnees(rapport, laboratoireCourant(), signataire,
+                        dateSignature == null ? Instant.now() : dateSignature, false, null)));
     }
 
     public record FichierRapport(String nom, byte[] contenu) {
+    }
+
+    /** Ce que la page publique de vérification affiche : aucune donnée de patient ni résultat. */
+    public record VerificationPublique(
+            String laboratoire,
+            String numero,
+            String statut,
+            Instant dateSignature,
+            String signataire,
+            /** Renseignés seulement quand un fichier a été déposé. */
+            Boolean fichierAuthentique,
+            Boolean signatureValide,
+            Boolean documentComplet,
+            Instant horodatage,
+            String certificat) {
+    }
+
+    /** Statut public d'un rapport, à partir du QR code (code du laboratoire + numéro). */
+    public VerificationPublique verifierPublic(String codeLaboratoire, String numero, byte[] fichier) {
+        com.backend.modules.plateforme.entity.Laboratoire labo = tenantResolver.exigerActif(codeLaboratoire);
+        return tenantExecutor.inTenant(labo.getNomSchema(), () -> {
+            Rapport rapport = rapportRepository.findByNumero(numero)
+                    .filter(r -> Boolean.TRUE.equals(r.getDiffuse()))
+                    .orElseThrow(() -> new BusinessRuleException("RAPPORT_INCONNU",
+                            "Aucun rapport signé ne porte ce numéro dans ce laboratoire."));
+            String signataire = rapport.getSignataireId() == null ? null
+                    : assembleur.nomsUtilisateurs(List.of(rapport.getSignataireId())).get(rapport.getSignataireId());
+            if (fichier == null) {
+                return new VerificationPublique(labo.getRaisonSociale(), rapport.getNumero(), rapport.getStatut(),
+                        rapport.getDateSignature(), signataire, null, null, null, null, null);
+            }
+            String attendue = empreinteDepuisCle(rapport.getClePdf());
+            boolean authentique = attendue != null && attendue.equals(sha256(fichier));
+            var verification = signatureNumeriqueService.verifier(fichier);
+            return new VerificationPublique(labo.getRaisonSociale(), rapport.getNumero(), rapport.getStatut(),
+                    rapport.getDateSignature(), signataire, authentique,
+                    verification.signaturePresente() && verification.signatureValide(),
+                    verification.documentComplet(), verification.horodatage(), verification.certificat());
+        });
     }
 
     // -------------------------------------------------------------------------
@@ -290,17 +343,39 @@ public class RapportService {
         return lignes;
     }
 
-    private DonneesRapport donnees(Rapport rapport, String signataire, Instant dateSignature, boolean projet) {
-        Demande demande = rapport.getDemande();
+    private record LaboratoireInfo(RapportPdfService.Laboratoire pdf, String code, String ville) {
+    }
+
+    private LaboratoireInfo laboratoireCourant() {
         UtilisateurPrincipal acteur = SecurityUtils.principalCourant();
-        RapportPdfService.Laboratoire labo = tenantExecutor.inCentral(() -> laboratoireRepository
+        return tenantExecutor.inCentral(() -> laboratoireRepository
                 .findById(acteur.getLaboratoireId())
-                .map(l -> new RapportPdfService.Laboratoire(
+                .map(l -> new LaboratoireInfo(new RapportPdfService.Laboratoire(
                         l.getRaisonSociale(),
                         joindre(", ", l.getAdresse(), joindre(" ", l.getCodePostal(), l.getVille())),
                         joindre(" · ", l.getTelephone(), l.getEmail()),
-                        l.getIce()))
-                .orElse(new RapportPdfService.Laboratoire("Laboratoire", null, null, null)));
+                        l.getIce()), l.getCode(), l.getVille()))
+                .orElse(new LaboratoireInfo(new RapportPdfService.Laboratoire("Laboratoire", null, null, null),
+                        "laboratoire", null)));
+    }
+
+    /** La signature exige le mot de passe du responsable : preuve qu'il signe lui-même. */
+    private void confirmerIdentite(UtilisateurPrincipal acteur, String motDePasse) {
+        if (!StringUtils.hasText(motDePasse)) {
+            throw new BusinessRuleException("CONFIRMATION_REQUISE", "Saisissez votre mot de passe pour signer.");
+        }
+        String hash = tenantExecutor.inCentral(() -> utilisateurRepository.findById(acteur.getId())
+                .map(Utilisateur::getMotDePasseHash).orElse(null));
+        if (hash == null || !passwordEncoder.matches(motDePasse, hash)) {
+            log.warn("Signature refusée : mot de passe incorrect pour userId={}", acteur.getId());
+            throw new BusinessRuleException("CONFIRMATION_INCORRECTE", "Mot de passe incorrect : rapport non signé.");
+        }
+    }
+
+    private DonneesRapport donnees(Rapport rapport, LaboratoireInfo laboratoire, String signataire,
+                                   Instant dateSignature, boolean projet, String urlVerification) {
+        Demande demande = rapport.getDemande();
+        RapportPdfService.Laboratoire labo = laboratoire.pdf();
 
         List<LigneEssai> lignes = rapportLigneRepository.findByRapport_Id(rapport.getId()).stream()
                 .map(RapportLigne::getLigneEssai)
@@ -334,7 +409,7 @@ public class RapportService {
         return new DonneesRapport(labo, rapport.getNumero(),
                 rapport.getVersion() == null ? 1 : rapport.getVersion(),
                 demande.getNumero(), demande.getTitre(), nomClient(demande, noms),
-                rapport.getDateEmission(), lignesRapport, signataire, dateSignature, projet);
+                rapport.getDateEmission(), lignesRapport, signataire, dateSignature, projet, urlVerification);
     }
 
     private static String reference(BigDecimal min, BigDecimal max) {

@@ -21,6 +21,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as MotDePasseOublieRouteImport } from './routes/mot-de-passe-oublie'
 import { Route as ReinitialiserMotDePasseRouteImport } from './routes/reinitialiser-mot-de-passe'
 import { Route as UiKitRouteImport } from './routes/ui-kit'
+import { Route as VerifierRapportRouteImport } from './routes/verifier-rapport'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppAuditRouteImport } from './routes/app/audit'
 import { Route as AppCarteRouteImport } from './routes/app/carte'
@@ -132,6 +133,11 @@ const ReinitialiserMotDePasseRoute = ReinitialiserMotDePasseRouteImport.update({
 const UiKitRoute = UiKitRouteImport.update({
   id: '/ui-kit',
   path: '/ui-kit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifierRapportRoute = VerifierRapportRouteImport.update({
+  id: '/verifier-rapport',
+  path: '/verifier-rapport',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -414,6 +420,7 @@ export interface FileRoutesByFullPath {
   '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
+  '/verifier-rapport': typeof VerifierRapportRoute
   '/app/audit': typeof AppAuditRoute
   '/app/carte': typeof AppCarteRoute
   '/app/catalogue': typeof AppCatalogueRouteWithChildren
@@ -479,6 +486,7 @@ export interface FileRoutesByTo {
   '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
+  '/verifier-rapport': typeof VerifierRapportRoute
   '/app/audit': typeof AppAuditRoute
   '/app/carte': typeof AppCarteRoute
   '/app/exports': typeof AppExportsRoute
@@ -535,6 +543,7 @@ export interface FileRoutesById {
   '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
+  '/verifier-rapport': typeof VerifierRapportRoute
   '/app/audit': typeof AppAuditRoute
   '/app/carte': typeof AppCarteRoute
   '/app/catalogue': typeof AppCatalogueRouteWithChildren
@@ -603,6 +612,7 @@ export interface FileRouteTypes {
     | '/mot-de-passe-oublie'
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
+    | '/verifier-rapport'
     | '/app/audit'
     | '/app/carte'
     | '/app/catalogue'
@@ -668,6 +678,7 @@ export interface FileRouteTypes {
     | '/mot-de-passe-oublie'
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
+    | '/verifier-rapport'
     | '/app/audit'
     | '/app/carte'
     | '/app/exports'
@@ -723,6 +734,7 @@ export interface FileRouteTypes {
     | '/mot-de-passe-oublie'
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
+    | '/verifier-rapport'
     | '/app/audit'
     | '/app/carte'
     | '/app/catalogue'
@@ -790,6 +802,7 @@ export interface RootRouteChildren {
   MotDePasseOublieRoute: typeof MotDePasseOublieRoute
   ReinitialiserMotDePasseRoute: typeof ReinitialiserMotDePasseRoute
   UiKitRoute: typeof UiKitRoute
+  VerifierRapportRoute: typeof VerifierRapportRoute
   IntegrationComplementsRoute: typeof IntegrationComplementsRoute
   LaboratoiresIdRoute: typeof LaboratoiresIdRoute
   LaboratoiresIndexRoute: typeof LaboratoiresIndexRoute
@@ -879,6 +892,13 @@ declare module '@tanstack/react-router' {
       path: '/ui-kit'
       fullPath: '/ui-kit'
       preLoaderRoute: typeof UiKitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verifier-rapport': {
+      id: '/verifier-rapport'
+      path: '/verifier-rapport'
+      fullPath: '/verifier-rapport'
+      preLoaderRoute: typeof VerifierRapportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/': {
@@ -1480,6 +1500,7 @@ const rootRouteChildren: RootRouteChildren = {
   MotDePasseOublieRoute: MotDePasseOublieRoute,
   ReinitialiserMotDePasseRoute: ReinitialiserMotDePasseRoute,
   UiKitRoute: UiKitRoute,
+  VerifierRapportRoute: VerifierRapportRoute,
   IntegrationComplementsRoute: IntegrationComplementsRoute,
   LaboratoiresIdRoute: LaboratoiresIdRoute,
   LaboratoiresIndexRoute: LaboratoiresIndexRoute,

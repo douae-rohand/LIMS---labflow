@@ -7,6 +7,7 @@ import com.lowagie.text.DocumentException;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
 import com.lowagie.text.FontFactory;
+import com.lowagie.text.Image;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
@@ -43,7 +44,7 @@ public class RapportPdfService {
     public record DonneesRapport(Laboratoire laboratoire, String numero, int version, String demandeReference,
                                  String demandeTitre, String client, Instant dateEmission,
                                  List<LigneRapport> lignes, String signataire, Instant dateSignature,
-                                 boolean projet) {
+                                 boolean projet, String urlVerification) {
     }
 
     public byte[] generer(DonneesRapport donnees) {
@@ -114,11 +115,56 @@ public class RapportPdfService {
                 signature.add(new Phrase("le " + DATE.format(donnees.dateSignature())
                         + ". Les résultats ont été validés en deux niveaux (technique puis responsable).", discret));
                 document.add(signature);
+                if (donnees.urlVerification() != null) {
+                    document.add(Chunk.NEWLINE);
+                    document.add(blocVerification(donnees.urlVerification(), gras, discret));
+                }
             }
             document.close();
             return sortie.toByteArray();
         } catch (IOException | DocumentException ex) {
             throw new BusinessRuleException("RAPPORT_PDF_ECHOUE", "Le PDF du rapport n'a pas pu être généré.");
+        }
+    }
+
+    /** QR code et adresse permettant à quiconque de vérifier l'authenticité du rapport. */
+    private static PdfPTable blocVerification(String url, Font gras, Font discret)
+            throws IOException, DocumentException {
+        PdfPTable bloc = new PdfPTable(new float[]{1f, 4f});
+        bloc.setWidthPercentage(100);
+        Image qr = Image.getInstance(qrCode(url), null);
+        qr.scaleToFit(80, 80);
+        PdfPCell celluleQr = new PdfPCell(qr, false);
+        celluleQr.setBorder(0);
+        celluleQr.setPadding(2);
+        Paragraph texte = new Paragraph();
+        texte.add(new Phrase("Vérifier l'authenticité de ce rapport\n", gras));
+        texte.add(new Phrase("Ce document est signé électroniquement (PAdES). Scannez le QR code ou ouvrez l'adresse "
+                + "ci-dessous, puis déposez ce PDF : toute modification après signature sera détectée.\n", discret));
+        texte.add(new Phrase(url, discret));
+        PdfPCell celluleTexte = new PdfPCell(texte);
+        celluleTexte.setBorder(0);
+        celluleTexte.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        bloc.addCell(celluleQr);
+        bloc.addCell(celluleTexte);
+        return bloc;
+    }
+
+    private static java.awt.image.BufferedImage qrCode(String contenu) {
+        try {
+            com.google.zxing.common.BitMatrix matrice = new com.google.zxing.qrcode.QRCodeWriter()
+                    .encode(contenu, com.google.zxing.BarcodeFormat.QR_CODE, 240, 240,
+                            java.util.Map.of(com.google.zxing.EncodeHintType.MARGIN, 1));
+            java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(
+                    matrice.getWidth(), matrice.getHeight(), java.awt.image.BufferedImage.TYPE_INT_RGB);
+            for (int x = 0; x < matrice.getWidth(); x++) {
+                for (int y = 0; y < matrice.getHeight(); y++) {
+                    image.setRGB(x, y, matrice.get(x, y) ? 0x000000 : 0xFFFFFF);
+                }
+            }
+            return image;
+        } catch (com.google.zxing.WriterException ex) {
+            throw new BusinessRuleException("QR_CODE_ECHOUE", "Le QR code de vérification n'a pas pu être généré.");
         }
     }
 

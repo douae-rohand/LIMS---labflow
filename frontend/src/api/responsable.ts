@@ -156,8 +156,42 @@ export async function genererRapport(demandeId: number): Promise<void> {
   await apiClient.post<ApiResponse<unknown>>(`/rapports/generer/${demandeId}`);
 }
 
-export async function signerRapport(rapportId: number): Promise<RapportTravail> {
-  const res = await apiClient.post<ApiResponse<RapportTravail>>(`/rapports/${rapportId}/signer`);
+/** Signe et libère le rapport ; le mot de passe confirme l'identité du signataire. */
+export async function signerRapport(rapportId: number, motDePasse: string): Promise<RapportTravail> {
+  const res = await apiClient.post<ApiResponse<RapportTravail>>(`/rapports/${rapportId}/signer`, { motDePasse });
+  return res.data;
+}
+
+// ------------------------------------------------------------- vérification publique
+export interface VerificationRapport {
+  laboratoire: string;
+  numero: string;
+  statut: string;
+  dateSignature?: string | null;
+  signataire?: string | null;
+  fichierAuthentique?: boolean | null;
+  signatureValide?: boolean | null;
+  documentComplet?: boolean | null;
+  horodatage?: string | null;
+  certificat?: string | null;
+}
+
+export async function statutRapportPublic(laboratoire: string, numero: string): Promise<VerificationRapport> {
+  const params = new URLSearchParams({ laboratoire, numero });
+  const res = await apiClient.get<ApiResponse<VerificationRapport>>(`/public/rapports/verification?${params.toString()}`);
+  return res.data;
+}
+
+export async function verifierFichierRapport(
+  laboratoire: string,
+  numero: string,
+  fichier: File,
+): Promise<VerificationRapport> {
+  const formulaire = new FormData();
+  formulaire.append("laboratoire", laboratoire);
+  formulaire.append("numero", numero);
+  formulaire.append("fichier", fichier);
+  const res = await apiClient.upload<ApiResponse<VerificationRapport>>("/public/rapports/verification", formulaire);
   return res.data;
 }
 

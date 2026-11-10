@@ -103,7 +103,9 @@ public class SecurityConfig {
                 // Lien envoyé au demandeur pour compléter son dossier (jeton à usage unique)
                 .requestMatchers(HttpMethod.POST,
                         "/api/public/integration/complements/consulter",
-                        "/api/public/integration/complements").permitAll()
+                        "/api/public/integration/complements",
+                        // Vérification publique d'un rapport signé (QR code du PDF)
+                        "/api/public/rapports/verification").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/laboratoires", "/api/laboratoires/**").authenticated()
                 .requestMatchers("/api/client/**").hasRole("CLIENT")
                 // Super-admin uniquement pour tous les autres endpoints plateforme

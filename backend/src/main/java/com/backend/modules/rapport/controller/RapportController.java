@@ -61,8 +61,14 @@ public class RapportController {
     @PostMapping("/{id}/signer")
     @PreAuthorize("hasRole('RESPONSABLE') and hasAuthority('PERM_RAPPORTS_GERER')")
     @Operation(summary = "Signer et libérer le rapport (visible du client)")
-    public ResponseEntity<ApiResponse<RapportTravailDto>> signer(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success("Rapport signé et libéré", rapportService.signerEtLiberer(id)));
+    public ResponseEntity<ApiResponse<RapportTravailDto>> signer(@PathVariable Long id,
+                                                               @RequestBody(required = false) SignerRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Rapport signé et libéré",
+                rapportService.signerEtLiberer(id, request == null ? null : request.motDePasse())));
+    }
+
+    /** Confirmation de l'identité du signataire. */
+    public record SignerRequest(String motDePasse) {
     }
 
     @GetMapping("/{id}/pdf")
