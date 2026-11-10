@@ -49,7 +49,8 @@ export function TableauBordAccueil() {
             <Indicateur icone={AlertTriangle} libelle="Non conformes aujourd'hui" valeur={donnees.nonConformesAujourdhui} alerte />
           </div>
 
-          <Card className="flex flex-wrap items-center gap-4 p-4">
+          <Link to="/app/caisse" className="rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900">
+          <Card className="flex flex-wrap items-center gap-4 p-4 transition-colors hover:bg-surface-alt">
             <span className="flex size-10 items-center justify-center rounded-xl bg-brand-900/10 text-brand-900">
               <Receipt className="size-5" aria-hidden="true" />
             </span>
@@ -60,6 +61,7 @@ export function TableauBordAccueil() {
               </p>
             </div>
           </Card>
+          </Link>
 
           <div className="grid gap-6 xl:grid-cols-2">
             <section>

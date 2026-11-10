@@ -11,6 +11,7 @@ import {
   Inbox,
   LayoutDashboard,
   PackageCheck,
+  Receipt,
   Settings,
   Shield,
   Users,
@@ -166,6 +167,12 @@ const NAV_ITEMS_ACCUEIL: EntreeAdminNavigation[] = [
     label: "Réception",
     icon: PackageCheck,
     permission: "ECHANTILLONS_GERER",
+  },
+  {
+    to: "/app/caisse" as const,
+    label: "Caisse",
+    icon: Receipt,
+    permission: "FACTURATION_PAYER",
   },
 ];
 

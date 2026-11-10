@@ -23,6 +23,7 @@ import { Route as ReinitialiserMotDePasseRouteImport } from './routes/reinitiali
 import { Route as UiKitRouteImport } from './routes/ui-kit'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppAuditRouteImport } from './routes/app/audit'
+import { Route as AppCaisseRouteImport } from './routes/app/caisse'
 import { Route as AppCarteRouteImport } from './routes/app/carte'
 import { Route as AppCatalogueRouteImport } from './routes/app/catalogue'
 import { Route as AppDemandesRouteImport } from './routes/app/demandes'
@@ -148,6 +149,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppAuditRoute = AppAuditRouteImport.update({
   id: '/audit',
   path: '/audit',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCaisseRoute = AppCaisseRouteImport.update({
+  id: '/caisse',
+  path: '/caisse',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCarteRoute = AppCarteRouteImport.update({
@@ -451,6 +457,7 @@ export interface FileRoutesByFullPath {
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
   '/app/audit': typeof AppAuditRoute
+  '/app/caisse': typeof AppCaisseRoute
   '/app/carte': typeof AppCarteRoute
   '/app/catalogue': typeof AppCatalogueRouteWithChildren
   '/app/demandes': typeof AppDemandesRouteWithChildren
@@ -522,6 +529,7 @@ export interface FileRoutesByTo {
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
   '/app/audit': typeof AppAuditRoute
+  '/app/caisse': typeof AppCaisseRoute
   '/app/carte': typeof AppCarteRoute
   '/app/exports': typeof AppExportsRoute
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
@@ -583,6 +591,7 @@ export interface FileRoutesById {
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/ui-kit': typeof UiKitRoute
   '/app/audit': typeof AppAuditRoute
+  '/app/caisse': typeof AppCaisseRoute
   '/app/carte': typeof AppCarteRoute
   '/app/catalogue': typeof AppCatalogueRouteWithChildren
   '/app/demandes': typeof AppDemandesRouteWithChildren
@@ -657,6 +666,7 @@ export interface FileRouteTypes {
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
     | '/app/audit'
+    | '/app/caisse'
     | '/app/carte'
     | '/app/catalogue'
     | '/app/demandes'
@@ -728,6 +738,7 @@ export interface FileRouteTypes {
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
     | '/app/audit'
+    | '/app/caisse'
     | '/app/carte'
     | '/app/exports'
     | '/app/gestion-laboratoires'
@@ -788,6 +799,7 @@ export interface FileRouteTypes {
     | '/reinitialiser-mot-de-passe'
     | '/ui-kit'
     | '/app/audit'
+    | '/app/caisse'
     | '/app/carte'
     | '/app/catalogue'
     | '/app/demandes'
@@ -963,6 +975,13 @@ declare module '@tanstack/react-router' {
       path: '/audit'
       fullPath: '/app/audit'
       preLoaderRoute: typeof AppAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/caisse': {
+      id: '/app/caisse'
+      path: '/caisse'
+      fullPath: '/app/caisse'
+      preLoaderRoute: typeof AppCaisseRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/carte': {
@@ -1527,6 +1546,7 @@ const AppStockRouteWithChildren = AppStockRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAuditRoute: typeof AppAuditRoute
+  AppCaisseRoute: typeof AppCaisseRoute
   AppCarteRoute: typeof AppCarteRoute
   AppCatalogueRoute: typeof AppCatalogueRouteWithChildren
   AppDemandesRoute: typeof AppDemandesRouteWithChildren
@@ -1564,6 +1584,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAuditRoute: AppAuditRoute,
+  AppCaisseRoute: AppCaisseRoute,
   AppCarteRoute: AppCarteRoute,
   AppCatalogueRoute: AppCatalogueRouteWithChildren,
   AppDemandesRoute: AppDemandesRouteWithChildren,

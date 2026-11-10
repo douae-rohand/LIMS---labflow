@@ -23,3 +23,10 @@ export function demandeur(demande: DemandeReception): string {
 export function formaterMontant(valeur: number): string {
   return new Intl.NumberFormat("fr-MA", { style: "currency", currency: "MAD" }).format(valeur ?? 0);
 }
+
+export const LIBELLES_MODE: Record<string, string> = {
+  ESPECES: "Espèces",
+  CHEQUE: "Chèque",
+  CARTE: "Carte bancaire",
+  VIREMENT: "Virement",
+};

@@ -107,3 +107,61 @@ export async function receptionner(demandeId: number, echantillons: EchantillonA
   const res = await apiClient.post<ApiResponse<DetailReception>>(`/accueil/receptions/${demandeId}`, { echantillons });
   return res.data;
 }
+
+// ------------------------------------------------------------- caisse (encaissement des factures)
+export type ModePaiement = "ESPECES" | "CHEQUE" | "CARTE" | "VIREMENT";
+
+export interface PaiementCaisse {
+  id: number;
+  code: string;
+  date: string;
+  montant: number;
+  mode: ModePaiement;
+  reference?: string | null;
+  encaisseur?: string | null;
+}
+
+export interface FactureCaisse {
+  id: number;
+  numero: string;
+  dateFacture?: string | null;
+  dateEcheance?: string | null;
+  montant: number;
+  paye: number;
+  reste: number;
+  statut: string;
+  enRetard: boolean;
+  demandeId?: number | null;
+  demandeReference?: string | null;
+  demandeTitre?: string | null;
+  client?: string | null;
+  clientIce?: string | null;
+  dernierPaiement?: string | null;
+  paiements: PaiementCaisse[];
+}
+
+export interface Encaissement {
+  facture: FactureCaisse;
+  paiement: PaiementCaisse | null;
+}
+
+export async function listerFacturesCaisse(): Promise<FactureCaisse[]> {
+  const res = await apiClient.get<ApiResponse<FactureCaisse[]>>("/accueil/caisse");
+  return res.data;
+}
+
+export async function encaisser(
+  factureId: number,
+  paiement: { montant: number; mode: ModePaiement; reference?: string | undefined },
+): Promise<Encaissement> {
+  const res = await apiClient.post<ApiResponse<Encaissement>>(`/accueil/caisse/${factureId}/paiements`, paiement);
+  return res.data;
+}
+
+/** Ouvre le reçu PDF d'un paiement dans un nouvel onglet. */
+export async function ouvrirRecu(paiementId: number): Promise<void> {
+  const blob = await apiClient.getBlob(`/accueil/caisse/paiements/${paiementId}/recu`);
+  const url = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+  window.open(url, "_blank", "noopener,noreferrer");
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
