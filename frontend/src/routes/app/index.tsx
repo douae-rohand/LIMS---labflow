@@ -5,6 +5,7 @@ import { Container } from "@/components/layout/Container";
 import { getSession } from "@/api/session";
 import type { RoleUtilisateur } from "@/api/session";
 import { TableauBordClient } from "@/components/demandes/client/TableauBordClient";
+import { TableauBordTechnicien } from "@/components/technicien/dashboard/TableauBordTechnicien";
 
 export const Route = createFileRoute("/app/")({
   beforeLoad: () => {
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/app/")({
     if (session?.user.role === "RESPONSABLE") {
       throw redirect({ to: "/app/demandes-clients" });
     }
+    // TECHNICIEN, ACCUEIL, CLIENT : aucun redirect — la page s'affiche.
   },
   component: AppHomePage,
 });
@@ -38,6 +40,10 @@ function AppHomePage() {
 
   if (user.role === "CLIENT") {
     return <TableauBordClient />;
+  }
+
+  if (user.role === "TECHNICIEN") {
+    return <TableauBordTechnicien />;
   }
 
   return (

@@ -113,4 +113,34 @@ public interface DemandeRepository extends JpaRepository<Demande, Long> {
 
     @Query("SELECT d.id, d.numero, d.titre, d.statut, d.dateSoumission, c.raisonSociale FROM Demande d LEFT JOIN d.client c ORDER BY d.dateSoumission DESC")
     org.springframework.data.domain.Page<Object[]> listerPourExport(org.springframework.data.domain.Pageable pageable);
+
+    // ---------------------------------------------------------------
+    // CMD-13 : transitions atomiques pour l'espace technicien
+    // ---------------------------------------------------------------
+
+    /**
+     * Passe la demande ACCEPTEE → EN_COURS, uniquement si elle est encore ACCEPTEE.
+     * Retourne 1 si la transition a eu lieu, 0 si la demande avait déjà un autre statut.
+     * Protège ANNULEE/REFUSEE : la condition WHERE filtre sur ACCEPTEE uniquement.
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("""
+            UPDATE Demande d
+            SET d.statut = 'EN_COURS'
+            WHERE d.id = :id AND d.statut = 'ACCEPTEE'
+            """)
+    int passerEnCoursSiAcceptee(@Param("id") Long id);
+
+    /**
+     * Passe la demande EN_COURS → EN_VALIDATION, uniquement si elle est encore EN_COURS.
+     * Appelé après avoir vérifié que toutes les lignes sont TERMINE ou NON_REALISABLE.
+     * Retourne 1 si la transition a eu lieu, 0 sinon.
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("""
+            UPDATE Demande d
+            SET d.statut = 'EN_VALIDATION'
+            WHERE d.id = :id AND d.statut = 'EN_COURS'
+            """)
+    int passerEnValidationSiEnCours(@Param("id") Long id);
 }
