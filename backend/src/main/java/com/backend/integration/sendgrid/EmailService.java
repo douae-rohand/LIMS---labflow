@@ -67,6 +67,20 @@ public class EmailService {
         return envoyerHtml(destinataires, sujet, html);
     }
 
+    public ResultatEnvoiEmail envoyerDemandeComplements(List<String> destinataires,
+                                                        String nomContact,
+                                                        String nomLaboratoire,
+                                                        String numero,
+                                                        String message,
+                                                        List<String> documents,
+                                                        String lien,
+                                                        Instant expiration) {
+        String sujet = "[LabFlow] Demande " + numero + " : compléments nécessaires";
+        String html = EmailTemplates.demandeComplements(
+                nomContact, nomLaboratoire, numero, message, documents, lien, expiration);
+        return envoyerHtml(destinataires, sujet, html);
+    }
+
     public ResultatEnvoiEmail envoyerInvitationAdministrateur(String email, String nomComplet,
                                                               String nomLaboratoire,
                                                               String lienActivation, int ttlHeures) {

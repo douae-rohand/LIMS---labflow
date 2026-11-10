@@ -27,6 +27,7 @@ public class LandingPublicController {
 
     private final PlateformeService plateformeService;
     private final DemandeIntegrationService demandeIntegrationService;
+    private final com.backend.modules.plateforme.service.ParametrePlateformeService parametrePlateformeService;
 
     @GetMapping("/landing")
     @Operation(summary = "Agrégat landing : statistiques, rôles, laboratoires actifs, statuts de demande")
@@ -35,8 +36,14 @@ public class LandingPublicController {
     }
 
     @GetMapping("/integration/documents-requis")
-    @Operation(summary = "Liste des 6 documents officiels exigés pour l'intégration d'un laboratoire")
+    @Operation(summary = "Documents actuellement exigés pour l'intégration d'un laboratoire")
     public ResponseEntity<ApiResponse<List<TypeDocumentIntegrationDto>>> documentsRequis() {
         return ResponseEntity.ok(ApiResponse.success(demandeIntegrationService.listerDocumentsRequis()));
+    }
+
+    @GetMapping("/parametres")
+    @Operation(summary = "Politique de mot de passe et types de laboratoire proposés")
+    public ResponseEntity<ApiResponse<com.backend.modules.plateforme.dto.ParametresPlateformeDtos.ParametresPublics>> parametres() {
+        return ResponseEntity.ok(ApiResponse.success(parametrePlateformeService.parametresPublics()));
     }
 }

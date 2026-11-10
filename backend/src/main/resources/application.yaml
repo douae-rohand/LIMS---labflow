@@ -184,6 +184,13 @@ app:
   frontend-url: ${APP_FRONTEND_URL:${FRONTEND_URL:http://localhost:5173}}
   storage:
     path: ${APP_STORAGE_PATH:${user.home}/lims-documents}
+  # Signature électronique des rapports (PAdES + horodatage RFC 3161)
+  signature:
+    # Mot de passe des coffres de certificats des laboratoires (PKCS#12). À définir en production.
+    keystore-password: ${APP_SIGNATURE_KEYSTORE_PASSWORD:labflow-dev-keystore}
+    tsa-enabled: ${APP_SIGNATURE_TSA_ENABLED:true}
+    tsa-url: ${APP_SIGNATURE_TSA_URL:https://freetsa.org/tsr}
+    tsa-timeout-ms: ${APP_SIGNATURE_TSA_TIMEOUT_MS:10000}
   integration:
     max-file-size-bytes: 10485760
     token-activation-hours: 48

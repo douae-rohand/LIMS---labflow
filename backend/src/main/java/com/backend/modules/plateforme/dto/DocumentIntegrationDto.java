@@ -1,6 +1,5 @@
 package com.backend.modules.plateforme.dto;
 
-import com.backend.modules.plateforme.entity.TypeDocumentIntegration;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,7 +13,8 @@ import java.time.Instant;
 @AllArgsConstructor
 public class DocumentIntegrationDto {
     private Long id;
-    private TypeDocumentIntegration typeDocument;
+    /** Code du type de document (voir les paramètres de la plateforme). */
+    private String typeDocument;
     private String libelle;
     private String raison;
     private String nomFichier;

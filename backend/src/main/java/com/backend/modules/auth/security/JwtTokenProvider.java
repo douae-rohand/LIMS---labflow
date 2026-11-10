@@ -22,6 +22,7 @@ import java.util.function.Function;
 public class JwtTokenProvider {
 
     private final JwtConfig jwtConfig;
+    private final com.backend.modules.plateforme.service.ParametrePlateformeService parametrePlateformeService;
 
     public String generateAccessToken(Authentication authentication) {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
@@ -41,7 +42,7 @@ public class JwtTokenProvider {
         return buildToken(username, Map.of(
                 "type", "refresh",
                 "jti", java.util.UUID.randomUUID().toString()
-        ), jwtConfig.getRefreshExpiration());
+        ), parametrePlateformeService.dureeSessionMs());
     }
 
     public String generateTwoFactorToken(String username) {

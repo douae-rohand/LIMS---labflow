@@ -15,13 +15,17 @@ public class TypeDocumentIntegrationDto {
     private String libelle;
     private String raison;
     private boolean obligatoire;
+    private boolean actif;
+    private int ordre;
 
     public static TypeDocumentIntegrationDto from(TypeDocumentIntegration type) {
         return TypeDocumentIntegrationDto.builder()
-                .code(type.name())
+                .code(type.getCode())
                 .libelle(type.getLibelle())
                 .raison(type.getRaison())
-                .obligatoire(true)
+                .obligatoire(type.isObligatoire())
+                .actif(type.isActif())
+                .ordre(type.getOrdre())
                 .build();
     }
 }

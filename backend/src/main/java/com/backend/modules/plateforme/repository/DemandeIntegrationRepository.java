@@ -19,6 +19,8 @@ public interface DemandeIntegrationRepository extends JpaRepository<DemandeInteg
 
     long countByStatut(String statut);
 
+    java.util.Optional<DemandeIntegration> findByJetonComplementsHash(String jetonComplementsHash);
+
     java.util.Optional<DemandeIntegration> findFirstByLaboratoire_IdOrderByIdDesc(Long laboratoireId);
 
     @Query("""

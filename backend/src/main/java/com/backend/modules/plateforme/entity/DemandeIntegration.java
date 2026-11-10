@@ -100,6 +100,27 @@ public class DemandeIntegration {
     @Column(name = "contact_cin", length = 20)
     private String contactCin;
 
+    /** Message adressé au demandeur lors de la dernière demande de compléments. */
+    @Column(name = "complements_demandes", columnDefinition = "TEXT")
+    private String complementsDemandes;
+
+    /** Codes des documents attendus en complément, séparés par des virgules. */
+    @Column(name = "documents_complements", length = 1000)
+    private String documentsComplements;
+
+    @Column(name = "date_demande_complements")
+    private Instant dateDemandeComplements;
+
+    @Column(name = "date_reception_complements")
+    private Instant dateReceptionComplements;
+
+    /** Empreinte SHA-256 du jeton envoyé au demandeur ; le jeton brut n'est jamais stocké. */
+    @Column(name = "jeton_complements_hash", length = 100)
+    private String jetonComplementsHash;
+
+    @Column(name = "jeton_complements_expiration")
+    private Instant jetonComplementsExpiration;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "laboratoire_id")
     private Laboratoire laboratoire;

@@ -24,11 +24,10 @@ public class NotificationController {
 
     @GetMapping("/mes")
     @Operation(summary = "Mes notifications (paginées)")
-    public ResponseEntity<ApiResponse<Page<NotificationReception>>> mesNotifications(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+    public ResponseEntity<ApiResponse<java.util.List<NotificationDto>>> mesNotifications(
+            @RequestParam(defaultValue = "20") int limite) {
         return ResponseEntity.ok(ApiResponse.success(
-                notificationService.mesNotifications(SecurityUtils.principalCourant().getId(), PageRequest.of(page, size))));
+                notificationService.mesNotifications(SecurityUtils.principalCourant().getId(), limite)));
     }
 
     @GetMapping("/non-lues/count")

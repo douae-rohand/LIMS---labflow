@@ -6,16 +6,11 @@ import { soumettreDemandeIntegration } from "@/api/plateforme";
 import { ApiError } from "@/api/axios";
 import { Button, Card, Input, Label, Select, Textarea } from "@/components/lab";
 import { cn } from "@/lib/utils";
+import { useDocumentsRequis, useTypesLaboratoire } from "@/hooks/useParametresPublics";
 import { DocumentUploader } from "./DocumentUploader";
 import { IndicateurEtapes } from "./IndicateurEtapes";
 import { LocationPicker } from "./LocationPicker";
-import {
-  REGIONS_MAROC,
-  TAILLE_MAX_DOCUMENT,
-  TYPES_DOCUMENTS,
-  TYPES_LABORATOIRE,
-  type TypeDocumentIntegration,
-} from "./constants";
+import { REGIONS_MAROC, TAILLE_MAX_DOCUMENT } from "./constants";
 
 const STEPS = [
   "Laboratoire",
@@ -66,8 +61,11 @@ function FieldError({ message }: { message?: string | undefined }) {
 
 export function IntegrationWizard() {
   const [step, setStep] = useState(0);
-  const [files, setFiles] = useState<Partial<Record<TypeDocumentIntegration, File>>>({});
-  const [fileErrors, setFileErrors] = useState<Partial<Record<TypeDocumentIntegration, string>>>({});
+  const [files, setFiles] = useState<Partial<Record<string, File>>>({});
+  const [fileErrors, setFileErrors] = useState<Partial<Record<string, string | undefined>>>({});
+  const documentsRequis = useDocumentsRequis();
+  const typesDocuments = useMemo(() => documentsRequis.data ?? [], [documentsRequis.data]);
+  const typesLaboratoire = useTypesLaboratoire();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [sentNumero, setSentNumero] = useState<string | null>(null);
@@ -85,19 +83,20 @@ export function IntegrationWizard() {
   const values = form.watch();
 
   const documentsComplets = useMemo(
-    () => TYPES_DOCUMENTS.every((type) => Boolean(files[type])),
-    [files],
+    () => typesDocuments.filter((type) => type.obligatoire).every((type) => Boolean(files[type.code])),
+    [files, typesDocuments],
   );
 
   const goNext = async () => {
     const fields = STEP_FIELDS[step] ?? [];
     const valid = fields.length === 0 ? true : await form.trigger(fields);
     if (step === 3) {
-      const nextErrors: Partial<Record<TypeDocumentIntegration, string>> = {};
-      TYPES_DOCUMENTS.forEach((type) => {
-        const file = files[type];
-        if (!file) nextErrors[type] = "Document obligatoire.";
-        else if (file.size > TAILLE_MAX_DOCUMENT) nextErrors[type] = "Fichier trop volumineux (10 Mo max).";
+      if (documentsRequis.isLoading || documentsRequis.isError) return;
+      const nextErrors: Partial<Record<string, string>> = {};
+      typesDocuments.forEach((type) => {
+        const file = files[type.code];
+        if (!file && type.obligatoire) nextErrors[type.code] = "Document obligatoire.";
+        else if (file && file.size > TAILLE_MAX_DOCUMENT) nextErrors[type.code] = "Fichier trop volumineux (10 Mo max).";
       });
       setFileErrors(nextErrors);
       if (Object.keys(nextErrors).length > 0) return;
@@ -112,12 +111,16 @@ export function IntegrationWizard() {
       return;
     }
     if (!documentsComplets) {
-      setSubmitError("Les 6 documents obligatoires doivent être joints.");
+      setSubmitError("Tous les documents obligatoires doivent être joints.");
       return;
     }
     setSubmitError(null);
     try {
-      const fichiers = files as Record<TypeDocumentIntegration, File>;
+      const fichiers: Record<string, File> = {};
+      typesDocuments.forEach((type) => {
+        const fichier = files[type.code];
+        if (fichier) fichiers[type.code] = fichier;
+      });
       const result = await soumettreDemandeIntegration(
         {
           ...data,
@@ -145,7 +148,7 @@ export function IntegrationWizard() {
         <h2 className="text-2xl font-extrabold text-ink-900">Demande envoyée</h2>
         <p className="mt-3 text-muted-foreground">
           Votre demande <strong>{sentNumero}</strong> a été transmise au Super Administrateur.
-          Elle est en attente de vérification des informations et des 6 documents.
+          Elle est en attente de vérification des informations et des documents transmis.
           L'espace laboratoire ne sera créé qu'après acceptation.
         </p>
       </Card>
@@ -186,7 +189,7 @@ export function IntegrationWizard() {
                 s'appliquent.
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
-                {TYPES_LABORATOIRE.map((type) => {
+                {typesLaboratoire.map((type) => {
                   const selected = (values.typesLaboratoire ?? []).includes(type);
                   return (
                     <label
@@ -372,7 +375,15 @@ export function IntegrationWizard() {
         )}
 
         {step === 3 && (
+          documentsRequis.isLoading ? (
+            <p className="text-sm text-muted-foreground">Chargement de la liste des documents…</p>
+          ) : documentsRequis.isError ? (
+            <p className="text-sm text-red-600">
+              La liste des documents demandés n'a pas pu être chargée. Rechargez la page.
+            </p>
+          ) : (
           <DocumentUploader
+            types={typesDocuments}
             files={files}
             errors={fileErrors}
             onChange={(type, file) => {
@@ -385,6 +396,7 @@ export function IntegrationWizard() {
               setFileErrors((current) => ({ ...current, [type]: undefined }));
             }}
           />
+          )
         )}
 
         {step === 4 && (
@@ -430,8 +442,10 @@ export function IntegrationWizard() {
             <section>
               <h3 className="text-base font-bold text-ink-900">Documents déposés</h3>
               <ul className="mt-2 list-disc pl-5">
-                {TYPES_DOCUMENTS.map((type) => (
-                  <li key={type}>{files[type]?.name ?? "Manquant"}</li>
+                {typesDocuments.map((type) => (
+                  <li key={type.code}>
+                    {type.libelle} : {files[type.code]?.name ?? (type.obligatoire ? "Manquant" : "Non fourni")}
+                  </li>
                 ))}
               </ul>
             </section>
@@ -442,7 +456,7 @@ export function IntegrationWizard() {
                 onChange={(event) => setConfirmed(event.target.checked)}
               />
               <span>
-                Je confirme que les informations et les 6 documents sont exacts. La demande sera
+                Je confirme que les informations et les documents sont exacts. La demande sera
                 examinée par le Super Administrateur avant toute création d'espace laboratoire.
               </span>
             </label>

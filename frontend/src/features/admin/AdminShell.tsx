@@ -1,4 +1,18 @@
-import { Activity, BarChart3, Download, FileText, FlaskConical, Inbox, Settings, Shield, Users } from "lucide-react";
+import {
+  Activity,
+  BarChart3,
+  CalendarClock,
+  ClipboardCheck,
+  Download,
+  FileSignature,
+  FileText,
+  FlaskConical,
+  Gauge,
+  Inbox,
+  Settings,
+  Shield,
+  Users,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import type { RoleUtilisateur, SessionUser } from "@/api/session";
 import { PERMISSIONS_EXPORT } from "@/api/exports";
@@ -7,6 +21,10 @@ import { EspaceShell, type EntreeNavigation } from "@/features/shell/EspaceShell
 type EntreeAdminNavigation = EntreeNavigation & {
   permission?: string;
   permissions?: string[];
+  /** Entrée réservée à ces rôles (la liste est partagée avec le technicien et l'accueil). */
+  roles?: RoleUtilisateur[];
+  /** Entrée masquée pour ces rôles, même s'ils ont la permission. */
+  rolesExclus?: RoleUtilisateur[];
 };
 
 // ---------------------------------------------------------------------------
@@ -78,10 +96,11 @@ const NAV_ITEMS_ADMIN: EntreeAdminNavigation[] = [
 
 const NAV_ITEMS_RESPONSABLE: EntreeAdminNavigation[] = [
   {
-    to: "/app/employes" as const,
-    label: "Employés",
-    icon: Users,
-    permission: "EMPLOYES_GERER",
+    to: "/app/suivi" as const,
+    label: "Tableau de suivi",
+    icon: Gauge,
+    permission: "PLANIFICATION_GERER",
+    roles: ["RESPONSABLE"],
   },
   {
     to: "/app/demandes-clients" as const,
@@ -90,10 +109,39 @@ const NAV_ITEMS_RESPONSABLE: EntreeAdminNavigation[] = [
     permission: "DEMANDES_CONSULTER",
   },
   {
+    to: "/app/planification" as const,
+    label: "Planification",
+    icon: CalendarClock,
+    permission: "PLANIFICATION_GERER",
+    roles: ["RESPONSABLE"],
+  },
+  {
+    to: "/app/validation-resultats" as const,
+    label: "Validation des résultats",
+    icon: ClipboardCheck,
+    permission: "VALIDATION_GERER",
+    roles: ["RESPONSABLE"],
+  },
+  {
+    to: "/app/rapports-laboratoire" as const,
+    label: "Rapports",
+    icon: FileSignature,
+    permission: "RAPPORTS_GERER",
+    roles: ["RESPONSABLE"],
+  },
+  {
+    to: "/app/employes" as const,
+    label: "Employés",
+    icon: Users,
+    permission: "EMPLOYES_GERER",
+  },
+  {
     to: "/app/catalogue" as const,
     label: "Catalogue",
     icon: FlaskConical,
     permission: "CATALOGUE_GERER",
+    // Le catalogue relève de l'administrateur : masqué pour le responsable.
+    rolesExclus: ["RESPONSABLE"],
   },
   {
     to: "/app/exports" as const,
@@ -113,6 +161,8 @@ const LIBELLE_ROLE: Partial<Record<RoleUtilisateur, string>> = {
 function entreesVisibles(role: RoleUtilisateur, permissions: readonly string[]): EntreeNavigation[] {
   const items = role === "ADMINISTRATEUR" ? NAV_ITEMS_ADMIN : NAV_ITEMS_RESPONSABLE;
   return items.filter((item) => {
+    if (item.roles && !item.roles.includes(role)) return false;
+    if (item.rolesExclus?.includes(role)) return false;
     if (item.permission && !permissions.includes(item.permission)) return false;
     if (item.permissions && !item.permissions.some((permission) => permissions.includes(permission))) return false;
     return true;

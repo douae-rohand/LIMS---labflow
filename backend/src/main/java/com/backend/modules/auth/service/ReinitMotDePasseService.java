@@ -59,6 +59,7 @@ public class ReinitMotDePasseService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final ReinitMotDePasseEmailService emailService;
+    private final com.backend.modules.plateforme.service.ParametrePlateformeService parametrePlateformeService;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
@@ -163,7 +164,9 @@ public class ReinitMotDePasseService {
 
         // 3. Valider la politique AVANT la consommation
         //    → si elle échoue, BusinessRuleException interrompt la transaction → rollback → jeton intact
-        MotDePasseValidator.valider(nouveauMotDePasse, utilisateur.getMotDePasseHash(), passwordEncoder);
+        var politique = parametrePlateformeService.politiqueMotDePasse();
+        MotDePasseValidator.valider(nouveauMotDePasse, utilisateur.getMotDePasseHash(), passwordEncoder,
+                politique.longueurMin(), politique.exigerCaractereSpecial());
 
         // 4. Consommer le jeton atomiquement (double vérification côté base)
         int lignes = tokenRepository.consommerToken(hash, Instant.now());

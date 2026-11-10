@@ -16,8 +16,8 @@ import com.backend.modules.utilisateur.entity.Utilisateur;
 import com.backend.modules.utilisateur.repository.UtilisateurRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import com.backend.modules.utilisateur.entity.RoleUtilisateur;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +41,9 @@ public class NotificationService {
         Notification notification = Notification.builder()
                 .code("NOT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                 .titre(dto.getTitre())
+                .corps(dto.getCorps())
+                .lien(dto.getLien())
+                .type(dto.getType())
                 .dateCreation(Instant.now())
                 .build();
         notification = notificationRepository.save(notification);
@@ -86,9 +89,58 @@ public class NotificationService {
         return toDto(notification, dto);
     }
 
+    /**
+     * Notifie tous les comptes actifs d'un rôle (ex. les Super Administrateurs
+     * à chaque nouvelle demande d'intégration). Ne fait jamais échouer l'appelant.
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void notifierRole(RoleUtilisateur role, String type, String titre, String corps, String lien) {
+        try {
+            List<Utilisateur> destinataires = utilisateurRepository.findActifsParRole(role.name());
+            if (destinataires.isEmpty()) {
+                return;
+            }
+            Notification notification = notificationRepository.save(Notification.builder()
+                    .code("NOT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                    .titre(titre)
+                    .corps(corps)
+                    .lien(lien)
+                    .type(type)
+                    .dateCreation(Instant.now())
+                    .build());
+            for (Utilisateur utilisateur : destinataires) {
+                receptionRepository.save(NotificationReception.builder()
+                        .notification(notification)
+                        .utilisateur(utilisateur)
+                        .canal(CanalNotification.IN_APP)
+                        .statutEnvoi(StatutEnvoi.ENVOYE)
+                        .lue(false)
+                        .build());
+            }
+        } catch (RuntimeException ex) {
+            log.error("Notification « {} » non enregistrée : {}", titre, ex.getMessage());
+        }
+    }
+
     @Transactional(readOnly = true)
-    public Page<NotificationReception> mesNotifications(Long utilisateurId, Pageable pageable) {
-        return receptionRepository.findByUtilisateur_Id(utilisateurId, pageable);
+    public List<NotificationDto> mesNotifications(Long utilisateurId, int limite) {
+        int taille = Math.min(Math.max(limite, 1), 50);
+        return receptionRepository.listerRecentes(utilisateurId, PageRequest.of(0, taille)).stream()
+                .map(reception -> {
+                    Notification notification = reception.getNotification();
+                    return NotificationDto.builder()
+                            .id(notification.getId())
+                            .titre(notification.getTitre())
+                            .corps(notification.getCorps())
+                            .lien(notification.getLien())
+                            .type(notification.getType())
+                            .dateCreation(notification.getDateCreation())
+                            .statut(reception.getStatutEnvoi())
+                            .lue(reception.isLue())
+                            .dateLecture(reception.getDateLecture())
+                            .build();
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -100,16 +152,16 @@ public class NotificationService {
     public void marquerCommeLue(Long notificationId, Long utilisateurId) {
         NotificationReception reception = receptionRepository.findById(new NotificationReceptionId(notificationId, utilisateurId))
                 .orElseThrow(() -> new ResourceNotFoundException("NotificationReception", "id", notificationId));
-        reception.setLue(true);
-        receptionRepository.save(reception);
+        if (!reception.isLue()) {
+            reception.setLue(true);
+            reception.setDateLecture(Instant.now());
+            receptionRepository.save(reception);
+        }
     }
 
     @Transactional
     public void marquerToutesCommeLues(Long utilisateurId) {
-        receptionRepository.findByUtilisateur_IdAndLueFalse(utilisateurId, Pageable.unpaged()).forEach(reception -> {
-            reception.setLue(true);
-            receptionRepository.save(reception);
-        });
+        receptionRepository.marquerToutesLues(utilisateurId, Instant.now());
     }
 
     private void livrerInApp(Long utilisateurId, Notification notification, NotificationDto source) {
@@ -133,6 +185,8 @@ public class NotificationService {
                 .payloadJson(source == null ? null : source.getPayloadJson())
                 .entiteSource(source == null ? null : source.getEntiteSource())
                 .idEntiteSource(source == null ? null : source.getIdEntiteSource())
+                .lien(notification.getLien())
+                .type(notification.getType())
                 .statut(StatutEnvoi.ENVOYE)
                 .build();
     }

@@ -29,9 +29,9 @@ public class DocumentIntegration {
     @JoinColumn(name = "demande_id", nullable = false)
     private DemandeIntegration demande;
 
-    @Enumerated(EnumType.STRING)
+    /** Code d'un {@link TypeDocumentIntegration}. */
     @Column(name = "type_document", nullable = false, length = 80)
-    private TypeDocumentIntegration typeDocument;
+    private String typeDocument;
 
     @Column(name = "nom_fichier", nullable = false, length = 255)
     private String nomFichier;

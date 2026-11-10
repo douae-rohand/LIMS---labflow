@@ -39,6 +39,12 @@ class PlateformeServiceStatutTest {
     @Mock
     private UtilisateurRepository utilisateurRepository;
 
+    @Mock
+    private com.backend.modules.plateforme.repository.HistoriqueStatutLaboratoireRepository historiqueStatutRepository;
+    @Mock
+    private com.backend.modules.essai.repository.ExigenceEchantillonRepository exigenceEchantillonRepository;
+    @Mock
+    private com.backend.common.audit.JournalAuditService journalAuditService;
     @InjectMocks
     private PlateformeService plateformeService;
 

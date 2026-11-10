@@ -47,7 +47,11 @@ export type CheminEspace =
   | "/app/essais"
   | "/app/essais/$ligneEssaiId"
   | "/app/planning"
-  | "/app/import";
+  | "/app/import"
+  | "/app/suivi"
+  | "/app/planification"
+  | "/app/validation-resultats"
+  | "/app/rapports-laboratoire";
 
 export type EntreeNavigation = {
   to: CheminEspace;

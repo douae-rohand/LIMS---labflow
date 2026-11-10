@@ -9,6 +9,7 @@ import { PublicLayout } from "@/layouts/PublicLayout";
 import { activerCompte, verifierJetonActivation } from "@/api/auth";
 import { ApiError } from "@/api/axios";
 import { politiqueMotDePasse } from "@/routes/changer-mot-de-passe";
+import { erreurMotDePasse, usePolitiqueMotDePasse } from "@/hooks/useParametresPublics";
 
 // ---------------------------------------------------------------------------
 // Cache module : garantit UN SEUL appel réseau de vérification par jeton,
@@ -56,6 +57,7 @@ type FormValues = z.infer<typeof schema>;
 
 function ActiverComptePage() {
   const { token: tokenUrl } = Route.useSearch();
+  const politique = usePolitiqueMotDePasse();
 
   // Stocker le token en mémoire uniquement (ref)
   const tokenRef = useRef<string | undefined>(tokenUrl);
@@ -107,6 +109,11 @@ function ActiverComptePage() {
       setMessage("Lien invalide ou expiré.");
       return;
     }
+    const erreurPolitique = erreurMotDePasse(politique, values.motDePasse);
+    if (erreurPolitique) {
+      form.setError("motDePasse", { message: erreurPolitique });
+      return;
+    }
     try {
       await activerCompte(token, values.motDePasse);
       setEtat("ok");
@@ -139,7 +146,7 @@ function ActiverComptePage() {
           {etat === "valide" && (
             <form className="mt-6 flex flex-col gap-4" onSubmit={form.handleSubmit(onSubmit)}>
               <p className="text-sm text-muted-foreground">
-                Définissez votre mot de passe (10 caractères minimum, majuscule, minuscule et chiffre).
+                Définissez votre mot de passe ({politique.longueurMin} caractères minimum, majuscule, minuscule et chiffre{politique.exigerCaractereSpecial ? ", caractère spécial" : ""}).
               </p>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="motDePasse">Nouveau mot de passe</Label>

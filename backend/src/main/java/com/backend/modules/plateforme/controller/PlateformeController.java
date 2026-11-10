@@ -5,7 +5,6 @@ import com.backend.common.exception.BusinessRuleException;
 import com.backend.integration.sendgrid.ResultatEnvoiEmail;
 import com.backend.modules.plateforme.dto.*;
 import com.backend.modules.plateforme.entity.StatutIntegration;
-import com.backend.modules.plateforme.entity.TypeDocumentIntegration;
 import com.backend.modules.plateforme.service.DemandeIntegrationService;
 import com.backend.modules.plateforme.service.JournalAuditConsultationService;
 import com.backend.modules.plateforme.service.LaboratoireExportService;
@@ -29,10 +28,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 import java.io.IOException;
 import java.time.LocalDate;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -243,20 +242,11 @@ public class PlateformeController {
     @Operation(summary = "Soumettre une demande d'intégration (public, multipart)")
     public ResponseEntity<ApiResponse<DemandeIntegrationDto>> soumettreDemande(
             @RequestPart("demande") MultipartFile demandeJson,
-            @RequestPart("AUTORISATION_OUVERTURE_EXPLOITATION") MultipartFile autorisation,
-            @RequestPart("DIPLOME_BIOLOGISTE_RESPONSABLE") MultipartFile diplome,
-            @RequestPart("INSCRIPTION_ORDRE_PROFESSIONNEL") MultipartFile inscription,
-            @RequestPart("CIN_BIOLOGISTE_RESPONSABLE") MultipartFile cin,
-            @RequestPart("IDENTIFICATION_JURIDIQUE") MultipartFile identification,
-            @RequestPart("JUSTIFICATIF_ADRESSE") MultipartFile justificatif) {
+            MultipartHttpServletRequest requete) {
         SoumettreDemandeIntegrationRequest demande = lireDemande(demandeJson);
-        Map<TypeDocumentIntegration, MultipartFile> fichiers = new EnumMap<>(TypeDocumentIntegration.class);
-        fichiers.put(TypeDocumentIntegration.AUTORISATION_OUVERTURE_EXPLOITATION, autorisation);
-        fichiers.put(TypeDocumentIntegration.DIPLOME_BIOLOGISTE_RESPONSABLE, diplome);
-        fichiers.put(TypeDocumentIntegration.INSCRIPTION_ORDRE_PROFESSIONNEL, inscription);
-        fichiers.put(TypeDocumentIntegration.CIN_BIOLOGISTE_RESPONSABLE, cin);
-        fichiers.put(TypeDocumentIntegration.IDENTIFICATION_JURIDIQUE, identification);
-        fichiers.put(TypeDocumentIntegration.JUSTIFICATIF_ADRESSE, justificatif);
+        // Chaque document est envoyé dans une partie nommée par le code de son type.
+        Map<String, MultipartFile> fichiers = new java.util.LinkedHashMap<>(requete.getFileMap());
+        fichiers.remove("demande");
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Demande soumise",
                         demandeIntegrationService.soumettre(demande, fichiers)));
@@ -274,6 +264,26 @@ public class PlateformeController {
             @RequestParam(defaultValue = "desc") String ordre) {
         return ResponseEntity.ok(ApiResponse.success(
                 demandeIntegrationService.lister(statut, recherche, page, size, tri, ordre)));
+    }
+
+    @GetMapping("/demandes/export")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Exporter les demandes d'intégration filtrées en CSV, Excel ou PDF")
+    public ResponseEntity<byte[]> exporterDemandes(
+            @RequestParam String format,
+            @RequestParam(required = false) StatutIntegration statut,
+            @RequestParam(required = false) String recherche) {
+        return fichier(demandeIntegrationService.exporter(format, statut, recherche));
+    }
+
+    @PostMapping("/demandes/{id}/complements")
+    @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
+    @Operation(summary = "Demander des pièces ou des précisions au demandeur")
+    public ResponseEntity<ApiResponse<DemandeIntegrationDto>> demanderComplements(
+            @PathVariable Long id,
+            @Valid @RequestBody DemanderComplementsRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Compléments demandés",
+                demandeIntegrationService.demanderComplements(id, request, getActeurEmail())));
     }
 
     @GetMapping("/demandes/{id}")
@@ -312,7 +322,7 @@ public class PlateformeController {
     @Operation(summary = "Consulter ou télécharger un document d'intégration")
     public ResponseEntity<Resource> telechargerDocument(
             @PathVariable Long id,
-            @PathVariable TypeDocumentIntegration type,
+            @PathVariable String type,
             @RequestParam(defaultValue = "false") boolean download) {
         return demandeIntegrationService.telechargerDocument(id, type, download);
     }
@@ -322,7 +332,7 @@ public class PlateformeController {
     @Operation(summary = "Ajouter ou remplacer un document justificatif")
     public ResponseEntity<ApiResponse<DemandeIntegrationDto>> ajouterDocument(
             @PathVariable Long id,
-            @RequestParam TypeDocumentIntegration type,
+            @RequestParam String type,
             @RequestPart("fichier") MultipartFile fichier) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Document enregistré", demandeIntegrationService.ajouterDocument(id, type, fichier, getActeurEmail())));
@@ -365,18 +375,15 @@ public class PlateformeController {
 
     @GetMapping("/audit/export")
     @PreAuthorize("hasRole('SUPER_ADMINISTRATEUR')")
-    @Operation(summary = "Exporter le journal d'audit filtré en CSV")
+    @Operation(summary = "Exporter le journal d'audit filtré en CSV, Excel ou PDF")
     public ResponseEntity<byte[]> exporterAudit(
+            @RequestParam(defaultValue = "csv") String format,
             @RequestParam(required = false) String acteur,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) Long laboratoireId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate du,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate au) {
-        byte[] contenu = journalAuditConsultationService.exporterCsv(acteur, action, laboratoireId, du, au);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"journal-audit.csv\"")
-                .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
-                .body(contenu);
+        return fichier(journalAuditConsultationService.exporter(format, acteur, action, laboratoireId, du, au));
     }
 
     private SoumettreDemandeIntegrationRequest lireDemande(MultipartFile demandeJson) {

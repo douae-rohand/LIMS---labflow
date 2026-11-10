@@ -39,6 +39,28 @@ class NotificationServiceStatutTest {
     @InjectMocks
     private NotificationService notificationService;
 
+    @org.junit.jupiter.api.BeforeEach
+    void connecter() {
+        com.backend.modules.auth.security.UtilisateurPrincipal principal =
+                com.backend.modules.auth.security.UtilisateurPrincipal.builder()
+                        .id(1L)
+                        .email("acteur@labflow.test")
+                        .password("x")
+                        .nomComplet("Acteur Test")
+                        .role(com.backend.modules.utilisateur.entity.RoleUtilisateur.SUPER_ADMINISTRATEUR)
+                        .actif(true)
+                        .permissions(java.util.Set.of())
+                        .build();
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        principal, null, principal.getAuthorities()));
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void deconnecter() {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+    }
+
     @Test
     void publierPersisteLeStatutEnvoiee() {
         when(notificationRepository.save(any())).thenAnswer(invocation -> {

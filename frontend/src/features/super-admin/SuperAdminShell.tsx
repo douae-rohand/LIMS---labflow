@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { Building2, LayoutDashboard, LogOut, ScrollText, Users } from "lucide-react";
+import { Building2, LayoutDashboard, LogOut, ScrollText, Settings, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/lab";
 import { Toaster } from "@/components/ui/sonner";
 import type { SessionUser } from "@/api/session";
 import { cn } from "@/lib/utils";
+import { CloNotifications } from "./CloNotifications";
 
 const LIEN = cn(
   "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold",
@@ -50,8 +51,9 @@ export function SuperAdminShell({
             <p className="px-2 pb-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">Plateforme</p>
             <Lien to="/app/tableau-de-bord" icone={<LayoutDashboard className="size-4" aria-hidden="true" />} libelle="Tableau de bord" />
             <Lien to="/app/gestion-laboratoires" search={{ onglet: "laboratoires" }} icone={<Building2 className="size-4" aria-hidden="true" />} libelle="Laboratoires" />
-            <Lien to="/app/utilisateurs" icone={<Users className="size-4" aria-hidden="true" />} libelle="Utilisateurs" />
+            <Lien to="/app/utilisateurs" icone={<Users className="size-4" aria-hidden="true" />} libelle="Administrateurs" />
             <Lien to="/app/journal-audit" icone={<ScrollText className="size-4" aria-hidden="true" />} libelle="Journal d'audit" />
+            <Lien to="/app/parametres-plateforme" icone={<Settings className="size-4" aria-hidden="true" />} libelle="Paramètres" />
           </nav>
           <div className="border-t border-brand-900/10 p-3">
             <div className="flex items-center gap-3 rounded-2xl px-3 py-2.5">
@@ -60,6 +62,7 @@ export function SuperAdminShell({
                 <p className="truncate text-sm font-semibold text-ink-900">{utilisateur.nomComplet}</p>
                 <p className="truncate text-xs text-muted-foreground">Super Administrateur</p>
               </div>
+              <CloNotifications />
               <Button variant="ghost" size="icon" onClick={onLogout} aria-label="Se déconnecter">
                 <LogOut className="size-4" aria-hidden="true" />
               </Button>
@@ -72,6 +75,7 @@ export function SuperAdminShell({
               <img src="/nom.png" alt="LabFlow" className="h-7" />
             </Link>
             <div className="flex items-center gap-2">
+              <CloNotifications />
               <span className="flex size-8 items-center justify-center rounded-full bg-brand-900 text-xs font-bold text-primary-foreground" aria-label={utilisateur.nomComplet}>{initiales}</span>
               <Button variant="ghost" size="sm" onClick={onLogout} aria-label="Se déconnecter">
                 <LogOut className="size-4" aria-hidden="true" />
@@ -81,8 +85,9 @@ export function SuperAdminShell({
           <nav className="flex gap-1 overflow-x-auto border-b border-brand-900/10 bg-card px-3 py-2 md:hidden" aria-label="Navigation">
             <Lien to="/app/tableau-de-bord" icone={<LayoutDashboard className="size-4" aria-hidden="true" />} libelle="Tableau de bord" />
             <Lien to="/app/gestion-laboratoires" search={{ onglet: "laboratoires" }} icone={<Building2 className="size-4" aria-hidden="true" />} libelle="Laboratoires" />
-            <Lien to="/app/utilisateurs" icone={<Users className="size-4" aria-hidden="true" />} libelle="Utilisateurs" />
+            <Lien to="/app/utilisateurs" icone={<Users className="size-4" aria-hidden="true" />} libelle="Administrateurs" />
             <Lien to="/app/journal-audit" icone={<ScrollText className="size-4" aria-hidden="true" />} libelle="Journal" />
+            <Lien to="/app/parametres-plateforme" icone={<Settings className="size-4" aria-hidden="true" />} libelle="Paramètres" />
           </nav>
           <main className="min-w-0 flex-1">
             <div className="mx-auto w-full max-w-[1440px]">{children}</div>
@@ -99,7 +104,7 @@ function Lien({
   icone,
   libelle,
 }: {
-  to: "/app/tableau-de-bord" | "/app/gestion-laboratoires" | "/app/utilisateurs" | "/app/journal-audit";
+  to: "/app/tableau-de-bord" | "/app/gestion-laboratoires" | "/app/utilisateurs" | "/app/journal-audit" | "/app/parametres-plateforme";
   search?: { onglet: "laboratoires" };
   icone: ReactNode;
   libelle: string;

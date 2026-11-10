@@ -22,4 +22,6 @@ public class CompteUtilisateurDto {
     private Instant derniereConnexion;
     /** Vrai lorsqu'au moins un écart de permission est enregistré. */
     private boolean personnalise;
+    /** Vrai lorsque la double authentification est configurée et active. */
+    private boolean deuxFacteursActive;
 }

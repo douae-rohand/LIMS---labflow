@@ -123,6 +123,8 @@ public class AuthService {
     /**
      * Détermine si la 2FA est obligatoire pour un rôle.
      * L'obligation reste coupée tant que l'interface de connexion ne finalise pas l'enrôlement.
+     * Les rôles choisis par le Super Administrateur sont seulement enregistrés
+     * (ParametrePlateformeService.deuxFacteursObligatoire) et ne sont pas appliqués ici.
      */
     public boolean is2faRequiredForRole(RoleUtilisateur role) {
         return false;

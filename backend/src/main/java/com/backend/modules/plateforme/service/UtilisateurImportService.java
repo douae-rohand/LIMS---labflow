@@ -53,13 +53,9 @@ public class UtilisateurImportService {
     static final List<String> ENTETES = List.of(
             "Nom", "Prénom", "E-mail", "Rôle", "Laboratoire", "Téléphone", "Fonction");
     private static final List<String> EXEMPLE = List.of(
-            "Bennani", "Amina", "amina.bennani@exemple.ma", "TECHNICIEN",
-            "Laboratoire exemple", "0612345678", "Technicienne");
-    private static final Set<RoleUtilisateur> ROLES = Set.of(
-            RoleUtilisateur.ADMINISTRATEUR,
-            RoleUtilisateur.RESPONSABLE,
-            RoleUtilisateur.TECHNICIEN,
-            RoleUtilisateur.ACCUEIL);
+            "Bennani", "Amina", "amina.bennani@exemple.ma", "ADMINISTRATEUR",
+            "Laboratoire exemple", "0612345678", "Direction");
+    private static final Set<RoleUtilisateur> ROLES = Set.of(RoleUtilisateur.ADMINISTRATEUR);
     private static final Pattern EMAIL = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final ConcurrentHashMap<String, AnalyseMemorisee> analyses = new ConcurrentHashMap<>();
@@ -277,12 +273,12 @@ public class UtilisateurImportService {
         try {
             RoleUtilisateur role = RoleUtilisateur.valueOf(brut.trim().toUpperCase(Locale.ROOT));
             if (!ROLES.contains(role)) {
-                erreurs.add("Rôle non autorisé. Valeurs acceptées : ADMINISTRATEUR, RESPONSABLE, TECHNICIEN, ACCUEIL");
+                erreurs.add("Seul le rôle ADMINISTRATEUR est accepté");
                 return null;
             }
             return role;
         } catch (IllegalArgumentException ex) {
-            erreurs.add("Rôle non autorisé. Valeurs acceptées : ADMINISTRATEUR, RESPONSABLE, TECHNICIEN, ACCUEIL");
+            erreurs.add("Seul le rôle ADMINISTRATEUR est accepté");
             return null;
         }
     }

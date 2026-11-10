@@ -12,6 +12,7 @@ import { setSession, clearSession, getStatus, getSession } from "@/api/session";
 import { apiClient, ApiError } from "@/api/axios";
 import { cn } from "@/lib/utils";
 import { sanitizeRedirect } from "@/lib/redirect";
+import { erreurMotDePasse, reglesMotDePasse, usePolitiqueMotDePasse } from "@/hooks/useParametresPublics";
 
 // ---------------------------------------------------------------------------
 // Politique du nouveau mot de passe — miroir exact de la politique backend
@@ -40,13 +41,6 @@ type ChangerMdpFormValues = z.infer<typeof changerMdpSchema>;
 // ---------------------------------------------------------------------------
 // Règles affichées dans le checklist
 // ---------------------------------------------------------------------------
-
-const REGLES = [
-  { id: "len",   label: "10 caractères minimum",  test: (v: string) => v.length >= 10 },
-  { id: "lower", label: "Une lettre minuscule",    test: (v: string) => /[a-z]/.test(v) },
-  { id: "upper", label: "Une lettre majuscule",    test: (v: string) => /[A-Z]/.test(v) },
-  { id: "digit", label: "Un chiffre",              test: (v: string) => /[0-9]/.test(v) },
-] as const;
 
 // ---------------------------------------------------------------------------
 // Composant : champ mot de passe avec bouton œil
@@ -105,6 +99,7 @@ function PasswordInput({ id, label, error, errorId, className, ...props }: Passw
 // ---------------------------------------------------------------------------
 
 function PasswordChecklist({ value }: { value: string }) {
+  const regles = reglesMotDePasse(usePolitiqueMotDePasse());
   // N'afficher la liste que si l'utilisateur a commencé à taper
   if (!value) return null;
 
@@ -113,7 +108,7 @@ function PasswordChecklist({ value }: { value: string }) {
       aria-label="Contraintes du mot de passe"
       className="mt-1 flex flex-col gap-1"
     >
-      {REGLES.map(({ id, label, test }) => {
+      {regles.map(({ id, label, test }) => {
         const ok = test(value);
         return (
           <li key={id} className="flex items-center gap-2 text-xs">
@@ -169,6 +164,7 @@ export const Route = createFileRoute("/changer-mot-de-passe")({
 
 function ChangerMotDePassePage() {
   const router = useRouter();
+  const politique = usePolitiqueMotDePasse();
   const search = Route.useSearch();
   const session = getSession();
 
@@ -194,6 +190,11 @@ function ChangerMotDePassePage() {
   }, [errors.ancienMotDePasse, errors.nouveauMotDePasse, errors.confirmation, setFocus]);
 
   const onSubmit = async (values: ChangerMdpFormValues) => {
+    const erreurPolitique = erreurMotDePasse(politique, values.nouveauMotDePasse);
+    if (erreurPolitique) {
+      setError("nouveauMotDePasse", { message: erreurPolitique });
+      return;
+    }
     try {
       const response = await changerMotDePasse({
         ancienMotDePasse: values.ancienMotDePasse,

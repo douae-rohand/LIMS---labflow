@@ -14,6 +14,14 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
 
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 
+    @Query("""
+            SELECT rt FROM RefreshToken rt
+            WHERE rt.utilisateur.id = :userId AND rt.revoque = false AND rt.dateExpiration > :maintenant
+            ORDER BY rt.createdAt DESC
+            """)
+    java.util.List<RefreshToken> listerActifs(@Param("userId") Long userId,
+                                               @Param("maintenant") java.time.Instant maintenant);
+
     /** Révoque tous les tokens non-expirés d'un utilisateur (logout global ou compromission). */
     @Modifying
     @Query("UPDATE RefreshToken rt SET rt.revoque = true WHERE rt.utilisateur.id = :userId AND rt.revoque = false")

@@ -24,7 +24,7 @@ class DocumentIntegrationJsonTest {
         DocumentIntegration document = DocumentIntegration.builder()
                 .id(2L)
                 .demande(demande)
-                .typeDocument(TypeDocumentIntegration.CIN_BIOLOGISTE_RESPONSABLE)
+                .typeDocument("CIN_BIOLOGISTE_RESPONSABLE")
                 .nomFichier("cin.pdf")
                 .typeMime("application/pdf")
                 .taille(1200L)

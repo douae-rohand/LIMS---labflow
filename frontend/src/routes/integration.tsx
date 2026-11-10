@@ -27,7 +27,7 @@ function IntegrationPage() {
           <h1 className="text-4xl font-extrabold text-ink-900">Intégrer mon laboratoire</h1>
           <p className="text-muted-foreground">
             Déposez une demande complète : informations du laboratoire, localisation, administrateur
-            et les 6 documents officiels. Le Super Administrateur vérifie le dossier avant de créer
+            et les documents officiels demandés. Le Super Administrateur vérifie le dossier avant de créer
             votre espace isolé (un laboratoire = un schéma SQL dédié).
           </p>
           <Photo src={photos.sampling.src} alt={photos.sampling.alt} className="aspect-[4/3]" />

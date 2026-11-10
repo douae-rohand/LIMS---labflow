@@ -1,41 +1,55 @@
 package com.backend.modules.plateforme.entity;
 
+import com.backend.common.config.SchemaConstants;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.Instant;
+
 /**
- * Les six documents officiels exigés pour l'intégration d'un laboratoire.
+ * Document exigé pour une demande d'intégration. La liste est paramétrée
+ * par le Super Administrateur ; un type désactivé n'est plus demandé mais
+ * reste lisible sur les dossiers qui le contiennent déjà.
  */
-public enum TypeDocumentIntegration {
-    AUTORISATION_OUVERTURE_EXPLOITATION(
-            "Autorisation d'ouverture et d'exploitation du laboratoire",
-            "Vérifier que le laboratoire est autorisé"),
-    DIPLOME_BIOLOGISTE_RESPONSABLE(
-            "Diplôme / titre du biologiste responsable",
-            "Vérifier la qualification du responsable"),
-    INSCRIPTION_ORDRE_PROFESSIONNEL(
-            "Document d'inscription à l'ordre professionnel",
-            "Vérifier son statut professionnel"),
-    CIN_BIOLOGISTE_RESPONSABLE(
-            "CIN du biologiste responsable",
-            "Vérifier son identité"),
-    IDENTIFICATION_JURIDIQUE(
-            "Registre / document d'identification juridique du laboratoire",
-            "Vérifier l'existence juridique"),
-    JUSTIFICATIF_ADRESSE(
-            "Justificatif de l'adresse du laboratoire",
-            "Vérifier l'adresse déclarée");
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "type_document_integration", schema = SchemaConstants.CENTRAL_SCHEMA)
+public class TypeDocumentIntegration {
 
-    private final String libelle;
-    private final String raison;
+    @Id
+    @Column(length = 80)
+    private String code;
 
-    TypeDocumentIntegration(String libelle, String raison) {
-        this.libelle = libelle;
-        this.raison = raison;
-    }
+    @Column(nullable = false, length = 255)
+    private String libelle;
 
-    public String getLibelle() {
-        return libelle;
-    }
+    @Column(length = 255)
+    private String raison;
 
-    public String getRaison() {
-        return raison;
-    }
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean obligatoire = true;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean actif = true;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private int ordre = 0;
+
+    @Builder.Default
+    @Column(name = "date_creation", nullable = false, updatable = false)
+    private Instant dateCreation = Instant.now();
 }
