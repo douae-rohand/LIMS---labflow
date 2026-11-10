@@ -1,11 +1,15 @@
 package com.backend.modules.plateforme.dto;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /** Contrats d'échange de l'écran « Paramètres de la plateforme ». */
@@ -30,8 +34,26 @@ public final class ParametresPlateformeDtos {
     public record PolitiqueMotDePasse(int longueurMin, boolean exigerCaractereSpecial) {
     }
 
-    /** Données publiques utiles aux formulaires (inscription, intégration, mots de passe). */
-    public record ParametresPublics(PolitiqueMotDePasse politiqueMotDePasse, List<String> typesLaboratoire) {
+    /** Données publiques utiles aux formulaires (inscription, intégration, mots de passe) et à la landing. */
+    public record ParametresPublics(PolitiqueMotDePasse politiqueMotDePasse, List<String> typesLaboratoire,
+                                    Identite identite) {
+    }
+
+    /** Identité de la plateforme : coordonnées et expéditeur des e-mails. */
+    public record Identite(
+            @NotBlank(message = "Le nom de la plateforme est obligatoire") @Size(max = 100) String nom,
+            @Email(message = "Adresse e-mail de contact invalide") @Size(max = 255) String emailContact,
+            @Size(max = 50) String telephone,
+            @Size(max = 500) String adresse,
+            @NotBlank(message = "Le nom d'expéditeur est obligatoire") @Size(max = 100) String expediteurNom) {
+    }
+
+    /** Taux de TVA de la plateforme, en pourcentage (les prix du catalogue sont saisis TTC). */
+    public record Facturation(
+            @NotNull(message = "Le taux de TVA est obligatoire")
+            @DecimalMin(value = "0.00", message = "Le taux de TVA ne peut pas être négatif")
+            @DecimalMax(value = "100.00", message = "Le taux de TVA ne peut pas dépasser 100 %")
+            BigDecimal tauxTva) {
     }
 
     public record EnregistrerTypeDocument(

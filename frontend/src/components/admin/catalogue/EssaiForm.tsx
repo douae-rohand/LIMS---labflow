@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { libelleTva, useTvaLaboratoire } from "@/api/tvaLaboratoire";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, X } from "lucide-react";
 import { Button, Input, Select, Textarea } from "@/components/lab";
@@ -54,6 +55,7 @@ export function EssaiForm({
   isSubmitting,
   error,
 }: EssaiFormProps) {
+  const tva = useTvaLaboratoire();
   const [etape, setEtape] = useState(0);
   const [formData, setFormData] = useState<CreerEssaiRequest | ModifierEssaiRequest>(
     essai ?? { code: "", designation: "", tarif: 0, domaineId: 0 },
@@ -132,8 +134,11 @@ export function EssaiForm({
             </Select>
           </label>
           <label className="block space-y-1 text-sm font-medium">
-            Tarif (MAD) *
+            Prix TTC (MAD) *
             <Input type="number" min="0.01" step="0.01" value={formData.tarif ?? 0} onChange={(event) => mettreAJour("tarif", Number(event.target.value))} required />
+            {tva.data && (formData.tarif ?? 0) > 0 && (
+              <span className="block text-xs font-normal text-muted-foreground">{libelleTva(formData.tarif ?? 0, tva.data.tauxEffectif)}</span>
+            )}
           </label>
         </div>
       )}

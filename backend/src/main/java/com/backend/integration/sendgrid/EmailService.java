@@ -1,6 +1,7 @@
 package com.backend.integration.sendgrid;
 
 import com.backend.integration.smtp.SmtpMailClient;
+import com.backend.modules.plateforme.service.ParametrePlateformeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -19,6 +20,7 @@ public class EmailService {
 
     private final SendGridMailClient sendGridMailClient;
     private final SmtpMailClient smtpMailClient;
+    private final ParametrePlateformeService parametrePlateformeService;
 
     /**
      * Point d'envoi unique : SendGrid d'abord, puis le SMTP de secours si SendGrid n'a pas
@@ -26,13 +28,14 @@ public class EmailService {
      */
     public ResultatEnvoiEmail envoyerHtml(List<String> destinataires, String sujet, String corpsHtml) {
         String texte = EmailTemplates.texteBrut(corpsHtml);
-        ResultatEnvoiEmail sendGrid = sendGridMailClient.envoyer(destinataires, sujet, corpsHtml, texte);
+        String expediteur = parametrePlateformeService.nomExpediteur();
+        ResultatEnvoiEmail sendGrid = sendGridMailClient.envoyer(destinataires, sujet, corpsHtml, texte, expediteur);
         if (sendGrid.accepte() || "ENVOI_IGNORE".equals(sendGrid.code()) || !smtpMailClient.actif()) {
             return sendGrid;
         }
         log.warn("SendGrid n'a pas envoyé l'e-mail [{}] ({}) : repli sur le SMTP de secours", sujet, sendGrid.code());
         ResultatEnvoiEmail smtp = smtpMailClient.envoyer(
-                sendGridMailClient.normaliserDestinataires(destinataires), sujet, corpsHtml, texte);
+                sendGridMailClient.normaliserDestinataires(destinataires), sujet, corpsHtml, texte, expediteur);
         if (!smtp.accepte()) {
             log.error("E-mail [{}] non envoyé : SendGrid ({}) et SMTP ({}) ont échoué", sujet, sendGrid.code(), smtp.code());
             return sendGrid;

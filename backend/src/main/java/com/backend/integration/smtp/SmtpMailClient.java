@@ -69,10 +69,17 @@ public class SmtpMailClient {
      * tentative est faite après une courte pause.
      */
     public ResultatEnvoiEmail envoyer(List<String> destinataires, String sujet, String html, String texte) {
+        return envoyer(destinataires, sujet, html, texte, null);
+    }
+
+    /** @param nom nom affiché de l'expéditeur ; {@code null} = valeur de configuration */
+    public ResultatEnvoiEmail envoyer(List<String> destinataires, String sujet, String html, String texte,
+                                      String nom) {
         if (!actif) {
             return ResultatEnvoiEmail.nonConfigure("SMTP de secours non configuré (MAIL_MAILER=smtp)");
         }
-        ResultatEnvoiEmail resultat = tenter(destinataires, sujet, html, texte);
+        String expediteurAffiche = StringUtils.hasText(nom) ? nom.trim() : nomExpediteur;
+        ResultatEnvoiEmail resultat = tenter(destinataires, sujet, html, texte, expediteurAffiche);
         if (resultat.accepte()) {
             return resultat;
         }
@@ -83,14 +90,15 @@ public class SmtpMailClient {
             return resultat;
         }
         log.info("SMTP : nouvelle tentative pour [{}]", sujet);
-        return tenter(destinataires, sujet, html, texte);
+        return tenter(destinataires, sujet, html, texte, expediteurAffiche);
     }
 
-    private ResultatEnvoiEmail tenter(List<String> destinataires, String sujet, String html, String texte) {
+    private ResultatEnvoiEmail tenter(List<String> destinataires, String sujet, String html, String texte,
+                                      String nomAffiche) {
         try {
             MimeMessage message = expediteurSmtp.createMimeMessage();
             MimeMessageHelper aide = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
-            aide.setFrom(new InternetAddress(expediteur, nomExpediteur, StandardCharsets.UTF_8.name()));
+            aide.setFrom(new InternetAddress(expediteur, nomAffiche, StandardCharsets.UTF_8.name()));
             aide.setTo(destinataires.toArray(String[]::new));
             aide.setSubject(sujet);
             aide.setText(StringUtils.hasText(texte) ? texte : EmailTemplates.texteBrut(html), html);

@@ -113,7 +113,9 @@ export function FacturePanneau({
                   <div><dt className="text-muted-foreground">Échéance</dt><dd className="mt-1">{facture.dateEcheance ?? "—"}</dd></div>
                   <div><dt className="text-muted-foreground">Client</dt><dd className="mt-1">{facture.clientNom ?? "—"}</dd></div>
                   <div><dt className="text-muted-foreground">ICE client</dt><dd className="mt-1">{facture.clientIce ?? "—"}</dd></div>
-                  <div><dt className="text-muted-foreground">Total HT</dt><dd className="mt-1 font-semibold">{formatMontant(facture.montantHt)}</dd></div>
+                  <div><dt className="text-muted-foreground">Total TTC</dt><dd className="mt-1 font-semibold">{formatMontant(facture.montantHt)}</dd></div>
+                  <div><dt className="text-muted-foreground">dont TVA ({facture.tauxTva} %)</dt><dd className="mt-1 font-semibold">−{formatMontant(facture.montantTva)}</dd></div>
+                  <div><dt className="text-muted-foreground">Total hors taxes</dt><dd className="mt-1">{formatMontant(facture.montantHorsTaxes)}</dd></div>
                 </dl>
               </section>
 

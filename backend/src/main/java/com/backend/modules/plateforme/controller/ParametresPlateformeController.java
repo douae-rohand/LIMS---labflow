@@ -4,6 +4,8 @@ import com.backend.common.dto.ApiResponse;
 import com.backend.common.security.SecurityUtils;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.CreerTypeLaboratoire;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.EnregistrerTypeDocument;
+import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Facturation;
+import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Identite;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.ModifierTypeLaboratoire;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Securite;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.TypeLaboratoire;
@@ -48,6 +50,32 @@ public class ParametresPlateformeController {
     public ResponseEntity<ApiResponse<Securite>> modifierSecurite(@Valid @RequestBody Securite demande) {
         return ResponseEntity.ok(ApiResponse.success("Paramètres de sécurité enregistrés",
                 service.modifierSecurite(demande, acteur())));
+    }
+
+    @GetMapping("/identite")
+    @Operation(summary = "Identité de la plateforme")
+    public ResponseEntity<ApiResponse<Identite>> identite() {
+        return ResponseEntity.ok(ApiResponse.success(service.identite()));
+    }
+
+    @PutMapping("/identite")
+    @Operation(summary = "Modifier l'identité de la plateforme")
+    public ResponseEntity<ApiResponse<Identite>> modifierIdentite(@Valid @RequestBody Identite demande) {
+        return ResponseEntity.ok(ApiResponse.success("Identité de la plateforme enregistrée",
+                service.modifierIdentite(demande, acteur())));
+    }
+
+    @GetMapping("/facturation")
+    @Operation(summary = "Taux de TVA de la plateforme")
+    public ResponseEntity<ApiResponse<Facturation>> facturation() {
+        return ResponseEntity.ok(ApiResponse.success(service.facturation()));
+    }
+
+    @PutMapping("/facturation")
+    @Operation(summary = "Modifier le taux de TVA de la plateforme")
+    public ResponseEntity<ApiResponse<Facturation>> modifierFacturation(@Valid @RequestBody Facturation demande) {
+        return ResponseEntity.ok(ApiResponse.success("Taux de TVA enregistré",
+                service.modifierFacturation(demande, acteur())));
     }
 
     @GetMapping("/documents")
