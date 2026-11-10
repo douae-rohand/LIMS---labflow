@@ -115,13 +115,13 @@ public class LigneTravailAssembleur {
         return NON_SOUMIS;
     }
 
-    /** Échéance = date d'affectation + durée estimée de l'essai (en jours, comme dans le catalogue). */
+    /** Échéance = date d'affectation + durée estimée de l'essai, en minutes (catalogue client, espace technicien). */
     public static Instant echeance(LigneEssai ligne) {
         Essai essai = ligne.getEssai();
         if (ligne.getDateAttribution() == null || essai == null || essai.getDureeEstimee() == null) {
             return null;
         }
-        return ligne.getDateAttribution().plus(Duration.ofDays(essai.getDureeEstimee()));
+        return ligne.getDateAttribution().plus(Duration.ofMinutes(essai.getDureeEstimee()));
     }
 
     public static boolean terminee(LigneEssai ligne) {
@@ -154,7 +154,7 @@ public class LigneTravailAssembleur {
                 .unite(essai == null ? null : essai.getUnite())
                 .limiteMin(essai == null ? null : essai.getLimiteMin())
                 .limiteMax(essai == null ? null : essai.getLimiteMax())
-                .dureeEstimeeJours(essai == null ? null : essai.getDureeEstimee())
+                .dureeEstimeeMinutes(essai == null ? null : essai.getDureeEstimee())
                 .domaineCode(essai == null || essai.getDomaine() == null ? null : essai.getDomaine().getCode())
                 .domaineLibelle(essai == null || essai.getDomaine() == null ? null : essai.getDomaine().getLibelle())
                 .technicienId(ligne.getTechnicienId())
