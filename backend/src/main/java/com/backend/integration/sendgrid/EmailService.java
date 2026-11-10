@@ -154,6 +154,13 @@ public class EmailService {
     }
 
     @Async
+    public void envoyerEchantillonsRecus(String email, String nomClient, String referenceDemande, int recus,
+                                         List<String> nonConformes, String lien) {
+        String sujet = "[LabFlow] Échantillons reçus - demande " + referenceDemande;
+        envoyerHtml(email, sujet, EmailTemplates.echantillonsRecus(nomClient, referenceDemande, recus, nonConformes, lien));
+    }
+
+    @Async
     public void envoyerRapportDisponible(String email, String nomClient,
                                          String referenceRapport, String lienRapport) {
         String sujet = "[LabFlow] Votre rapport " + referenceRapport + " est disponible";

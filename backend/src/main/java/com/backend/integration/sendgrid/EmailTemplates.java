@@ -185,6 +185,24 @@ public final class EmailTemplates {
         );
     }
 
+    /** Échantillons reçus par le laboratoire ; les non conformes sont listés avec leur motif. */
+    public static String echantillonsRecus(String nomClient, String reference, int recus,
+                                           java.util.List<String> nonConformes, String lien) {
+        StringBuilder corps = new StringBuilder("""
+                <p>Bonjour %s,</p>
+                <p>Le laboratoire a réceptionné <strong>%d échantillon(s)</strong> pour votre demande <strong>%s</strong>.</p>
+                """.formatted(e(nomClient), recus, e(reference)));
+        if (nonConformes != null && !nonConformes.isEmpty()) {
+            corps.append("<p>Certains échantillons ne sont pas conformes et devront être déposés à nouveau :</p><ul>");
+            nonConformes.forEach(ligne -> corps.append("<li>").append(e(ligne)).append("</li>"));
+            corps.append("</ul>");
+        } else {
+            corps.append("<p>Les analyses vont pouvoir démarrer.</p>");
+        }
+        return page("Échantillons reçus", "Vos échantillons sont arrivés au laboratoire.", corps.toString(),
+                lien, "Suivre ma demande");
+    }
+
     public static String rapportDisponible(String nomClient, String reference, String lien) {
         return page(
                 "Rapport disponible",

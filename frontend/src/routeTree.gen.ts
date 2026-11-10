@@ -45,6 +45,7 @@ import { Route as AppPlanningRouteImport } from './routes/app/planning'
 import { Route as AppProfilRouteImport } from './routes/app/profil'
 import { Route as AppRapportsRouteImport } from './routes/app/rapports'
 import { Route as AppRapportsLaboratoireRouteImport } from './routes/app/rapports-laboratoire'
+import { Route as AppReceptionRouteImport } from './routes/app/reception'
 import { Route as AppSatisfactionRouteImport } from './routes/app/satisfaction'
 import { Route as AppStockRouteImport } from './routes/app/stock'
 import { Route as AppSuiviRouteImport } from './routes/app/suivi'
@@ -259,6 +260,11 @@ const AppRapportsLaboratoireRoute = AppRapportsLaboratoireRouteImport.update({
   path: '/rapports-laboratoire',
   getParentRoute: () => AppRoute,
 } as any)
+const AppReceptionRoute = AppReceptionRouteImport.update({
+  id: '/reception',
+  path: '/reception',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSatisfactionRoute = AppSatisfactionRouteImport.update({
   id: '/satisfaction',
   path: '/satisfaction',
@@ -467,6 +473,7 @@ export interface FileRoutesByFullPath {
   '/app/profil': typeof AppProfilRoute
   '/app/rapports': typeof AppRapportsRouteWithChildren
   '/app/rapports-laboratoire': typeof AppRapportsLaboratoireRoute
+  '/app/reception': typeof AppReceptionRoute
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/stock': typeof AppStockRouteWithChildren
   '/app/suivi': typeof AppSuiviRoute
@@ -526,6 +533,7 @@ export interface FileRoutesByTo {
   '/app/planning': typeof AppPlanningRoute
   '/app/profil': typeof AppProfilRoute
   '/app/rapports-laboratoire': typeof AppRapportsLaboratoireRoute
+  '/app/reception': typeof AppReceptionRoute
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/suivi': typeof AppSuiviRoute
   '/app/tableau-de-bord': typeof AppTableauDeBordRoute
@@ -597,6 +605,7 @@ export interface FileRoutesById {
   '/app/profil': typeof AppProfilRoute
   '/app/rapports': typeof AppRapportsRouteWithChildren
   '/app/rapports-laboratoire': typeof AppRapportsLaboratoireRoute
+  '/app/reception': typeof AppReceptionRoute
   '/app/satisfaction': typeof AppSatisfactionRoute
   '/app/stock': typeof AppStockRouteWithChildren
   '/app/suivi': typeof AppSuiviRoute
@@ -670,6 +679,7 @@ export interface FileRouteTypes {
     | '/app/profil'
     | '/app/rapports'
     | '/app/rapports-laboratoire'
+    | '/app/reception'
     | '/app/satisfaction'
     | '/app/stock'
     | '/app/suivi'
@@ -729,6 +739,7 @@ export interface FileRouteTypes {
     | '/app/planning'
     | '/app/profil'
     | '/app/rapports-laboratoire'
+    | '/app/reception'
     | '/app/satisfaction'
     | '/app/suivi'
     | '/app/tableau-de-bord'
@@ -799,6 +810,7 @@ export interface FileRouteTypes {
     | '/app/profil'
     | '/app/rapports'
     | '/app/rapports-laboratoire'
+    | '/app/reception'
     | '/app/satisfaction'
     | '/app/stock'
     | '/app/suivi'
@@ -1105,6 +1117,13 @@ declare module '@tanstack/react-router' {
       path: '/rapports-laboratoire'
       fullPath: '/app/rapports-laboratoire'
       preLoaderRoute: typeof AppRapportsLaboratoireRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/reception': {
+      id: '/app/reception'
+      path: '/reception'
+      fullPath: '/app/reception'
+      preLoaderRoute: typeof AppReceptionRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/satisfaction': {
@@ -1530,6 +1549,7 @@ interface AppRouteChildren {
   AppProfilRoute: typeof AppProfilRoute
   AppRapportsRoute: typeof AppRapportsRouteWithChildren
   AppRapportsLaboratoireRoute: typeof AppRapportsLaboratoireRoute
+  AppReceptionRoute: typeof AppReceptionRoute
   AppSatisfactionRoute: typeof AppSatisfactionRoute
   AppStockRoute: typeof AppStockRouteWithChildren
   AppSuiviRoute: typeof AppSuiviRoute
@@ -1566,6 +1586,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfilRoute: AppProfilRoute,
   AppRapportsRoute: AppRapportsRouteWithChildren,
   AppRapportsLaboratoireRoute: AppRapportsLaboratoireRoute,
+  AppReceptionRoute: AppReceptionRoute,
   AppSatisfactionRoute: AppSatisfactionRoute,
   AppStockRoute: AppStockRouteWithChildren,
   AppSuiviRoute: AppSuiviRoute,
