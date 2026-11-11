@@ -39,6 +39,7 @@ public class SuiviAccueilService {
             Map.entry("CREATION_DEMANDE", "Demande soumise"),
             Map.entry("ACCEPTATION_DEMANDE", "Demande acceptée"),
             Map.entry("REFUS_DEMANDE", "Demande refusée"),
+            Map.entry("REFUS_AUTOMATIQUE_DEMANDE", "Refusée automatiquement (48 h sans échantillon)"),
             Map.entry("ANNULATION_DEMANDE", "Demande annulée par le client"),
             Map.entry("CHANGEMENT_STATUT_DEMANDE", "Changement de statut"));
 

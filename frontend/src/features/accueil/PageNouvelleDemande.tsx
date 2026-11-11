@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Check, ClipboardPlus, UserPlus } from "lucide-react";
+import { Building2, Check, ClipboardPlus, Clock, PackageCheck, UserPlus, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import {
   creerDemandeAccueil,
   listerCatalogueAccueil,
   listerClients,
   listerPatients,
+  type TypeDemandeAccueil,
 } from "@/api/accueil";
 import { Button, Input, Label, Textarea } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
@@ -35,6 +36,8 @@ export function PageNouvelleDemande() {
   const patients = useQuery({ queryKey: ["accueil-patients"], queryFn: listerPatients });
   const catalogue = useQuery({ queryKey: ["accueil-catalogue"], queryFn: listerCatalogueAccueil });
 
+  const [type, setType] = useState<TypeDemandeAccueil>("PATIENT");
+  const [echantillons, setEchantillons] = useState<"maintenant" | "plus-tard">("maintenant");
   const [clientId, setClientId] = useState("");
   const [patientId, setPatientId] = useState("");
   const [titre, setTitre] = useState("");
@@ -59,22 +62,34 @@ export function PageNouvelleDemande() {
   const basculer = (id: number) =>
     setChoisis((courant) => (courant.includes(id) ? courant.filter((x) => x !== id) : [...courant, id]));
 
-  const manquant = !clientId ? "Choisissez le client."
-    : !titre.trim() ? "Indiquez l'intitulé de la demande."
-      : choisis.length === 0 ? "Choisissez au moins une analyse." : null;
+  const patient = type === "PATIENT";
+  const manquant = patient && !patientId ? "Choisissez le patient."
+    : !patient && !clientId ? "Choisissez le client."
+      : !titre.trim() ? "Indiquez l'intitulé de la demande."
+        : choisis.length === 0 ? "Choisissez au moins une analyse." : null;
 
   const creation = useMutation({
     mutationFn: () => creerDemandeAccueil({
-      clientUtilisateurId: Number(clientId),
+      type,
+      clientUtilisateurId: !patient && clientId ? Number(clientId) : undefined,
       patientId: patientId ? Number(patientId) : undefined,
       titre: titre.trim(),
       objectif: objectif.trim() || undefined,
       essaiIds: choisis,
     }),
     onSuccess: async (demande) => {
-      toast.success(`Demande ${demande.numero} enregistrée : elle attend la décision du responsable.`);
       await queryClient.invalidateQueries({ queryKey: ["accueil-demandes"] });
-      void navigate({ to: "/app/suivi-demandes" });
+      await queryClient.invalidateQueries({ queryKey: ["accueil-tableau"] });
+      if (!patient) {
+        toast.success(`Demande ${demande.numero} enregistrée : elle attend la décision du responsable.`);
+        void navigate({ to: "/app/suivi-demandes" });
+      } else if (echantillons === "maintenant") {
+        toast.success(`Demande ${demande.numero} acceptée : enregistrez maintenant les échantillons.`);
+        void navigate({ to: "/app/reception", search: { demande: demande.id } });
+      } else {
+        toast.success(`Demande ${demande.numero} acceptée : échantillons attendus sous 48 h. La facture est en caisse.`);
+        void navigate({ to: "/app/caisse" });
+      }
     },
     onError: (erreur) => toast.error(messageErreur(erreur, "La demande n'a pas pu être enregistrée.")),
   });
@@ -84,7 +99,7 @@ export function PageNouvelleDemande() {
       <EnTeteResponsable
         icone={ClipboardPlus}
         titre="Nouvelle demande"
-        description="Enregistrez la demande d'un client présent à l'accueil. Elle suit le même circuit qu'une demande en ligne : le responsable l'accepte ou la refuse, puis le client la suit dans son espace."
+        description="Patient sur site : la demande est acceptée aussitôt et ses échantillons sont reçus ici (48 h maximum). Client avec compte : la demande suit le circuit en ligne et le responsable l'accepte ou la refuse."
       />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -92,7 +107,25 @@ export function PageNouvelleDemande() {
           {/* Demandeur */}
           <section className="rounded-2xl border border-brand-900/10 bg-card p-5">
             <h2 className="mb-4 text-sm font-extrabold text-ink-900">1. Demandeur</h2>
+            <div className="mb-4 grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Type de demande">
+              {([
+                ["PATIENT", UserRound, "Patient sur site", "Personne présente au guichet, sans compte. Demande acceptée d'office."],
+                ["CLIENT", Building2, "Client avec compte", "Entreprise ou particulier inscrit. Le responsable accepte ou refuse."],
+              ] as const).map(([valeur, Icone, libelle, detail]) => (
+                <button key={valeur} type="button" role="radio" aria-checked={type === valeur} onClick={() => setType(valeur)}
+                  className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-left ${
+                    type === valeur ? "border-brand-900 bg-brand-900/5" : "border-brand-900/10 hover:border-brand-900/40"
+                  }`}>
+                  <Icone className="mt-0.5 size-5 shrink-0 text-brand-900" aria-hidden="true" />
+                  <span>
+                    <span className="block text-sm font-semibold text-ink-900">{libelle}</span>
+                    <span className="block text-xs text-muted-foreground">{detail}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
             <div className="grid gap-4 md:grid-cols-2">
+              {!patient && (
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="nd-client">Client *</Label>
@@ -106,15 +139,16 @@ export function PageNouvelleDemande() {
                   options={(clients.data ?? []).map((c) => [String(c.utilisateurId),
                     `${c.raisonSociale || c.nomComplet} — ${c.email}`])} />
               </div>
+              )}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="nd-patient">Patient (analyses médicales)</Label>
+                  <Label htmlFor="nd-patient">{patient ? "Patient *" : "Patient (facultatif)"}</Label>
                   <button type="button" onClick={() => setPatientOuvert(true)}
                     className="inline-flex items-center gap-1 text-xs font-semibold text-brand-900 hover:underline">
                     <UserPlus className="size-3.5" aria-hidden="true" /> Nouveau patient
                   </button>
                 </div>
-                <FiltreSelect className="w-full" libelle="Patient" tous="Aucun patient"
+                <FiltreSelect className="w-full" libelle="Patient" tous={patient ? "Choisir le patient" : "Aucun patient"}
                   valeur={patientId} onChange={setPatientId}
                   options={(patients.data ?? []).map((p) => [String(p.id), `${p.prenom} ${p.nom} (${p.code})`])} />
               </div>
@@ -176,6 +210,33 @@ export function PageNouvelleDemande() {
               </ul>
             )}
           </section>
+
+          {patient && (
+            <section className="rounded-2xl border border-brand-900/10 bg-card p-5">
+              <h2 className="mb-1 text-sm font-extrabold text-ink-900">3. Échantillons</h2>
+              <p className="mb-4 text-xs text-muted-foreground">
+                Sans échantillon reçu sous 48 h, la demande est refusée automatiquement, sauf si le patient a déjà payé (même partiellement).
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Échantillons">
+                {([
+                  ["maintenant", PackageCheck, "Déposés maintenant", "Après l'enregistrement, la réception s'ouvre pour saisir les échantillons et leur conformité."],
+                  ["plus-tard", Clock, "Apportés plus tard", "Le patient a 48 h pour déposer ses échantillons. Il peut payer dès maintenant en caisse."],
+                ] as const).map(([valeur, Icone, libelle, detail]) => (
+                  <button key={valeur} type="button" role="radio" aria-checked={echantillons === valeur}
+                    onClick={() => setEchantillons(valeur)}
+                    className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-left ${
+                      echantillons === valeur ? "border-brand-900 bg-brand-900/5" : "border-brand-900/10 hover:border-brand-900/40"
+                    }`}>
+                    <Icone className="mt-0.5 size-5 shrink-0 text-brand-900" aria-hidden="true" />
+                    <span>
+                      <span className="block text-sm font-semibold text-ink-900">{libelle}</span>
+                      <span className="block text-xs text-muted-foreground">{detail}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
         {/* Récapitulatif */}
@@ -197,10 +258,12 @@ export function PageNouvelleDemande() {
             <span className="text-sm font-semibold text-ink-900">Total TTC</span>
             <span className="text-lg font-extrabold text-ink-900">{formaterMontant(total)}</span>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">La facture sera émise si le responsable accepte la demande.</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {patient ? "La facture est émise aussitôt : le patient peut payer en caisse." : "La facture sera émise si le responsable accepte la demande."}
+          </p>
           {manquant && <p className="mt-3 text-xs font-semibold text-amber-800">{manquant}</p>}
           <Button className="mt-4 w-full" loading={creation.isPending} disabled={manquant !== null} onClick={() => creation.mutate()}>
-            Enregistrer la demande
+            {patient && echantillons === "maintenant" ? "Enregistrer et réceptionner" : "Enregistrer la demande"}
           </Button>
         </aside>
       </div>

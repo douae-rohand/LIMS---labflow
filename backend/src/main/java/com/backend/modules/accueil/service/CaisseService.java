@@ -227,8 +227,14 @@ public class CaisseService {
     }
 
     private static String nomClient(Demande d, Map<Long, String> noms) {
-        if (d == null || d.getClient() == null) {
+        if (d == null) {
             return null;
+        }
+        if (d.getClient() == null) {
+            // Patient sur site, sans compte client : la facture est à son nom.
+            return d.getPatient() == null ? null
+                    : ("Patient " + (d.getPatient().getPrenom() == null ? "" : d.getPatient().getPrenom() + " ")
+                            + d.getPatient().getNom()).trim();
         }
         if (StringUtils.hasText(d.getClient().getRaisonSociale())) {
             return d.getClient().getRaisonSociale();

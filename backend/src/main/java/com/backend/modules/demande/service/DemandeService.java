@@ -200,7 +200,7 @@ public class DemandeService {
                     // LIKE 'AAAAMM-%' : sans le joker, aucune demande ne correspondait et la séquence restait à 001.
                     long maxSeq = demandeRepository.findMaxSequenceForPrefix(prefixe + "%");
                     String numero = prefixe + String.format("%03d", maxSeq + 1) + suffixeAleatoire;
-                    Client client = clientRepository.findById(ficheClientId)
+                    Client client = ficheClientId == null ? null : clientRepository.findById(ficheClientId)
                             .orElseThrow(() -> new ResourceNotFoundException("Client", "id", ficheClientId));
                     Demande d = Demande.builder()
                             .numero(numero)
@@ -236,9 +236,15 @@ public class DemandeService {
     }
 
     /**
-     * Demande enregistrée par l'accueil pour un client qui se présente sur site (cas d'utilisation
-     * « Créer une demande d'analyse pour un client sur site »). Elle suit ensuite exactement le
-     * circuit d'une demande en ligne : statut NOUVEAU, décision du responsable, suivi par le client.
+     * Demande enregistrée par l'accueil (cas d'utilisation « Créer une demande d'analyse pour un
+     * client sur site »). Deux circuits :
+     * <ul>
+     *   <li><b>CLIENT</b> (compte client) : statut NOUVEAU, le responsable accepte ou refuse ;</li>
+     *   <li><b>PATIENT</b> sur site (fiche patient, sans compte) : acceptée d'office, facture émise
+     *   aussitôt pour un paiement au guichet ; ses échantillons sont attendus sous 48 h, faute de
+     *   quoi la demande est refusée automatiquement si rien n'a été payé
+     *   ({@link com.backend.modules.accueil.service.DelaiEchantillonsPatient}).</li>
+     * </ul>
      */
     public com.backend.modules.accueil.dto.DemandeAccueilDtos.DemandeCreeeDto creerParAccueil(
             com.backend.modules.accueil.dto.DemandeAccueilDtos.CreerDemandeAccueilRequest request) {
@@ -246,15 +252,26 @@ public class DemandeService {
         Long laboratoireId = acteur.getLaboratoireId();
         Laboratoire labo = exigerLaboratoireActif(laboratoireId);
         String nomSchema = labo.getNomSchema();
-        Long clientId = request.clientUtilisateurId();
-        boolean rattache = tenantExecutor.inCentral(() ->
-                clientLaboratoireRepository.findByUtilisateur_IdAndLaboratoire_Id(clientId, laboratoireId).isPresent());
-        if (!rattache) {
-            throw new BusinessRuleException("CLIENT_NON_RATTACHE",
-                    "Ce client n'est pas enregistré dans votre laboratoire : enregistrez-le d'abord.");
+        boolean patientSurSite = request.type() == com.backend.modules.accueil.dto.DemandeAccueilDtos.TypeDemandeAccueil.PATIENT;
+
+        Long ficheClientId = null;
+        if (patientSurSite) {
+            if (request.patientId() == null) {
+                throw new BusinessRuleException("PATIENT_OBLIGATOIRE", "Choisissez le patient.");
+            }
+        } else {
+            Long clientId = request.clientUtilisateurId();
+            if (clientId == null) {
+                throw new BusinessRuleException("CLIENT_OBLIGATOIRE", "Choisissez le client.");
+            }
+            boolean rattache = tenantExecutor.inCentral(() ->
+                    clientLaboratoireRepository.findByUtilisateur_IdAndLaboratoire_Id(clientId, laboratoireId).isPresent());
+            if (!rattache) {
+                throw new BusinessRuleException("CLIENT_NON_RATTACHE",
+                        "Ce client n'est pas enregistré dans votre laboratoire : enregistrez-le d'abord.");
+            }
+            ficheClientId = clientService.assurerFicheLocale(clientId, nomSchema).getId();
         }
-        List<Long> essaiIds = request.essaiIds().stream().distinct().toList();
-        Map<Long, Essai> essaisValides = essaisDisponibles(nomSchema, essaiIds);
         if (request.patientId() != null) {
             boolean patientExiste = tenantExecutor.inTenant(nomSchema, () ->
                     entityManager.find(com.backend.modules.patient.entity.Patient.class, request.patientId()) != null);
@@ -262,19 +279,39 @@ public class DemandeService {
                 throw new ResourceNotFoundException("Patient", "id", request.patientId());
             }
         }
-        Client fiche = clientService.assurerFicheLocale(clientId, nomSchema);
-        Demande demande = enregistrerNouvelleDemande(nomSchema, fiche.getId(), essaiIds, essaisValides,
+        List<Long> essaiIds = request.essaiIds().stream().distinct().toList();
+        Map<Long, Essai> essaisValides = essaisDisponibles(nomSchema, essaiIds);
+        Demande demande = enregistrerNouvelleDemande(nomSchema, ficheClientId, essaiIds, essaisValides,
                 request.titre().trim(), texteOuNull(request.objectif()), request.patientId());
 
-        enregistrerAuditDemande("CREATION_DEMANDE", nomSchema, demande.getId(),
-                null, StatutDemande.NOUVEAU.name(), "Demande enregistrée à l'accueil pour le client");
-        notificationsLaboratoire.notifierApresCommit(com.backend.modules.utilisateur.entity.RoleUtilisateur.RESPONSABLE,
-                laboratoireId, "DEMANDE_SOUMISE", "Nouvelle demande " + demande.getNumero(),
-                "Demande enregistrée à l'accueil : elle attend votre décision.", "/app/demandes-clients");
+        enregistrerAuditDemande("CREATION_DEMANDE", nomSchema, demande.getId(), null, StatutDemande.NOUVEAU.name(),
+                patientSurSite ? "Demande patient enregistrée à l'accueil" : "Demande enregistrée à l'accueil pour le client");
+
+        if (patientSurSite) {
+            Long demandeId = demande.getId();
+            demande = tenantExecutor.inTenant(nomSchema, () -> {
+                Demande d = charger(demandeId);
+                appliquerDecision(d, StatutDemande.ACCEPTEE, null);
+                return demandeRepository.save(d);
+            });
+            enregistrerAuditDemande("ACCEPTATION_DEMANDE", nomSchema, demandeId, StatutDemande.NOUVEAU.name(),
+                    StatutDemande.ACCEPTEE.name(), "Patient sur site : acceptée d'office, échantillons attendus sous 48 h");
+            tenantExecutor.inTenant(nomSchema, () -> {
+                planifierFacturationAutomatique(demandeId);
+                return null;
+            });
+            notificationsLaboratoire.notifierApresCommit(com.backend.modules.utilisateur.entity.RoleUtilisateur.RESPONSABLE,
+                    laboratoireId, "DEMANDE_PATIENT", "Demande patient " + demande.getNumero() + " à planifier",
+                    "Demande d'un patient sur site, acceptée à l'accueil : affectez ses analyses.", "/app/planification");
+        } else {
+            notificationsLaboratoire.notifierApresCommit(com.backend.modules.utilisateur.entity.RoleUtilisateur.RESPONSABLE,
+                    laboratoireId, "DEMANDE_SOUMISE", "Nouvelle demande " + demande.getNumero(),
+                    "Demande enregistrée à l'accueil : elle attend votre décision.", "/app/demandes-clients");
+        }
         BigDecimal total = essaiIds.stream().map(id -> essaisValides.get(id).getTarif())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         return new com.backend.modules.accueil.dto.DemandeAccueilDtos.DemandeCreeeDto(
-                demande.getId(), demande.getNumero(), essaiIds.size(), total);
+                demande.getId(), demande.getNumero(), essaiIds.size(), total, demande.getStatut());
     }
 
     private static String texteOuNull(String valeur) {

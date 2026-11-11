@@ -301,8 +301,12 @@ export interface EssaiCatalogueAccueil {
   dureeEstimeeMinutes?: number | null;
 }
 
+/** CLIENT : compte client, décision du responsable. PATIENT : patient sur site, acceptée d'office. */
+export type TypeDemandeAccueil = "CLIENT" | "PATIENT";
+
 export interface NouvelleDemandeAccueil {
-  clientUtilisateurId: number;
+  type: TypeDemandeAccueil;
+  clientUtilisateurId?: number | undefined;
   patientId?: number | undefined;
   titre: string;
   objectif?: string | undefined;
@@ -314,6 +318,7 @@ export interface DemandeCreee {
   numero: string;
   nombreAnalyses: number;
   totalTtc: number;
+  statut: string;
 }
 
 export async function listerCatalogueAccueil(): Promise<EssaiCatalogueAccueil[]> {
