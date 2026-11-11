@@ -61,6 +61,8 @@ export interface SuiviResponsable {
     analysesEnRetard: number;
     resultatsAValider: number;
     rapportsAPreparer: number;
+    /** Demandes ayant au moins une analyse sans technicien. */
+    demandesAAffecter: number;
   };
   techniciens: TechnicienCharge[];
   retards: AnalyseTravail[];

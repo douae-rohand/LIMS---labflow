@@ -19,6 +19,9 @@ import {
   Users,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { lireSuivi } from "@/api/responsable";
+import { lireTableauAccueil } from "@/api/accueil";
 import type { RoleUtilisateur, SessionUser } from "@/api/session";
 import { PERMISSIONS_EXPORT } from "@/api/exports";
 import { EspaceShell, type EntreeNavigation } from "@/features/shell/EspaceShell";
@@ -123,7 +126,7 @@ const NAV_ITEMS_RESPONSABLE: EntreeAdminNavigation[] = [
   },
   {
     to: "/app/validation-resultats" as const,
-    label: "Validation des résultats",
+    label: "Validation résultats",
     icon: ClipboardCheck,
     permission: "VALIDATION_GERER",
     roles: ["RESPONSABLE"],
@@ -230,7 +233,9 @@ export function AdminShell({
   utilisateur: SessionUser;
   onLogout: () => void;
 }) {
-  const navigation = entreesVisibles(utilisateur.role, utilisateur.permissions);
+  const compteurs = useCompteursMenu(utilisateur);
+  const navigation = entreesVisibles(utilisateur.role, utilisateur.permissions)
+    .map((entree) => ({ ...entree, badge: compteurs[entree.to] }));
   const accueil = navigation[0]?.to ?? "/app";
   const libelleRole = LIBELLE_ROLE[utilisateur.role] ?? "Laboratoire";
 
@@ -247,4 +252,32 @@ export function AdminShell({
       {children}
     </EspaceShell>
   );
+}
+
+/**
+ * Pastilles du menu : ce qui attend une action. Les requêtes partagent le cache des tableaux
+ * de bord (« responsable-suivi », « accueil-tableau ») et se mettent à jour par le WebSocket.
+ */
+function useCompteursMenu(utilisateur: SessionUser): Record<string, number | undefined> {
+  const responsable = utilisateur.role === "RESPONSABLE" && utilisateur.permissions.includes("PLANIFICATION_GERER");
+  const accueil = utilisateur.role === "ACCUEIL";
+  const suivi = useQuery({ queryKey: ["responsable-suivi"], queryFn: lireSuivi, enabled: responsable, retry: false });
+  const tableau = useQuery({ queryKey: ["accueil-tableau"], queryFn: lireTableauAccueil, enabled: accueil, retry: false });
+
+  if (responsable && suivi.data) {
+    const i = suivi.data.indicateurs;
+    return {
+      "/app/demandes-clients": i.demandesADecider,
+      "/app/planification": i.demandesAAffecter,
+      "/app/validation-resultats": i.resultatsAValider,
+      "/app/rapports-laboratoire": i.rapportsAPreparer,
+    };
+  }
+  if (accueil && tableau.data) {
+    return {
+      "/app/reception": tableau.data.demandesARecevoir,
+      "/app/caisse": tableau.data.facturesAEncaisser,
+    };
+  }
+  return {};
 }

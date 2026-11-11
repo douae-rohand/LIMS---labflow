@@ -35,6 +35,11 @@ public class SuiviResponsableService {
         long aAffecter = analyses.stream()
                 .filter(a -> a.getTechnicienId() == null && !termineeOuNonRealisable(a))
                 .count();
+        long demandesAAffecter = analyses.stream()
+                .filter(a -> a.getTechnicienId() == null && !termineeOuNonRealisable(a))
+                .map(LigneTravailDto::getDemandeId)
+                .distinct()
+                .count();
         long enCours = analyses.stream()
                 .filter(a -> a.getTechnicienId() != null && !termineeOuNonRealisable(a))
                 .count();
@@ -49,7 +54,8 @@ public class SuiviResponsableService {
                 .limit(20)
                 .toList();
         return new SuiviResponsableDto(
-                new SuiviResponsableDto.Indicateurs(aDecider, aAffecter, enCours, enRetard.size(), aValider, aPreparer),
+                new SuiviResponsableDto.Indicateurs(aDecider, aAffecter, enCours, enRetard.size(), aValider, aPreparer,
+                        demandesAAffecter),
                 planificationService.techniciens(lignes),
                 retards);
     }
