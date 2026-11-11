@@ -6,17 +6,21 @@ import { Badge, Button } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import { listerClients, listerPatients, renvoyerInvitationClient, type Patient } from "@/api/accueil";
 import {
+  BarreFiltres,
   contient,
   EnTeteResponsable,
   EtatChargement,
+  FiltreSelect,
   formaterDate,
   messageErreur,
+  Onglets,
   Recherche,
 } from "@/features/responsable/commun";
 import { DialogueClient } from "./DialogueClient";
 import { DialoguePatient } from "./DialoguePatient";
 
 type Onglet = "clients" | "patients";
+const ONGLETS: { id: Onglet; libelle: string }[] = [{ id: "clients", libelle: "Clients" }, { id: "patients", libelle: "Patients" }];
 
 function age(dateNaissance?: string | null): string | null {
   if (!dateNaissance) return null;
@@ -32,6 +36,7 @@ export function PageClients() {
   const queryClient = useQueryClient();
   const [onglet, setOnglet] = useState<Onglet>("clients");
   const [recherche, setRecherche] = useState("");
+  const [sousFiltre, setSousFiltre] = useState("");
   const [nouveauClient, setNouveauClient] = useState(false);
   const [patientOuvert, setPatientOuvert] = useState(false);
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -44,10 +49,14 @@ export function PageClients() {
     onError: (erreur) => toast.error(messageErreur(erreur, "L'invitation n'a pas pu être renvoyée.")),
   });
 
-  const clientsVisibles = (clients.data ?? []).filter((c) => !recherche.trim()
+  const clientsVisibles = (clients.data ?? [])
+    .filter((c) => !sousFiltre || (sousFiltre === "INACTIF" ? !c.compteActive : c.type === sousFiltre))
+    .filter((c) => !recherche.trim()
     || contient(c.nomComplet, recherche) || contient(c.email, recherche) || contient(c.telephone, recherche)
     || contient(c.raisonSociale, recherche) || contient(c.ice, recherche));
-  const patientsVisibles = (patients.data ?? []).filter((p) => !recherche.trim()
+  const patientsVisibles = (patients.data ?? [])
+    .filter((p) => !sousFiltre || (p.sexe ?? "").toUpperCase().startsWith(sousFiltre))
+    .filter((p) => !recherche.trim()
     || contient(`${p.prenom} ${p.nom}`, recherche) || contient(p.code, recherche) || contient(p.cin, recherche)
     || contient(p.telephone, recherche));
   const requete = onglet === "clients" ? clients : patients;
@@ -66,20 +75,21 @@ export function PageClients() {
         }
       />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex w-full flex-wrap gap-1 rounded-2xl border border-brand-900/10 bg-card p-1 sm:w-auto" role="tablist" aria-label="Clients ou patients">
-          {([["clients", "Clients", clients.data?.length], ["patients", "Patients", patients.data?.length]] as const).map(([id, libelle, nombre]) => (
-            <button key={id} type="button" role="tab" aria-selected={onglet === id} onClick={() => { setOnglet(id); setRecherche(""); }}
-              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold sm:flex-none ${
-                onglet === id ? "bg-brand-900 text-primary-foreground" : "text-brand-900 hover:bg-surface-alt"}`}>
-              {libelle}
-              <span className={`rounded-full px-2 py-0.5 text-[11px] ${onglet === id ? "bg-white/15" : "bg-surface-alt"}`}>{nombre ?? 0}</span>
-            </button>
-          ))}
-        </div>
-        <Recherche valeur={recherche} onChange={setRecherche}
+      <BarreFiltres>
+        <Onglets libelle="Clients ou patients" onglets={ONGLETS} valeur={onglet}
+          onChange={(id) => { setOnglet(id); setRecherche(""); setSousFiltre(""); }}
+          compteurs={{ clients: clients.data?.length ?? 0, patients: patients.data?.length ?? 0 }} />
+        <Recherche className="w-full lg:flex-1" valeur={recherche} onChange={setRecherche}
           placeholder={onglet === "clients" ? "Rechercher un nom, un e-mail, un ICE…" : "Rechercher un nom, un code, un CIN…"} />
-      </div>
+        {onglet === "clients" ? (
+          <FiltreSelect className="w-full lg:w-48" libelle="Filtrer les clients" tous="Tous les clients" valeur={sousFiltre}
+            onChange={setSousFiltre}
+            options={[["PARTICULIER", "Particuliers"], ["ENTREPRISE", "Entreprises"], ["INACTIF", "Compte non activé"]]} />
+        ) : (
+          <FiltreSelect className="w-full lg:w-44" libelle="Filtrer par sexe" tous="Tous les patients" valeur={sousFiltre}
+            onChange={setSousFiltre} options={[["M", "Hommes"], ["F", "Femmes"]]} />
+        )}
+      </BarreFiltres>
 
       <EtatChargement
         chargement={requete.isLoading}

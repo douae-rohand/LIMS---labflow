@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Plus, Printer, Tag, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge, Button, Input, Label, Textarea } from "@/components/lab";
 import {
   lireReception,
+  ouvrirEtiquettes,
   receptionner,
   type DetailReception,
   type EchantillonARecevoir,
@@ -13,6 +14,7 @@ import {
 import { Panneau } from "@/features/super-admin/Fenetres";
 import { EtatChargement, formaterDate, messageErreur } from "@/features/responsable/commun";
 import { BadgeEtatReception, demandeur } from "./commun";
+import { DialogueEtiquette } from "./DialogueEtiquette";
 
 /** Échantillon en cours de saisie dans le formulaire de réception. */
 interface Brouillon {
@@ -58,6 +60,9 @@ export function PanneauReception({ demandeId, onFermer }: { demandeId: number | 
     enabled: demandeId != null,
   });
   const [brouillons, setBrouillons] = useState<Brouillon[]>([]);
+  /** Échantillon dont l'étiquette est affichée. */
+  const [etiquette, setEtiquette] = useState<number | null>(null);
+  const fermerEtiquette = useCallback(() => setEtiquette(null), []);
 
   // Une proposition par nature attendue, à l'ouverture d'une demande et après chaque réception :
   // une actualisation en direct ne doit pas effacer la saisie en cours.
@@ -284,18 +289,35 @@ export function PanneauReception({ demandeId, onFermer }: { demandeId: number | 
           )}
 
           <section>
-            <h3 className="mb-2 font-bold text-ink-900">Échantillons reçus</h3>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-bold text-ink-900">Échantillons reçus</h3>
+              {donnees.echantillons.length > 0 && (
+                <Button size="sm" variant="secondary" icon={<Printer className="size-4" aria-hidden="true" />} iconPosition="left"
+                  onClick={() => void ouvrirEtiquettes(donnees.demande.demandeId)
+                    .catch((erreur: unknown) => toast.error(messageErreur(erreur, "Les étiquettes n'ont pas pu être générées.")))}>
+                  Imprimer les étiquettes
+                </Button>
+              )}
+            </div>
             {donnees.echantillons.length === 0 ? (
               <EtatChargement chargement={false} erreur={false} vide messageVide="Aucun échantillon reçu pour cette demande." />
             ) : (
               <ul className="flex flex-col gap-2">
                 {donnees.echantillons.map((echantillon) => (
-                  <li key={echantillon.id} className="rounded-2xl border border-brand-900/10 bg-card px-4 py-3">
+                  <li key={echantillon.id}>
+                    <button type="button" onClick={() => setEtiquette(echantillon.id)}
+                      title="Voir l'étiquette"
+                      className="group w-full rounded-2xl border border-brand-900/10 bg-card px-4 py-3 text-left transition hover:border-brand-900/30 hover:bg-surface-alt focus-visible:outline-2 focus-visible:outline-brand-900">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="font-semibold text-ink-900">{echantillon.reference} · {echantillon.nature}</p>
-                      <Badge size="sm" variant={echantillon.conforme ? "mint" : "dark"}>
-                        {echantillon.conforme ? "Conforme" : "Non conforme"}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-900 opacity-70 group-hover:opacity-100">
+                          <Tag className="size-3.5" aria-hidden="true" /> Étiquette
+                        </span>
+                        <Badge size="sm" variant={echantillon.conforme ? "mint" : "dark"}>
+                          {echantillon.conforme ? "Conforme" : "Non conforme"}
+                        </Badge>
+                      </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Reçu le {formaterDate(echantillon.dateReception, true)}
@@ -308,11 +330,20 @@ export function PanneauReception({ demandeId, onFermer }: { demandeId: number | 
                     {!echantillon.conforme && echantillon.motif && (
                       <p className="mt-1 text-xs font-semibold text-red-700">Motif : {echantillon.motif}</p>
                     )}
+                    </button>
                   </li>
                 ))}
               </ul>
             )}
           </section>
+          <DialogueEtiquette
+            echantillon={donnees.echantillons.find((e) => e.id === etiquette) ?? null}
+            demandeId={donnees.demande.demandeId}
+            demandeReference={donnees.demande.reference}
+            demandeur={donnees.demande.patient ?? donnees.demande.client ?? "Client"}
+            laboratoire={donnees.laboratoire}
+            onFermer={fermerEtiquette}
+          />
         </div>
       )}
     </Panneau>

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Receipt } from "lucide-react";
+import { BookOpenCheck, Receipt } from "lucide-react";
 import { Badge, Button } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import { listerFacturesCaisse, ouvrirFactureCaisse, type FactureCaisse } from "@/api/accueil";
@@ -8,17 +8,28 @@ import {
   Actualisation,
   contient,
   EnTeteResponsable,
+  BarreFiltres,
   EtatChargement,
+  FiltreSelect,
   formaterDate,
+  Onglets,
   Recherche,
 } from "@/features/responsable/commun";
 import { formaterMontant } from "./commun";
 import { DialogueEncaissement } from "./DialogueEncaissement";
+import { DialogueJournalCaisse } from "./DialogueJournalCaisse";
 
 type Filtre = "a-encaisser" | "en-retard" | "payees" | "toutes";
 
 const aEncaisser = (f: FactureCaisse) => f.reste > 0;
 const aujourdhui = () => new Date().toDateString();
+/** Nombre de jours calendaires écoulés depuis une date AAAA-MM-JJ (ou ISO). */
+const joursDepuis = (date: string) => {
+  const debut = new Date(date.slice(0, 10) + "T00:00:00");
+  const maintenant = new Date();
+  maintenant.setHours(0, 0, 0, 0);
+  return Math.round((maintenant.getTime() - debut.getTime()) / 86_400_000);
+};
 
 const FILTRES: { id: Filtre; libelle: string; garde: (f: FactureCaisse) => boolean }[] = [
   { id: "a-encaisser", libelle: "À encaisser", garde: aEncaisser },
@@ -30,6 +41,8 @@ const FILTRES: { id: Filtre; libelle: string; garde: (f: FactureCaisse) => boole
 export function PageCaisse() {
   const [filtre, setFiltre] = useState<Filtre>("a-encaisser");
   const [recherche, setRecherche] = useState("");
+  const [periode, setPeriode] = useState("");
+  const [journal, setJournal] = useState(false);
   const [choisie, setChoisie] = useState<number | null>(null);
   const factures = useQuery({
     queryKey: ["accueil-caisse"],
@@ -48,7 +61,10 @@ export function PageCaisse() {
 
   const garde = FILTRES.find((f) => f.id === filtre)?.garde ?? (() => true);
   // Le serveur trie : la facture la plus récente en haut.
-  const visibles = donnees.filter(garde).filter((f) => !recherche.trim()
+  const depuis = periode === "JOUR" ? 0 : periode === "SEMAINE" ? 6 : periode === "MOIS" ? 29 : null;
+  const visibles = donnees.filter(garde)
+    .filter((f) => depuis == null || (f.dateFacture != null && joursDepuis(f.dateFacture) <= depuis))
+    .filter((f) => !recherche.trim()
     || contient(f.numero, recherche)
     || contient(f.client, recherche)
     || contient(f.demandeReference, recherche)
@@ -62,11 +78,17 @@ export function PageCaisse() {
         titre="Caisse"
         description="Encaissez les factures des clients, en une ou plusieurs fois, et remettez le reçu de paiement."
         action={
-          <Actualisation
-            misAJour={factures.dataUpdatedAt}
-            enCours={factures.isFetching}
-            onActualiser={() => void factures.refetch()}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="secondary" icon={<BookOpenCheck className="size-4" aria-hidden="true" />}
+              iconPosition="left" onClick={() => setJournal(true)}>
+              Journal de caisse
+            </Button>
+            <Actualisation
+              misAJour={factures.dataUpdatedAt}
+              enCours={factures.isFetching}
+              onActualiser={() => void factures.refetch()}
+            />
+          </div>
         }
       />
 
@@ -81,28 +103,12 @@ export function PageCaisse() {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex w-full flex-wrap gap-1 rounded-2xl border border-brand-900/10 bg-card p-1 sm:w-auto" role="tablist" aria-label="Filtrer les factures">
-          {FILTRES.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={filtre === item.id}
-              onClick={() => setFiltre(item.id)}
-              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold sm:flex-none ${
-                filtre === item.id ? "bg-brand-900 text-primary-foreground" : "text-brand-900 hover:bg-surface-alt"
-              }`}
-            >
-              {item.libelle}
-              <span className={`rounded-full px-2 py-0.5 text-[11px] ${filtre === item.id ? "bg-white/15" : "bg-surface-alt"}`}>
-                {compteurs[item.id] ?? 0}
-              </span>
-            </button>
-          ))}
-        </div>
-        <Recherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une facture, un client, un ICE…" />
-      </div>
+      <BarreFiltres>
+        <Onglets libelle="Filtrer les factures" onglets={FILTRES} valeur={filtre} onChange={setFiltre} compteurs={compteurs} />
+        <Recherche className="w-full lg:flex-1" valeur={recherche} onChange={setRecherche} placeholder="Rechercher une facture, un client, un ICE…" />
+        <FiltreSelect className="w-full lg:w-44" libelle="Filtrer par période" tous="Toutes les dates" valeur={periode}
+          onChange={setPeriode} options={[["JOUR", "Émises aujourd'hui"], ["SEMAINE", "7 derniers jours"], ["MOIS", "30 derniers jours"]]} />
+      </BarreFiltres>
 
       <EtatChargement
         chargement={factures.isLoading}
@@ -155,6 +161,7 @@ export function PageCaisse() {
       </ul>
 
       <DialogueEncaissement facture={facture} onFermer={() => setChoisie(null)} />
+      <DialogueJournalCaisse ouvert={journal} onFermer={() => setJournal(false)} />
     </Container>
   );
 }

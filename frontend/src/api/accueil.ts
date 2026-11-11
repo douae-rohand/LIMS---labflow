@@ -69,6 +69,8 @@ export interface DetailReception {
   lignes: LigneReception[];
   naturesAttendues: NatureAttendue[];
   echantillons: EchantillonRecu[];
+  /** Raison sociale du laboratoire (étiquettes). */
+  laboratoire?: string | null;
 }
 
 export interface EchantillonARecevoir {
@@ -121,6 +123,12 @@ export interface PaiementCaisse {
   mode: ModePaiement;
   reference?: string | null;
   encaisseur?: string | null;
+  /** Écriture d'annulation (montant négatif). */
+  contrePassation: boolean;
+  /** Encaissement déjà annulé. */
+  annule: boolean;
+  /** Encaissement du jour encore annulable. */
+  annulable: boolean;
 }
 
 export interface FactureCaisse {
@@ -166,6 +174,72 @@ export async function ouvrirRecu(paiementId: number): Promise<void> {
   const url = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
   window.open(url, "_blank", "noopener,noreferrer");
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/** Annule un encaissement du jour par contre-passation (motif obligatoire). */
+export async function annulerEncaissement(paiementId: number, motif: string): Promise<Encaissement> {
+  const res = await apiClient.post<ApiResponse<Encaissement>>(`/accueil/caisse/paiements/${paiementId}/annuler`, { motif });
+  return res.data;
+}
+
+export interface LigneJournal {
+  paiementId: number;
+  code: string;
+  date: string;
+  montant: number;
+  mode: ModePaiement;
+  facture?: string | null;
+  client?: string | null;
+  encaisseur?: string | null;
+  contrePassation: boolean;
+  reference?: string | null;
+}
+
+export interface JournalCaisse {
+  jour: string;
+  lignes: LigneJournal[];
+  totaux: { mode: ModePaiement; operations: number; montant: number }[];
+  total: number;
+  annulations: number;
+}
+
+export async function lireJournalCaisse(jour: string): Promise<JournalCaisse> {
+  const res = await apiClient.get<ApiResponse<JournalCaisse>>(`/accueil/caisse/journal?jour=${encodeURIComponent(jour)}`);
+  return res.data;
+}
+
+/** Journal de caisse PDF (clôture du jour). */
+export async function ouvrirJournalCaisse(jour: string): Promise<void> {
+  const blob = await apiClient.getBlob(`/accueil/caisse/journal/pdf?jour=${encodeURIComponent(jour)}`);
+  const url = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+  window.open(url, "_blank", "noopener,noreferrer");
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+export type FormatEtiquettes = "PLANCHE" | "UNITAIRE";
+
+/**
+ * Étiquettes code-barres des échantillons reçus d'une demande (PDF) : planche A4 ou une étiquette
+ * par page (imprimante d'étiquettes) ; un seul échantillon si {@code echantillonId} est donné.
+ */
+export async function ouvrirEtiquettes(
+  demandeId: number,
+  options: { echantillonId?: number; format?: FormatEtiquettes } = {},
+): Promise<void> {
+  const params = new URLSearchParams();
+  if (options.echantillonId != null) params.set("echantillonId", String(options.echantillonId));
+  if (options.format) params.set("format", options.format);
+  const suffixe = params.toString() ? `?${params.toString()}` : "";
+  const blob = await apiClient.getBlob(`/accueil/receptions/${demandeId}/etiquettes${suffixe}`);
+  const url = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+  window.open(url, "_blank", "noopener,noreferrer");
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/** Code-barres PNG d'un échantillon, en URL locale (à révoquer après usage). */
+export async function urlCodeBarres(demandeId: number, echantillonId: number): Promise<string> {
+  const blob = await apiClient.getBlob(`/accueil/receptions/${demandeId}/echantillons/${echantillonId}/code-barres`);
+  return URL.createObjectURL(new Blob([blob], { type: "image/png" }));
 }
 
 // ------------------------------------------------------------- clients et patients

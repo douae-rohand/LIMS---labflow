@@ -25,7 +25,32 @@ public final class CaisseDtos {
             BigDecimal montant,
             String mode,
             String reference,
-            String encaisseur) {
+            String encaisseur,
+            /** Écriture d'annulation (montant négatif) d'un encaissement antérieur. */
+            boolean contrePassation,
+            /** Encaissement déjà annulé par une contre-passation. */
+            boolean annule,
+            /** Annulable : encaissement du jour, positif, pas encore annulé. */
+            boolean annulable) {
+    }
+
+    public record AnnulationRequest(
+            @jakarta.validation.constraints.NotBlank(message = "Indiquez le motif de l'annulation")
+            @Size(min = 5, max = 200, message = "Le motif doit contenir entre 5 et 200 caractères") String motif) {
+    }
+
+    /** Une ligne du journal de caisse. */
+    public record LigneJournal(Long paiementId, String code, Instant date, BigDecimal montant, String mode,
+                               String facture, String client, String encaisseur, boolean contrePassation,
+                               String reference) {
+    }
+
+    /** Total par mode de paiement (contre-passations déduites). */
+    public record TotalMode(String mode, long operations, BigDecimal montant) {
+    }
+
+    public record JournalCaisse(java.time.LocalDate jour, List<LigneJournal> lignes, List<TotalMode> totaux,
+                                BigDecimal total, long annulations) {
     }
 
     public record FactureCaisseDto(

@@ -8,8 +8,11 @@ import {
   Actualisation,
   contient,
   EnTeteResponsable,
+  BarreFiltres,
   EtatChargement,
+  FiltreSelect,
   formaterDate,
+  Onglets,
   Recherche,
 } from "@/features/responsable/commun";
 import { BadgeEtatReception, demandeur } from "./commun";
@@ -30,6 +33,7 @@ export function PageReception({ demandeInitiale, onDemande }: {
 }) {
   const [filtre, setFiltre] = useState<Filtre>("a-recevoir");
   const [recherche, setRecherche] = useState("");
+  const [demandeurFiltre, setDemandeurFiltre] = useState("");
   const receptions = useQuery({
     queryKey: ["accueil-receptions"],
     queryFn: listerReceptions,
@@ -41,6 +45,7 @@ export function PageReception({ demandeInitiale, onDemande }: {
   // Le serveur trie : la dernière activité (réception ou acceptation) en haut.
   const visibles = (receptions.data ?? [])
     .filter(garde)
+    .filter((d) => !demandeurFiltre || (demandeurFiltre === "PATIENT" ? !d.client && !!d.patient : !!d.client))
     .filter((d) => !recherche.trim()
       || contient(d.reference, recherche)
       || contient(d.client, recherche)
@@ -62,28 +67,12 @@ export function PageReception({ demandeInitiale, onDemande }: {
         }
       />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex w-full flex-wrap gap-1 rounded-2xl border border-brand-900/10 bg-card p-1 sm:w-auto" role="tablist" aria-label="Filtrer les demandes">
-          {FILTRES.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={filtre === item.id}
-              onClick={() => setFiltre(item.id)}
-              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold sm:flex-none ${
-                filtre === item.id ? "bg-brand-900 text-primary-foreground" : "text-brand-900 hover:bg-surface-alt"
-              }`}
-            >
-              {item.libelle}
-              <span className={`rounded-full px-2 py-0.5 text-[11px] ${filtre === item.id ? "bg-white/15" : "bg-surface-alt"}`}>
-                {compteurs[item.id] ?? 0}
-              </span>
-            </button>
-          ))}
-        </div>
-        <Recherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, un client…" />
-      </div>
+      <BarreFiltres>
+        <Onglets libelle="Filtrer les demandes" onglets={FILTRES} valeur={filtre} onChange={setFiltre} compteurs={compteurs} />
+        <Recherche className="w-full lg:flex-1" valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, un client, un patient…" />
+        <FiltreSelect className="w-full lg:w-44" libelle="Filtrer par demandeur" tous="Clients et patients" valeur={demandeurFiltre}
+          onChange={setDemandeurFiltre} options={[["CLIENT", "Clients"], ["PATIENT", "Patients sur site"]]} />
+      </BarreFiltres>
 
       <EtatChargement
         chargement={receptions.isLoading}

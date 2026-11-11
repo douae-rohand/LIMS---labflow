@@ -73,7 +73,9 @@ public final class ReceptionDtos {
             DemandeReceptionDto demande,
             List<LigneReceptionDto> lignes,
             List<NatureAttendueDto> naturesAttendues,
-            List<EchantillonRecuDto> echantillons) {
+            List<EchantillonRecuDto> echantillons,
+            /** Raison sociale du laboratoire, imprimée sur les étiquettes. */
+            String laboratoire) {
     }
 
     public record EchantillonRecuRequest(

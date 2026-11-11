@@ -1,15 +1,17 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ClipboardList } from "lucide-react";
-import { Badge, Button, Select } from "@/components/lab";
+import { Badge, Button } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import { LIBELLE_STATUT_DEMANDE, STATUTS_DEMANDE, type StatutDemande } from "@/api/demandes";
 import { lireSuiviDemande, listerDemandesSuivi } from "@/api/accueil";
 import { Panneau } from "@/features/super-admin/Fenetres";
 import {
   Actualisation,
+  BarreFiltres,
   EnTeteResponsable,
   EtatChargement,
+  FiltreSelect,
   formaterDate,
   Recherche,
 } from "@/features/responsable/commun";
@@ -68,14 +70,13 @@ export function PageSuiviDemandes() {
         }
       />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <Select aria-label="Filtrer par statut" className="sm:w-56" value={statut}
-          onChange={(event) => { setStatut(event.target.value as StatutDemande | ""); setPage(0); }}>
-          <option value="">Tous les statuts</option>
-          {STATUTS_DEMANDE.map((s) => <option key={s} value={s}>{LIBELLE_STATUT_DEMANDE[s]}</option>)}
-        </Select>
-        <Recherche valeur={saisie} onChange={setSaisie} placeholder="Rechercher une référence, un client…" />
-      </div>
+      <BarreFiltres>
+        <Recherche className="w-full lg:flex-1" valeur={saisie} onChange={setSaisie}
+          placeholder="Rechercher une référence, un client, un patient…" />
+        <FiltreSelect className="w-full lg:w-56" libelle="Filtrer par statut" tous="Tous les statuts" valeur={statut}
+          onChange={(valeur) => { setStatut(valeur as StatutDemande | ""); setPage(0); }}
+          options={STATUTS_DEMANDE.map((s) => [s, LIBELLE_STATUT_DEMANDE[s]] as [string, string])} />
+      </BarreFiltres>
 
       <EtatChargement
         chargement={demandes.isLoading}

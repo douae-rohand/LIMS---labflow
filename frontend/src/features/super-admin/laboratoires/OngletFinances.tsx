@@ -8,6 +8,8 @@ import {
   type FiltreFinances,
   type PeriodeFinance,
   type Regroupement,
+  lireFactureCommission,
+  ouvrirFactureCommission,
 } from "@/api/financesLaboratoire";
 import type { FormatExport } from "@/api/plateforme";
 import { Button, Input, Label } from "@/components/lab";
@@ -182,7 +184,66 @@ export function OngletFinances({ id, code }: { id: number; code: string }) {
           </div>
         </>
       )}
+
+      <FactureCommissionMensuelle id={id} />
     </div>
+  );
+}
+
+/** Mois précédent au format AAAA-MM. */
+function moisPrecedent(): string {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** Facture de commission du mois émise par la plateforme au laboratoire. */
+function FactureCommissionMensuelle({ id }: { id: number }) {
+  const [mois, setMois] = useState(moisPrecedent);
+  const valide = /^\d{4}-\d{2}$/.test(mois);
+  const requete = useQuery({
+    queryKey: ["finances-laboratoire", id, "commission", mois],
+    queryFn: () => lireFactureCommission(id, mois),
+    enabled: valide,
+  });
+  const f = requete.data;
+  const moisCourant = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  })();
+
+  return (
+    <section className="flex flex-col gap-3 rounded-2xl border border-brand-900/10 bg-card p-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 className="font-bold text-ink-900">Facture de commission mensuelle</h3>
+          <p className="text-xs text-muted-foreground">
+            Facture de la plateforme au laboratoire : commission sur ses factures du mois, annulées exclues.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`mois-commission-${id}`}>Mois</Label>
+            <Input id={`mois-commission-${id}`} type="month" value={mois} max={moisCourant}
+              onChange={(event) => setMois(event.target.value)} />
+          </div>
+          <Button variant="secondary" size="sm" disabled={!f}
+            onClick={() => void ouvrirFactureCommission(id, mois)
+              .catch((erreur: unknown) => toast.error(messageErreur(erreur, "La facture n'a pas pu être générée.")))}>
+            <Download className="size-4" aria-hidden="true" /> Facture PDF
+          </Button>
+        </div>
+      </div>
+      {requete.isError && <p className="text-sm text-rose-800">{messageErreur(requete.error, "Aperçu indisponible.")}</p>}
+      {f && (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Carte libelle="Numéro" valeur={f.numero} detail={`Échéance ${dateFr(f.dateEcheance)}`} />
+          <Carte libelle="Factures du laboratoire" valeur={montant(f.base)} detail={`${f.factures} facture(s)`} />
+          <Carte libelle="Commission due" valeur={montant(f.commission)} mise />
+        </div>
+      )}
+    </section>
   );
 }
 

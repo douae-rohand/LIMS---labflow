@@ -46,6 +46,31 @@ public class AccueilController {
         return ResponseEntity.ok(ApiResponse.success(receptionService.detail(demandeId)));
     }
 
+    @GetMapping("/receptions/{demandeId}/etiquettes")
+    @Operation(summary = "Étiquettes code-barres (Code 128) des échantillons reçus, au format PDF")
+    public ResponseEntity<byte[]> etiquettes(
+            @PathVariable Long demandeId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Long echantillonId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false)
+            com.backend.modules.accueil.service.EtiquettesPdfService.Format format) {
+        com.backend.modules.accueil.service.CaisseService.FichierRecu fichier =
+                receptionService.etiquettes(demandeId, echantillonId, format);
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        org.springframework.http.ContentDisposition.inline().filename(fichier.nom()).build().toString())
+                .body(fichier.contenu());
+    }
+
+    @GetMapping("/receptions/{demandeId}/echantillons/{echantillonId}/code-barres")
+    @Operation(summary = "Code-barres Code 128 d'un échantillon (PNG), pour l'aperçu de l'étiquette")
+    public ResponseEntity<byte[]> codeBarres(@PathVariable Long demandeId, @PathVariable Long echantillonId) {
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.IMAGE_PNG)
+                .header(org.springframework.http.HttpHeaders.CACHE_CONTROL, "private, max-age=3600")
+                .body(receptionService.codeBarres(demandeId, echantillonId));
+    }
+
     @PostMapping("/receptions/{demandeId}")
     @Operation(summary = "Réceptionner un ou plusieurs échantillons (réception partielle possible)")
     public ResponseEntity<ApiResponse<DetailReceptionDto>> receptionner(@PathVariable Long demandeId,

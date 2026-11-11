@@ -122,6 +122,96 @@ public class RecuPdfService {
         }
     }
 
+    /** Journal de caisse d'un jour (A4 paysage) : écritures, totaux par mode, total net. */
+    public byte[] journal(EnTete labo, com.backend.modules.accueil.dto.CaisseDtos.JournalCaisse j, String editePar) {
+        try (ByteArrayOutputStream sortie = new ByteArrayOutputStream()) {
+            Document document = new Document(PageSize.A4.rotate(), 30, 30, 30, 30);
+            PdfWriter.getInstance(document, sortie);
+            document.open();
+            Font titre = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, MARQUE);
+            Font sousTitre = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, MARQUE);
+            Font normal = FontFactory.getFont(FontFactory.HELVETICA, 8, Color.BLACK);
+            Font gras = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, Color.BLACK);
+            Font rouge = FontFactory.getFont(FontFactory.HELVETICA, 8, new Color(170, 40, 40));
+            Font discret = FontFactory.getFont(FontFactory.HELVETICA, 8, GRIS);
+
+            document.add(new Paragraph(texte(labo.nom()), titre));
+            if (labo.adresse() != null) document.add(new Paragraph(labo.adresse(), discret));
+            document.add(Chunk.NEWLINE);
+            document.add(new Paragraph("Journal de caisse du " + JOUR.format(j.jour()), sousTitre));
+            document.add(new Paragraph("Édité le " + HORODATAGE.format(Instant.now()) + " par " + texte(editePar), discret));
+            document.add(Chunk.NEWLINE);
+
+            PdfPTable table = new PdfPTable(new float[]{0.7f, 1.3f, 1.3f, 2.2f, 1f, 1.1f, 1.5f, 2.2f});
+            table.setWidthPercentage(100);
+            table.setHeaderRows(1);
+            for (String entete : new String[]{"Heure", "Reçu", "Facture", "Client", "Mode", "Montant", "Encaissé par", "Observation"}) {
+                PdfPCell cellule = new PdfPCell(new Phrase(entete, gras));
+                cellule.setBackgroundColor(new Color(232, 241, 240));
+                cellule.setPadding(4);
+                table.addCell(cellule);
+            }
+            DateTimeFormatter heure = DateTimeFormatter.ofPattern("HH:mm").withZone(FUSEAU);
+            for (var l : j.lignes()) {
+                Font police = l.contrePassation() ? rouge : normal;
+                cellule(table, heure.format(l.date()), police, Element.ALIGN_LEFT);
+                cellule(table, l.code(), police, Element.ALIGN_LEFT);
+                cellule(table, texte(l.facture()), police, Element.ALIGN_LEFT);
+                cellule(table, texte(l.client()), police, Element.ALIGN_LEFT);
+                cellule(table, libelleMode(l.mode()), police, Element.ALIGN_LEFT);
+                cellule(table, mad(l.montant()), police, Element.ALIGN_RIGHT);
+                cellule(table, texte(l.encaisseur()), police, Element.ALIGN_LEFT);
+                cellule(table, l.contrePassation() ? texte(l.reference()) : (l.reference() == null ? "" : "Réf. " + l.reference()),
+                        police, Element.ALIGN_LEFT);
+            }
+            if (j.lignes().isEmpty()) {
+                PdfPCell vide = new PdfPCell(new Phrase("Aucun encaissement ce jour.", discret));
+                vide.setColspan(8);
+                vide.setPadding(6);
+                table.addCell(vide);
+            }
+            document.add(table);
+            document.add(Chunk.NEWLINE);
+
+            document.add(new Paragraph("Totaux par mode de paiement", sousTitre));
+            document.add(Chunk.NEWLINE);
+            PdfPTable totaux = new PdfPTable(new float[]{2f, 1f, 1.4f});
+            totaux.setWidthPercentage(45);
+            totaux.setHorizontalAlignment(Element.ALIGN_LEFT);
+            for (String entete : new String[]{"Mode", "Opérations", "Montant net"}) {
+                PdfPCell cellule = new PdfPCell(new Phrase(entete, gras));
+                cellule.setBackgroundColor(new Color(232, 241, 240));
+                cellule.setPadding(4);
+                totaux.addCell(cellule);
+            }
+            for (var t : j.totaux()) {
+                cellule(totaux, libelleMode(t.mode()), normal, Element.ALIGN_LEFT);
+                cellule(totaux, String.valueOf(t.operations()), normal, Element.ALIGN_RIGHT);
+                cellule(totaux, mad(t.montant()), normal, Element.ALIGN_RIGHT);
+            }
+            cellule(totaux, "Total encaissé", gras, Element.ALIGN_LEFT);
+            cellule(totaux, "", gras, Element.ALIGN_RIGHT);
+            cellule(totaux, mad(j.total()), gras, Element.ALIGN_RIGHT);
+            document.add(totaux);
+            if (j.annulations() > 0) {
+                document.add(new Paragraph(j.annulations() + " annulation(s) d'encaissement déduite(s) des totaux.", discret));
+            }
+            document.add(Chunk.NEWLINE);
+            document.add(new Paragraph("Signature de l'agent d'accueil :", discret));
+            document.close();
+            return sortie.toByteArray();
+        } catch (IOException | DocumentException ex) {
+            throw new BusinessRuleException("JOURNAL_PDF_ECHOUE", "Le journal de caisse n'a pas pu être généré.");
+        }
+    }
+
+    private static void cellule(PdfPTable table, String valeur, Font police, int alignement) {
+        PdfPCell cellule = new PdfPCell(new Phrase(valeur == null ? "" : valeur, police));
+        cellule.setPadding(4);
+        cellule.setHorizontalAlignment(alignement);
+        table.addCell(cellule);
+    }
+
     static String mad(BigDecimal valeur) {
         NumberFormat format = NumberFormat.getNumberInstance(Locale.FRANCE);
         format.setMinimumFractionDigits(2);

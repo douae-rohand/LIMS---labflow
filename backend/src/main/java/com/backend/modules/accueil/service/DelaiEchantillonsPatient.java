@@ -74,8 +74,9 @@ public class DelaiEchantillonsPatient {
                             + " AND d.statut IN ('ACCEPTEE', 'EN_COURS')"
                             + " AND COALESCE(d.date_decision, d.date_soumission) < ?"
                             + " AND NOT EXISTS (SELECT 1 FROM " + s + ".echantillon e WHERE e.demande_id = d.id_demande)"
-                            + " AND NOT EXISTS (SELECT 1 FROM " + s + ".paiement p JOIN " + s + ".facture f"
-                            + "   ON f.id_facture = p.facture_id WHERE f.demande_id = d.id_demande)")) {
+                            // Paiement net nul : les encaissements annulés (contre-passation) ne comptent pas.
+                            + " AND COALESCE((SELECT SUM(p.montant) FROM " + s + ".paiement p JOIN " + s + ".facture f"
+                            + "   ON f.id_facture = p.facture_id WHERE f.demande_id = d.id_demande), 0) <= 0")) {
                 requete.setTimestamp(1, limite);
                 try (ResultSet rs = requete.executeQuery()) {
                     while (rs.next()) {

@@ -41,6 +41,35 @@ public class CaisseController {
         return ResponseEntity.ok(ApiResponse.success("Paiement enregistré", caisseService.encaisser(factureId, request)));
     }
 
+    @PostMapping("/paiements/{paiementId}/annuler")
+    @Operation(summary = "Annuler un encaissement du jour (contre-passation, motif obligatoire)")
+    public ResponseEntity<ApiResponse<EncaissementDto>> annuler(@PathVariable Long paiementId,
+                                                                @Valid @RequestBody com.backend.modules.accueil.dto.CaisseDtos.AnnulationRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Encaissement annulé", caisseService.annuler(paiementId, request.motif())));
+    }
+
+    @GetMapping("/journal")
+    @Operation(summary = "Journal de caisse d'un jour (aujourd'hui par défaut)")
+    public ResponseEntity<ApiResponse<com.backend.modules.accueil.dto.CaisseDtos.JournalCaisse>> journal(
+            @org.springframework.web.bind.annotation.RequestParam(required = false)
+            @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+            java.time.LocalDate jour) {
+        return ResponseEntity.ok(ApiResponse.success(caisseService.journal(jour)));
+    }
+
+    @GetMapping("/journal/pdf")
+    @Operation(summary = "Journal de caisse au format PDF (clôture)")
+    public ResponseEntity<byte[]> journalPdf(
+            @org.springframework.web.bind.annotation.RequestParam(required = false)
+            @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+            java.time.LocalDate jour) {
+        CaisseService.FichierRecu fichier = caisseService.journalPdf(jour);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline().filename(fichier.nom()).build().toString())
+                .body(fichier.contenu());
+    }
+
     @GetMapping("/paiements/{paiementId}/recu")
     @Operation(summary = "Reçu de paiement (PDF)")
     public ResponseEntity<byte[]> recu(@PathVariable Long paiementId) {

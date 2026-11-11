@@ -214,6 +214,41 @@ export function FiltreSelect({ libelle, valeur, onChange, options, tous, classNa
   );
 }
 
+/** Onglets compacts d'une barre de filtres, avec compteur facultatif. */
+export function Onglets<T extends string>({ libelle, onglets, valeur, onChange, compteurs }: {
+  libelle: string;
+  onglets: { id: T; libelle: string }[];
+  valeur: T;
+  onChange: (valeur: T) => void;
+  compteurs?: Partial<Record<T, number>>;
+}) {
+  return (
+    <div className="flex shrink-0 flex-wrap gap-1 rounded-xl bg-surface-alt p-1" role="tablist" aria-label={libelle}>
+      {onglets.map((onglet) => {
+        const actif = valeur === onglet.id;
+        const nombre = compteurs?.[onglet.id];
+        return (
+          <button
+            key={onglet.id}
+            type="button"
+            role="tab"
+            aria-selected={actif}
+            onClick={() => onChange(onglet.id)}
+            className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-brand-900 lg:flex-none ${
+              actif ? "bg-brand-900 text-primary-foreground shadow-sm" : "text-brand-900 hover:bg-card"
+            }`}
+          >
+            {onglet.libelle}
+            {nombre != null && (
+              <span className={`rounded-full px-1.5 py-0.5 text-[11px] leading-none ${actif ? "bg-white/15" : "bg-card"}`}>{nombre}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Barre de recherche et de filtres sur une seule ligne (repliée sur petit écran). */
 export function BarreFiltres({ children }: { children: ReactNode }) {
   return (
