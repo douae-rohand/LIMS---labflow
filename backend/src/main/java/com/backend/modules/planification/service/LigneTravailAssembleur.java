@@ -167,6 +167,8 @@ public class LigneTravailAssembleur {
                 .valeur(ligne.getValeur())
                 .conformite(ligne.getConformite())
                 .critique(critique(ligne.getValeur(), essai))
+                .etatEchantillon(ligne.getEchantillon() == null ? "ATTENDU"
+                        : Boolean.TRUE.equals(ligne.getEchantillon().getConformite()) ? "CONFORME" : "NON_CONFORME")
                 .dateSaisie(ligne.getDateSaisie())
                 .observations(ligne.getMotif())
                 .etatValidation(etatValidation(historique))

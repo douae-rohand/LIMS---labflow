@@ -40,6 +40,10 @@ public class LigneTravailDto {
     private Boolean conformite;
     /** Valeur numérique hors des seuils critiques de l'essai : à traiter en priorité. */
     private boolean critique;
+    /** ATTENDU, CONFORME ou NON_CONFORME : état de l'échantillon rattaché à l'analyse. */
+    private String etatEchantillon;
+    /** AUCUNE_FACTURE, NON_PAYEE, PARTIELLE ou PAYEE : paiement de la facture de la demande. */
+    private String etatPaiement;
     private Instant dateSaisie;
     private String observations;
     /** NON_SOUMIS, TECHNIQUE_VALIDEE, VALIDEE, RETOURNEE, REJETEE. */

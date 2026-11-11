@@ -32,6 +32,32 @@ const ONGLETS: { id: FiltreAnalyses; libelle: string }[] = [
   { id: "EN_RETARD", libelle: "En retard" },
 ];
 
+/** Une analyse s'affecte seulement avec un échantillon conforme reçu et une facture au moins en partie payée. */
+function blocage(analyse: AnalyseTravail): string | null {
+  if (analyse.etatEchantillon !== "CONFORME") {
+    return analyse.etatEchantillon === "NON_CONFORME" ? "Échantillon non conforme" : "Échantillon non reçu";
+  }
+  if (analyse.etatPaiement !== "PARTIELLE" && analyse.etatPaiement !== "PAYEE") return "Aucun paiement";
+  return null;
+}
+
+const ECHANTILLON: Record<string, [string, string]> = {
+  CONFORME: ["Échantillon reçu", "bg-emerald-50 text-emerald-800"],
+  NON_CONFORME: ["Échantillon non conforme", "bg-rose-50 text-rose-800"],
+  ATTENDU: ["Échantillon attendu", "bg-amber-50 text-amber-900"],
+};
+const PAIEMENT: Record<string, [string, string]> = {
+  PAYEE: ["Payée", "bg-emerald-50 text-emerald-800"],
+  PARTIELLE: ["Payée en partie", "bg-sky-50 text-sky-800"],
+  NON_PAYEE: ["Non payée", "bg-amber-50 text-amber-900"],
+  AUCUNE_FACTURE: ["Sans facture", "bg-surface-alt text-muted-foreground"],
+};
+
+function Pastille({ valeur, table }: { valeur: string | undefined; table: Record<string, [string, string]> }) {
+  const [libelle, classes] = table[valeur ?? ""] ?? ["—", "bg-surface-alt text-muted-foreground"];
+  return <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ${classes}`}>{libelle}</span>;
+}
+
 /** Durée estimée du catalogue (minutes) en texte lisible. */
 function duree(minutes: number): string {
   if (minutes < 60) return `${minutes} min`;
@@ -50,6 +76,7 @@ export function PagePlanification({ filtre, onFiltre }: {
   const [recherche, setRecherche] = useState("");
   const [domaine, setDomaine] = useState("");
   const [technicien, setTechnicien] = useState("");
+  const [pretes, setPretes] = useState(true);
 
   const analyses = useQuery({
     queryKey: ["responsable-analyses", filtre],
@@ -75,6 +102,7 @@ export function PagePlanification({ filtre, onFiltre }: {
     (analyses.data ?? [])
       .filter((a) => !domaine || a.domaineCode === domaine)
       .filter((a) => !technicien || String(a.technicienId) === technicien)
+      .filter((a) => !(pretes && filtre === "A_AFFECTER") || blocage(a) === null)
       .filter((a) => !recherche.trim()
         || contient(a.demandeReference, recherche)
         || contient(a.demandeTitre, recherche)
@@ -84,9 +112,11 @@ export function PagePlanification({ filtre, onFiltre }: {
         parDemande.set(analyse.demandeId, [...(parDemande.get(analyse.demandeId) ?? []), analyse]);
       });
     return [...parDemande.values()];
-  }, [analyses.data, recherche, domaine, technicien]);
+  }, [analyses.data, recherche, domaine, technicien, pretes, filtre]);
+  const enAttente = filtre === "A_AFFECTER" ? (analyses.data ?? []).filter((a) => blocage(a) !== null).length : 0;
 
   const choisies = (analyses.data ?? []).filter((analyse) => selection.includes(analyse.id));
+  const affectable = (analyse: AnalyseTravail) => blocage(analyse) === null;
   const basculer = (id: number, coche: boolean) =>
     setSelection((courant) => (coche ? [...new Set([...courant, id])] : courant.filter((element) => element !== id)));
 
@@ -95,7 +125,7 @@ export function PagePlanification({ filtre, onFiltre }: {
       <EnTeteResponsable
         icone={CalendarClock}
         titre="Planification"
-        description="Affectez les analyses des demandes acceptées aux techniciens."
+        description="Affectez aux techniciens les analyses prêtes : échantillon conforme reçu et facture payée, au moins en partie."
         action={
           <Actualisation
             misAJour={analyses.dataUpdatedAt}
@@ -123,6 +153,20 @@ export function PagePlanification({ filtre, onFiltre }: {
           ))}
         </div>
         <Recherche className="w-full lg:flex-1" valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, une analyse, un technicien…" />
+        {filtre === "A_AFFECTER" && (
+          <button
+            type="button"
+            aria-pressed={pretes}
+            onClick={() => setPretes(!pretes)}
+            title="Prêtes : échantillon conforme reçu et facture au moins en partie payée"
+            className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold whitespace-nowrap ${
+              pretes ? "border-brand-900 bg-brand-900/5 text-brand-900" : "border-brand-900/15 bg-card text-ink-900"
+            }`}
+          >
+            {pretes ? "Prêtes uniquement" : "Toutes"}
+            {enAttente > 0 && <span className="rounded-full bg-amber-100 px-2 text-[11px] leading-4 text-amber-900">{enAttente} en attente</span>}
+          </button>
+        )}
         <FiltreSelect className="w-full lg:w-44" libelle="Filtrer par domaine" tous="Tous les domaines" valeur={domaine} onChange={setDomaine}
           options={domaines} />
         {filtre !== "A_AFFECTER" && (
@@ -154,7 +198,8 @@ export function PagePlanification({ filtre, onFiltre }: {
         {groupes.map((groupe) => {
           const premiere = groupe[0];
           if (!premiere) return null;
-          const tousCoches = groupe.every((analyse) => selection.includes(analyse.id));
+          const affectables = groupe.filter(affectable);
+          const tousCoches = affectables.length > 0 && affectables.every((analyse) => selection.includes(analyse.id));
           return (
             <section key={premiere.demandeId} className="overflow-hidden rounded-2xl border border-brand-900/10 bg-card">
               <header className="flex flex-wrap items-center justify-between gap-2 border-b border-brand-900/10 bg-surface-alt px-4 py-3">
@@ -163,13 +208,15 @@ export function PagePlanification({ filtre, onFiltre }: {
                     type="checkbox"
                     className="size-4 accent-brand-900"
                     checked={tousCoches}
+                    disabled={affectables.length === 0}
                     aria-label={`Sélectionner toutes les analyses de ${premiere.demandeReference}`}
-                    onChange={(event) => groupe.forEach((analyse) => basculer(analyse.id, event.target.checked))}
+                    onChange={(event) => affectables.forEach((analyse) => basculer(analyse.id, event.target.checked))}
                   />
                   {premiere.demandeReference}
                   {premiere.demandeTitre && <span className="font-normal text-muted-foreground">· {premiere.demandeTitre}</span>}
                 </label>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <Pastille valeur={premiere.etatPaiement} table={PAIEMENT} />
                   <span>Reçue le {formaterDate(premiere.demandeDateSoumission)} · {groupe.length} analyse(s)</span>
                   <Link
                     to="/app/demandes-clients"
@@ -187,6 +234,8 @@ export function PagePlanification({ filtre, onFiltre }: {
                       type="checkbox"
                       className="size-4 accent-brand-900"
                       checked={selection.includes(analyse.id)}
+                      disabled={!affectable(analyse)}
+                      title={blocage(analyse) ?? undefined}
                       aria-label={`Sélectionner ${analyse.essaiLibelle ?? analyse.code}`}
                       onChange={(event) => basculer(analyse.id, event.target.checked)}
                     />
@@ -200,6 +249,10 @@ export function PagePlanification({ filtre, onFiltre }: {
                         {analyse.echeance ? ` · échéance ${formaterDate(analyse.echeance)}` : ""}
                       </p>
                     </div>
+                    <Pastille valeur={analyse.etatEchantillon} table={ECHANTILLON} />
+                    {blocage(analyse) && (
+                      <span className="text-[11px] font-semibold text-amber-900">Non affectable : {blocage(analyse)?.toLowerCase()}</span>
+                    )}
                     <BadgeStatutAnalyse analyse={analyse} />
                   </li>
                 ))}

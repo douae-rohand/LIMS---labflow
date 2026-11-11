@@ -35,6 +35,10 @@ export interface AnalyseTravail {
   conformite?: boolean | null;
   /** Valeur hors des seuils critiques de l'essai. */
   critique?: boolean;
+  /** État de l'échantillon rattaché à l'analyse. */
+  etatEchantillon?: "ATTENDU" | "CONFORME" | "NON_CONFORME";
+  /** Paiement de la facture de la demande. */
+  etatPaiement?: "AUCUNE_FACTURE" | "NON_PAYEE" | "PARTIELLE" | "PAYEE";
   dateSaisie?: string | null;
   observations?: string | null;
   etatValidation: EtatValidation;

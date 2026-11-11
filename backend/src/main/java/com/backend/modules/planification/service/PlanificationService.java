@@ -55,6 +55,13 @@ public class PlanificationService {
     private final TenantExecutor tenantExecutor;
     private final LigneTravailAssembleur assembleur;
     private final JournalAuditService journalAuditService;
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+
+    public static final String PAIEMENT_AUCUNE_FACTURE = "AUCUNE_FACTURE";
+    public static final String PAIEMENT_NON_PAYEE = "NON_PAYEE";
+    public static final String PAIEMENT_PARTIELLE = "PARTIELLE";
+    public static final String PAIEMENT_PAYEE = "PAYEE";
 
     @Transactional(readOnly = true)
     public PlanificationDto trouverParId(Long id) {
@@ -88,7 +95,33 @@ public class PlanificationService {
                     default -> true;
                 })
                 .toList();
-        return assembleur.assembler(lignes);
+        List<LigneTravailDto> analyses = assembleur.assembler(lignes);
+        Map<Long, String> paiements = etatsPaiement(analyses.stream().map(LigneTravailDto::getDemandeId).toList());
+        analyses.forEach(a -> a.setEtatPaiement(paiements.getOrDefault(a.getDemandeId(), PAIEMENT_AUCUNE_FACTURE)));
+        return analyses;
+    }
+
+    /** État de paiement de la facture de chaque demande (une requête pour toutes). */
+    public Map<Long, String> etatsPaiement(java.util.Collection<Long> demandeIds) {
+        Map<Long, String> etats = new java.util.HashMap<>();
+        if (demandeIds.isEmpty()) {
+            return etats;
+        }
+        List<Object[]> lignes = entityManager.createQuery("""
+                SELECT f.demande.id, f.montantHt, f.statut,
+                       (SELECT COALESCE(SUM(p.montant), 0) FROM Paiement p WHERE p.facture = f)
+                FROM Facture f WHERE f.demande.id IN :ids
+                """, Object[].class)
+                .setParameter("ids", new HashSet<>(demandeIds))
+                .getResultList();
+        for (Object[] ligne : lignes) {
+            java.math.BigDecimal total = (java.math.BigDecimal) ligne[1];
+            java.math.BigDecimal paye = ligne[3] instanceof java.math.BigDecimal b ? b : java.math.BigDecimal.ZERO;
+            String etat = "PAYEE".equals(ligne[2]) || (total != null && paye.compareTo(total) >= 0 && paye.signum() > 0)
+                    ? PAIEMENT_PAYEE : paye.signum() > 0 ? PAIEMENT_PARTIELLE : PAIEMENT_NON_PAYEE;
+            etats.put((Long) ligne[0], etat);
+        }
+        return etats;
     }
 
     /** Techniciens actifs du laboratoire avec leur charge actuelle. */
@@ -164,6 +197,7 @@ public class PlanificationService {
             throw new BusinessRuleException("DATE_PREVUE_PASSEE", "La date prévue ne peut pas être dans le passé.");
         }
         Set<Demande> demandes = new HashSet<>();
+        Map<Long, String> paiements = etatsPaiement(lignes.stream().map(l -> l.getDemande().getId()).toList());
         for (LigneEssai ligne : lignes) {
             Demande demande = ligne.getDemande();
             if (!STATUTS_DEMANDES_ACTIVES.contains(demande.getStatut())) {
@@ -179,6 +213,18 @@ public class PlanificationService {
             if (domaine == null || !domaines.contains(domaine)) {
                 throw new BusinessRuleException("DOMAINE_NON_COUVERT",
                         nomComplet(technicien) + " ne couvre pas le domaine de l'analyse " + libelle(ligne) + ".");
+            }
+            // Une analyse ne s'affecte que si elle peut réellement avancer : échantillon conforme reçu
+            // et facture au moins partiellement payée.
+            if (ligne.getEchantillon() == null || !Boolean.TRUE.equals(ligne.getEchantillon().getConformite())) {
+                throw new BusinessRuleException("ECHANTILLON_ABSENT",
+                        "L'analyse " + libelle(ligne) + " n'a pas d'échantillon conforme reçu : affectation impossible.");
+            }
+            String paiement = paiements.getOrDefault(demande.getId(), PAIEMENT_AUCUNE_FACTURE);
+            if (!PAIEMENT_PARTIELLE.equals(paiement) && !PAIEMENT_PAYEE.equals(paiement)) {
+                throw new BusinessRuleException("PAIEMENT_ABSENT",
+                        "La demande " + demande.getNumero() + " n'a reçu aucun paiement : affectation impossible "
+                                + "(un paiement partiel suffit).");
             }
             Long avant = ligne.getTechnicienId();
             boolean reaffectation = avant != null && !avant.equals(technicien.getId());
