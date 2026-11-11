@@ -104,6 +104,8 @@ public class DemandeService {
     private final FacturationAdminService facturationAdminService;
     private final com.backend.integration.sendgrid.EmailService emailService;
     private final com.backend.modules.notification.service.NotificationsLaboratoire notificationsLaboratoire;
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
 
     private static final String STATUT_LABORATOIRE_ACTIF = "ACTIF";
     private static final int MOTIF_MIN = 5;
@@ -144,7 +146,25 @@ public class DemandeService {
             throw new BusinessRuleException("PANIER_VIDE", "Le panier est vide.");
         }
 
-        Map<Long, Essai> essaisValides = tenantExecutor.inTenant(nomSchema, () -> {
+        Map<Long, Essai> essaisValides = essaisDisponibles(nomSchema, essaiIds);
+        Client fiche = clientService.assurerFicheLocale(utilisateurId, nomSchema);
+        Demande demande = enregistrerNouvelleDemande(nomSchema, fiche.getId(), essaiIds, essaisValides,
+                titre, objectif, null);
+
+        viderPanierApresCommit(utilisateurId, laboratoireId, demande.getNumero());
+
+        enregistrerAuditDemande("CREATION_DEMANDE", nomSchema, demande.getId(),
+                null, StatutDemande.NOUVEAU.name(), null);
+        notificationsLaboratoire.notifierApresCommit(com.backend.modules.utilisateur.entity.RoleUtilisateur.RESPONSABLE, laboratoireId,
+                "DEMANDE_SOUMISE", "Nouvelle demande " + demande.getNumero(),
+                "Un client a soumis une demande : elle attend votre décision.", "/app/demandes-clients");
+
+        return obtenirDetailClient(utilisateurId, laboratoireId, demande.getId());
+    }
+
+    /** Essais actifs et tarifés du catalogue ; refuse la demande si l'un d'eux est indisponible. */
+    private Map<Long, Essai> essaisDisponibles(String nomSchema, List<Long> essaiIds) {
+        return tenantExecutor.inTenant(nomSchema, () -> {
             Map<Long, Essai> map = essaiRepository.findByIdsAvecDomaine(essaiIds).stream()
                     .collect(Collectors.toMap(Essai::getId, e -> e, (a, b) -> a));
             List<String> codesIndisponibles = new ArrayList<>();
@@ -163,19 +183,25 @@ public class DemandeService {
             }
             return valides;
         });
+    }
 
-        Client fiche = clientService.assurerFicheLocale(utilisateurId, nomSchema);
-
+    /**
+     * Crée la demande (statut NOUVEAU, numéro AAAAMM-NNN-XXXX) et une ligne par essai au tarif du
+     * catalogue. En cas de conflit sur le numéro, jusqu'à {@code MAX_ESSAIS_NUMERO} essais.
+     */
+    private Demande enregistrerNouvelleDemande(String nomSchema, Long ficheClientId, List<Long> essaiIds,
+                                              Map<Long, Essai> essaisValides, String titre, String objectif,
+                                              Long patientId) {
         String prefixe = LocalDate.now().format(FORMAT_PREFIXE) + "-";
         String suffixeAleatoire = "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-        Demande demande = null;
         for (int tentative = 0; tentative < MAX_ESSAIS_NUMERO; tentative++) {
             try {
-                demande = tenantExecutor.inTenant(nomSchema, () -> {
-                    long maxSeq = demandeRepository.findMaxSequenceForPrefix(prefixe);
+                return tenantExecutor.inTenant(nomSchema, () -> {
+                    // LIKE 'AAAAMM-%' : sans le joker, aucune demande ne correspondait et la séquence restait à 001.
+                    long maxSeq = demandeRepository.findMaxSequenceForPrefix(prefixe + "%");
                     String numero = prefixe + String.format("%03d", maxSeq + 1) + suffixeAleatoire;
-                    Client client = clientRepository.findById(fiche.getId())
-                            .orElseThrow(() -> new ResourceNotFoundException("Client", "id", fiche.getId()));
+                    Client client = clientRepository.findById(ficheClientId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Client", "id", ficheClientId));
                     Demande d = Demande.builder()
                             .numero(numero)
                             .titre(titre)
@@ -183,6 +209,8 @@ public class DemandeService {
                             .dateSoumission(Instant.now())
                             .statut(StatutDemande.NOUVEAU.name())
                             .client(client)
+                            .patient(patientId == null ? null
+                                    : entityManager.getReference(com.backend.modules.patient.entity.Patient.class, patientId))
                             .build();
                     d = demandeRepository.save(d);
                     int index = 1;
@@ -200,25 +228,57 @@ public class DemandeService {
                     }
                     return d;
                 });
-                break;
             } catch (DataIntegrityViolationException ex) {
                 log.warn("Conflit sur le numéro de demande (tentative {}/{}).", tentative + 1, MAX_ESSAIS_NUMERO);
-                if (tentative == MAX_ESSAIS_NUMERO - 1) {
-                    throw new BusinessRuleException("NUMERO_INDISPONIBLE",
-                            "Impossible de générer un numéro de demande, réessayez.");
-                }
             }
         }
+        throw new BusinessRuleException("NUMERO_INDISPONIBLE", "Impossible de générer un numéro de demande, réessayez.");
+    }
 
-        viderPanierApresCommit(utilisateurId, laboratoireId, demande.getNumero());
+    /**
+     * Demande enregistrée par l'accueil pour un client qui se présente sur site (cas d'utilisation
+     * « Créer une demande d'analyse pour un client sur site »). Elle suit ensuite exactement le
+     * circuit d'une demande en ligne : statut NOUVEAU, décision du responsable, suivi par le client.
+     */
+    public com.backend.modules.accueil.dto.DemandeAccueilDtos.DemandeCreeeDto creerParAccueil(
+            com.backend.modules.accueil.dto.DemandeAccueilDtos.CreerDemandeAccueilRequest request) {
+        UtilisateurPrincipal acteur = SecurityUtils.principalCourant();
+        Long laboratoireId = acteur.getLaboratoireId();
+        Laboratoire labo = exigerLaboratoireActif(laboratoireId);
+        String nomSchema = labo.getNomSchema();
+        Long clientId = request.clientUtilisateurId();
+        boolean rattache = tenantExecutor.inCentral(() ->
+                clientLaboratoireRepository.findByUtilisateur_IdAndLaboratoire_Id(clientId, laboratoireId).isPresent());
+        if (!rattache) {
+            throw new BusinessRuleException("CLIENT_NON_RATTACHE",
+                    "Ce client n'est pas enregistré dans votre laboratoire : enregistrez-le d'abord.");
+        }
+        List<Long> essaiIds = request.essaiIds().stream().distinct().toList();
+        Map<Long, Essai> essaisValides = essaisDisponibles(nomSchema, essaiIds);
+        if (request.patientId() != null) {
+            boolean patientExiste = tenantExecutor.inTenant(nomSchema, () ->
+                    entityManager.find(com.backend.modules.patient.entity.Patient.class, request.patientId()) != null);
+            if (!patientExiste) {
+                throw new ResourceNotFoundException("Patient", "id", request.patientId());
+            }
+        }
+        Client fiche = clientService.assurerFicheLocale(clientId, nomSchema);
+        Demande demande = enregistrerNouvelleDemande(nomSchema, fiche.getId(), essaiIds, essaisValides,
+                request.titre().trim(), texteOuNull(request.objectif()), request.patientId());
 
         enregistrerAuditDemande("CREATION_DEMANDE", nomSchema, demande.getId(),
-                null, StatutDemande.NOUVEAU.name(), null);
-        notificationsLaboratoire.notifierApresCommit(com.backend.modules.utilisateur.entity.RoleUtilisateur.RESPONSABLE, laboratoireId,
-                "DEMANDE_SOUMISE", "Nouvelle demande " + demande.getNumero(),
-                "Un client a soumis une demande : elle attend votre décision.", "/app/demandes-clients");
+                null, StatutDemande.NOUVEAU.name(), "Demande enregistrée à l'accueil pour le client");
+        notificationsLaboratoire.notifierApresCommit(com.backend.modules.utilisateur.entity.RoleUtilisateur.RESPONSABLE,
+                laboratoireId, "DEMANDE_SOUMISE", "Nouvelle demande " + demande.getNumero(),
+                "Demande enregistrée à l'accueil : elle attend votre décision.", "/app/demandes-clients");
+        BigDecimal total = essaiIds.stream().map(id -> essaisValides.get(id).getTarif())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return new com.backend.modules.accueil.dto.DemandeAccueilDtos.DemandeCreeeDto(
+                demande.getId(), demande.getNumero(), essaiIds.size(), total);
+    }
 
-        return obtenirDetailClient(utilisateurId, laboratoireId, demande.getId());
+    private static String texteOuNull(String valeur) {
+        return valeur == null || valeur.isBlank() ? null : valeur.trim();
     }
 
     /**
@@ -401,9 +461,12 @@ public class DemandeService {
             throw new BusinessRuleException("MOTIF_OBLIGATOIRE",
                     "Le refus d'une demande exige un motif.");
         }
-        Demande demande = charger(id);
-        demande.setStatut(statut.name());
-        return toDto(demandeRepository.save(demande), TenantContext.getCurrentTenant(), null, null, null);
+        // Les autres statuts suivent le workflow (CDC 2.2.1) et ne se forcent jamais à la main :
+        // EN_COURS à l'affectation, EN_VALIDATION à la validation technique, TERMINEE à la signature
+        // du rapport, ANNULEE par le client (avec motif), NOUVEAU à la création.
+        throw new BusinessRuleException("STATUT_AUTOMATIQUE",
+                "Le statut « " + statut.name() + " » est fixé automatiquement par le workflow : "
+                        + "il ne peut pas être modifié directement.");
     }
 
     @Transactional(readOnly = true)

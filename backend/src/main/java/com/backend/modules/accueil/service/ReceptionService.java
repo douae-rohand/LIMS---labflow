@@ -68,7 +68,13 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class ReceptionService {
 
-    static final List<String> STATUTS_RECEVABLES = List.of(StatutDemande.ACCEPTEE.name(), StatutDemande.EN_COURS.name());
+    /**
+     * Une demande reste recevable tant que son rapport n'est pas signé : en réception partielle,
+     * elle peut déjà être « en validation » alors que des échantillons manquent encore.
+     * Seules les analyses sans échantillon conforme peuvent être couvertes (voir {@code aRecevoir}).
+     */
+    static final List<String> STATUTS_RECEVABLES = List.of(StatutDemande.ACCEPTEE.name(), StatutDemande.EN_COURS.name(),
+            StatutDemande.EN_VALIDATION.name());
     private static final ZoneId FUSEAU = ZoneId.of("Africa/Casablanca");
     private static final DateTimeFormatter MOIS = DateTimeFormatter.ofPattern("yyyyMM");
 
@@ -144,7 +150,7 @@ public class ReceptionService {
         Demande demande = lignes.getFirst().getDemande();
         if (!STATUTS_RECEVABLES.contains(demande.getStatut())) {
             throw new BusinessRuleException("DEMANDE_NON_RECEVABLE",
-                    "Les échantillons ne peuvent être reçus que pour une demande acceptée ou en cours.");
+                    "Les échantillons ne peuvent être reçus que pour une demande acceptée, en cours ou en validation.");
         }
         Map<Long, LigneEssai> parId = lignes.stream().collect(Collectors.toMap(LigneEssai::getId, l -> l));
         Set<Long> dejaCouvertes = new HashSet<>();

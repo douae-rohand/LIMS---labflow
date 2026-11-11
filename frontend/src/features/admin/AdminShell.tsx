@@ -3,6 +3,7 @@ import {
   BarChart3,
   CalendarClock,
   ClipboardCheck,
+  ClipboardPlus,
   Download,
   FileSignature,
   FileText,
@@ -174,6 +175,11 @@ const NAV_ITEMS_ACCUEIL: EntreeAdminNavigation[] = [
     label: "Tableau de bord",
     icon: LayoutDashboard,
     exact: true,
+  },
+  {
+    to: "/app/nouvelle-demande" as const,
+    label: "Nouvelle demande",
+    icon: ClipboardPlus,
   },
   {
     to: "/app/reception" as const,

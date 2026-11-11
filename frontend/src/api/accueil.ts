@@ -288,3 +288,40 @@ export async function lireSuiviDemande(id: number): Promise<SuiviDemande> {
   const res = await apiClient.get<ApiResponse<SuiviDemande>>(`/accueil/demandes/${id}`);
   return res.data;
 }
+
+// ------------------------------------------------------------- demande sur site
+/** Essai du catalogue proposé à l'accueil (prix TTC). */
+export interface EssaiCatalogueAccueil {
+  id: number;
+  code: string;
+  designation: string;
+  domaineCode?: string | null;
+  domaineLibelle?: string | null;
+  prix: number;
+  dureeEstimeeMinutes?: number | null;
+}
+
+export interface NouvelleDemandeAccueil {
+  clientUtilisateurId: number;
+  patientId?: number | undefined;
+  titre: string;
+  objectif?: string | undefined;
+  essaiIds: number[];
+}
+
+export interface DemandeCreee {
+  id: number;
+  numero: string;
+  nombreAnalyses: number;
+  totalTtc: number;
+}
+
+export async function listerCatalogueAccueil(): Promise<EssaiCatalogueAccueil[]> {
+  const res = await apiClient.get<ApiResponse<EssaiCatalogueAccueil[]>>("/accueil/catalogue");
+  return res.data;
+}
+
+export async function creerDemandeAccueil(demande: NouvelleDemandeAccueil): Promise<DemandeCreee> {
+  const res = await apiClient.post<ApiResponse<DemandeCreee>>("/accueil/demandes", demande);
+  return res.data;
+}

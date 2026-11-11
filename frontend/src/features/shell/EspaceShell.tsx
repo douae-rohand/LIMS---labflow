@@ -30,6 +30,7 @@ export type CheminEspace =
   | "/app/demandes"
   | "/app/catalogue"
   | "/app/demandes-clients"
+  | "/app/nouvelle-demande"
   | "/app/employes"
   | "/app/panier"
   | "/app/laboratoires"
