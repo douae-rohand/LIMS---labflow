@@ -9,6 +9,9 @@ import com.backend.common.util.ApresCommit;
 import com.backend.modules.accueil.dto.CaisseDtos.EncaissementDto;
 import com.backend.modules.accueil.dto.CaisseDtos.EncaissementRequest;
 import com.backend.modules.accueil.dto.CaisseDtos.FactureCaisseDto;
+import com.backend.modules.accueil.dto.CaisseDtos.TotalMode;
+import com.backend.modules.accueil.dto.CaisseDtos.LigneJournal;
+import com.backend.modules.accueil.dto.CaisseDtos.JournalCaisse;
 import com.backend.modules.accueil.dto.CaisseDtos.PaiementCaisseDto;
 import com.backend.modules.accueil.repository.CaisseRepository;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
@@ -187,10 +190,118 @@ public class CaisseService {
                     d == null ? null : d.getId(), d == null ? null : d.getNumero(), d == null ? null : d.getTitre(),
                     nomClient(d, noms), d == null || d.getClient() == null ? null : d.getClient().getIce(),
                     siens.isEmpty() ? null : siens.getFirst().getDatePaiement(),
-                    siens.stream().map(p -> new PaiementCaisseDto(p.getId(), p.getCode(), p.getDatePaiement(),
-                            p.getMontant(), p.getMode(), p.getReference(), noms.get(p.getEncaisseurId()))).toList()));
+                    siens.stream().map(p -> versDto(p, siens, noms, aujourdhui)).toList()));
         }
         return resultat;
+    }
+
+    /** Préfixe des écritures de contre-passation, dans la référence du paiement négatif. */
+    static final String PREFIXE_ANNULATION = "ANNULATION ";
+
+    private static boolean contrePassation(Paiement p) {
+        return p.getMontant() != null && p.getMontant().signum() < 0;
+    }
+
+    private static boolean annule(Paiement p, List<Paiement> siens) {
+        return siens.stream().anyMatch(autre -> contrePassation(autre) && autre.getReference() != null
+                && autre.getReference().startsWith(PREFIXE_ANNULATION + p.getCode()));
+    }
+
+    private static PaiementCaisseDto versDto(Paiement p, List<Paiement> siens, Map<Long, String> noms, LocalDate aujourdhui) {
+        boolean contre = contrePassation(p);
+        boolean annule = !contre && annule(p, siens);
+        boolean duJour = p.getDatePaiement() != null
+                && p.getDatePaiement().atZone(FUSEAU).toLocalDate().equals(aujourdhui);
+        return new PaiementCaisseDto(p.getId(), p.getCode(), p.getDatePaiement(), p.getMontant(), p.getMode(),
+                p.getReference(), noms.get(p.getEncaisseurId()), contre, annule, !contre && !annule && duJour);
+    }
+
+    /**
+     * Annule un encaissement du jour par contre-passation : un paiement négatif du même montant,
+     * numéroté comme un reçu, compense l'original (qui n'est jamais supprimé). La facture
+     * redevient à payer ; le motif est conservé dans la référence et au journal d'audit.
+     */
+    @Transactional
+    public EncaissementDto annuler(Long paiementId, String motif) {
+        UtilisateurPrincipal acteur = SecurityUtils.principalCourant();
+        Paiement paiement = caisseRepository.paiement(paiementId)
+                .orElseThrow(() -> new ResourceNotFoundException("Paiement", "id", paiementId));
+        Facture facture = paiement.getFacture();
+        List<Paiement> siens = caisseRepository.paiementsDes(List.of(facture.getId()));
+        if (contrePassation(paiement)) {
+            throw new BusinessRuleException("DEJA_ANNULATION", "Cette écriture est elle-même une annulation.");
+        }
+        if (annule(paiement, siens)) {
+            throw new BusinessRuleException("DEJA_ANNULE", "Cet encaissement est déjà annulé.");
+        }
+        if (!paiement.getDatePaiement().atZone(FUSEAU).toLocalDate().equals(LocalDate.now(FUSEAU))) {
+            throw new BusinessRuleException("ANNULATION_HORS_DELAI",
+                    "Seul un encaissement du jour peut être annulé à la caisse.");
+        }
+        if (StatutFacture.ANNULEE.name().equals(facture.getStatut())) {
+            throw new BusinessRuleException("FACTURE_ANNULEE", "La facture est annulée par un avoir.");
+        }
+        String motifPropre = motif.trim();
+        String prefixe = "PAY-" + LocalDate.now(FUSEAU).format(MOIS) + "-";
+        Integer dernier = caisseRepository.dernierNumero(prefixe + "%");
+        String reference = PREFIXE_ANNULATION + paiement.getCode() + " — " + motifPropre;
+        Paiement contre = caisseRepository.save(Paiement.builder()
+                .code(prefixe + String.format(Locale.ROOT, "%03d", (dernier == null ? 0 : dernier) + 1))
+                .datePaiement(java.time.Instant.now())
+                .montant(paiement.getMontant().negate())
+                .mode(paiement.getMode())
+                .reference(reference.length() > 255 ? reference.substring(0, 255) : reference)
+                .facture(facture)
+                .encaisseurId(acteur.getId())
+                .build());
+        String statutAvant = facture.getStatut();
+        if (StatutFacture.PAYEE.name().equals(statutAvant)) {
+            boolean echue = facture.getDateEcheance() != null && facture.getDateEcheance().isBefore(LocalDate.now(FUSEAU));
+            facture.setStatut(echue ? StatutFacture.EN_RETARD.name() : StatutFacture.IMPAYEE.name());
+        }
+        journalAuditService.enregistrer("ANNULATION_ENCAISSEMENT", "Facture", facture.getId(), acteur.getEmail(),
+                "{\"recu\":\"" + paiement.getCode() + "\",\"montant\":" + paiement.getMontant() + ",\"statut\":\"" + statutAvant + "\"}",
+                "{\"contrePassation\":\"" + contre.getCode() + "\",\"statut\":\"" + facture.getStatut() + "\"}",
+                motifPropre, acteur.getLaboratoireId());
+        FactureCaisseDto dto = versDtos(List.of(facture)).getFirst();
+        PaiementCaisseDto contreDto = dto.paiements().stream().filter(p -> p.id().equals(contre.getId())).findFirst().orElse(null);
+        return new EncaissementDto(dto, contreDto);
+    }
+
+    /** Journal de caisse d'un jour : chaque écriture, total par mode et total net. */
+    @Transactional(readOnly = true)
+    public JournalCaisse journal(LocalDate jour) {
+        LocalDate date = jour == null ? LocalDate.now(FUSEAU) : jour;
+        java.time.Instant debut = date.atStartOfDay(FUSEAU).toInstant();
+        java.time.Instant fin = date.plusDays(1).atStartOfDay(FUSEAU).toInstant();
+        List<Paiement> paiements = caisseRepository.paiementsEntre(debut, fin);
+        Set<Long> utilisateurs = new java.util.HashSet<>();
+        paiements.forEach(p -> {
+            if (p.getEncaisseurId() != null) utilisateurs.add(p.getEncaisseurId());
+            Long client = clientUtilisateur(p.getFacture().getDemande());
+            if (client != null) utilisateurs.add(client);
+        });
+        Map<Long, String> noms = assembleur.nomsUtilisateurs(utilisateurs);
+        List<LigneJournal> lignes = paiements.stream().map(p -> new LigneJournal(p.getId(), p.getCode(), p.getDatePaiement(),
+                p.getMontant(), p.getMode(), p.getFacture().getNumero(), nomClient(p.getFacture().getDemande(), noms),
+                noms.get(p.getEncaisseurId()), contrePassation(p), p.getReference())).toList();
+        Map<String, List<Paiement>> parMode = paiements.stream()
+                .collect(Collectors.groupingBy(p -> p.getMode() == null ? "AUTRE" : p.getMode(),
+                        java.util.TreeMap::new, Collectors.toList()));
+        List<TotalMode> totaux = parMode.entrySet().stream()
+                .map(e -> new TotalMode(e.getKey(), e.getValue().stream().filter(p -> !contrePassation(p)).count(),
+                        somme(e.getValue())))
+                .toList();
+        return new JournalCaisse(date, lignes, totaux, somme(paiements),
+                paiements.stream().filter(CaisseService::contrePassation).count());
+    }
+
+    /** Journal de caisse du jour au format PDF (clôture de caisse). */
+    @Transactional(readOnly = true)
+    public FichierRecu journalPdf(LocalDate jour) {
+        JournalCaisse journal = journal(jour);
+        return new FichierRecu("Journal-caisse-" + journal.jour() + ".pdf",
+                recuPdfService.journal(enTete(), journal, SecurityUtils.principalCourant().getNomComplet()));
     }
 
     private static BigDecimal somme(List<Paiement> paiements) {

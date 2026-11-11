@@ -47,6 +47,18 @@ public interface CaisseRepository extends Repository<Paiement, Long> {
             """)
     Optional<Paiement> paiement(@Param("id") Long id);
 
+    /** Écritures de caisse d'une période, avec facture, demande, client et patient. */
+    @Query("""
+            SELECT p FROM Paiement p
+            JOIN FETCH p.facture f
+            JOIN FETCH f.demande d
+            LEFT JOIN FETCH d.client
+            LEFT JOIN FETCH d.patient
+            WHERE p.datePaiement >= :debut AND p.datePaiement < :fin
+            ORDER BY p.datePaiement ASC, p.id ASC
+            """)
+    List<Paiement> paiementsEntre(@Param("debut") java.time.Instant debut, @Param("fin") java.time.Instant fin);
+
     /** Plus grand numéro de reçu attribué pour un préfixe PAY-AAAAMM- (longueur 11). */
     @Query("SELECT MAX(CAST(SUBSTRING(p.code, 12) AS Integer)) FROM Paiement p WHERE p.code LIKE :prefixe")
     Integer dernierNumero(@Param("prefixe") String prefixe);

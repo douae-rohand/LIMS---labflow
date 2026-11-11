@@ -86,6 +86,8 @@ public class ReceptionService {
     private final JournalAuditService journalAuditService;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final EtiquettesPdfService etiquettesPdfService;
+    private final com.backend.modules.plateforme.repository.LaboratoireRepository laboratoireRepository;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -135,7 +137,56 @@ public class ReceptionService {
                 .toList();
 
         return new DetailReceptionDto(resumer(lignes).getFirst(), lignesDto, naturesAttendues(lignes, exigences),
-                echantillonsDto);
+                echantillonsDto, nomLaboratoire());
+    }
+
+    /** Étiquettes code-barres des échantillons reçus d'une demande (planche A4). */
+    @Transactional(readOnly = true)
+    public CaisseService.FichierRecu etiquettes(Long demandeId, Long echantillonId, EtiquettesPdfService.Format format) {
+        List<LigneEssai> lignes = receptionRepository.lignesDeLaDemande(demandeId);
+        if (lignes.isEmpty()) {
+            throw new ResourceNotFoundException("Demande", "id", demandeId);
+        }
+        List<Echantillon> echantillons = receptionRepository.echantillonsDeLaDemande(demandeId).stream()
+                .filter(e -> echantillonId == null || e.getId().equals(echantillonId))
+                .toList();
+        if (echantillons.isEmpty()) {
+            if (echantillonId != null) {
+                throw new ResourceNotFoundException("Echantillon", "id", echantillonId);
+            }
+            throw new BusinessRuleException("AUCUN_ECHANTILLON", "Aucun échantillon reçu pour cette demande.");
+        }
+        DemandeReceptionDto demande = resumer(lignes).getFirst();
+        String demandeur = demande.patient() != null ? demande.patient() : demande.client();
+        Map<Long, List<String>> analyses = new HashMap<>();
+        lignes.stream().filter(l -> l.getEchantillon() != null && l.getEssai() != null).forEach(l -> analyses
+                .computeIfAbsent(l.getEchantillon().getId(), k -> new ArrayList<>()).add(l.getEssai().getDesignation() != null ? l.getEssai().getDesignation() : l.getEssai().getCode()));
+        List<EtiquettesPdfService.Etiquette> etiquettes = echantillons.stream()
+                .map(e -> new EtiquettesPdfService.Etiquette(e.getReference(), demande.reference(), demandeur,
+                        e.getNature(), e.getDateReception(), !Boolean.FALSE.equals(e.getConformite()),
+                        String.join(", ", analyses.getOrDefault(e.getId(), List.of())), e.getEtatConservationConstate()))
+                .toList();
+        String laboratoire = nomLaboratoire();
+        String nom = echantillonId != null ? "Etiquette-" + echantillons.getFirst().getReference()
+                : "Etiquettes-" + demande.reference();
+        return new CaisseService.FichierRecu(nom + ".pdf",
+                etiquettesPdfService.generer(laboratoire, etiquettes, format == null ? EtiquettesPdfService.Format.PLANCHE : format));
+    }
+
+    private String nomLaboratoire() {
+        Long laboratoireId = SecurityUtils.principalCourant().getLaboratoireId();
+        return tenantExecutor.inCentral(() -> laboratoireRepository.findById(laboratoireId)
+                .map(l -> l.getRaisonSociale()).orElse("Laboratoire"));
+    }
+
+    /** Code-barres PNG d'un échantillon de la demande (aperçu de l'étiquette à l'écran). */
+    @Transactional(readOnly = true)
+    public byte[] codeBarres(Long demandeId, Long echantillonId) {
+        Echantillon echantillon = receptionRepository.echantillonsDeLaDemande(demandeId).stream()
+                .filter(e -> e.getId().equals(echantillonId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Echantillon", "id", echantillonId));
+        return etiquettesPdfService.codeBarresPng(echantillon.getReference());
     }
 
     // ------------------------------------------------------------------ réception

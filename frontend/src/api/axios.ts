@@ -335,6 +335,7 @@ export class ApiClient {
           originalConfig?.url?.includes('/auth/refresh') === true ||
           originalConfig?.url?.includes('/auth/logout') === true ||
           originalConfig?.url?.includes('/2fa/valider') === true ||
+          originalConfig?.url?.includes('/2fa/renvoyer') === true ||
           originalConfig?.url?.includes('/auth/inscription') === true ||
           originalConfig?.url?.includes('/auth/activation/confirmer') === true ||
           originalConfig?.url?.includes('/auth/activation/renvoyer') === true ||

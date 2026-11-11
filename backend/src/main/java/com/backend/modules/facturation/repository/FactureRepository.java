@@ -51,6 +51,8 @@ public interface FactureRepository extends JpaRepository<Facture, Long> {
 
     boolean existsByDemandeId(Long demandeId);
 
+    List<Facture> findByDemande_Id(Long demandeId);
+
     @Query("""
             SELECT new com.backend.modules.facturation.dto.DemandeFacturableDto(
                 d.id, d.numero, d.titre, c.raisonSociale, d.statut, d.dateSoumission,

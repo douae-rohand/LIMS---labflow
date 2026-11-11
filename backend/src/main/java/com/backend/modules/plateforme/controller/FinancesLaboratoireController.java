@@ -28,6 +28,27 @@ import java.time.LocalDate;
 public class FinancesLaboratoireController {
 
     private final FinancesLaboratoireService financesLaboratoireService;
+    private final com.backend.modules.plateforme.service.FactureCommissionService factureCommissionService;
+
+    @GetMapping("/commission")
+    @Operation(summary = "Facture de commission du mois (aperçu) : factures du laboratoire et commission due")
+    public ResponseEntity<ApiResponse<com.backend.modules.plateforme.service.FactureCommissionService.FactureCommission>> commission(
+            @PathVariable Long id,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") java.time.YearMonth mois) {
+        return ResponseEntity.ok(ApiResponse.success(factureCommissionService.calculer(id, mois)));
+    }
+
+    @GetMapping("/commission/pdf")
+    @Operation(summary = "Facture de commission du mois au format PDF")
+    public ResponseEntity<byte[]> commissionPdf(
+            @PathVariable Long id,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") java.time.YearMonth mois) {
+        FichierGenere fichier = factureCommissionService.pdf(id, mois);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fichier.nom() + "\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(fichier.contenu());
+    }
 
     @GetMapping
     @Operation(summary = "Activité financière d'un laboratoire sur une période, par jour, semaine ou mois")

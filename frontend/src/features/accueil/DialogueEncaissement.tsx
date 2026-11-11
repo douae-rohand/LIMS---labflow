@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { FileText } from "lucide-react";
+import { FileText, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Input, Label, Select } from "@/components/lab";
-import { encaisser, ouvrirRecu, type FactureCaisse, type ModePaiement } from "@/api/accueil";
+import { annulerEncaissement, encaisser, ouvrirRecu, type FactureCaisse, type ModePaiement } from "@/api/accueil";
 import { Dialogue } from "@/features/super-admin/Fenetres";
 import { formaterDate, messageErreur } from "@/features/responsable/commun";
 import { formaterMontant, LIBELLES_MODE } from "./commun";
@@ -16,6 +16,9 @@ export function DialogueEncaissement({ facture, onFermer }: { facture: FactureCa
   const [montant, setMontant] = useState("");
   const [mode, setMode] = useState<ModePaiement>("ESPECES");
   const [reference, setReference] = useState("");
+  /** Paiement en cours d'annulation et motif saisi. */
+  const [aAnnuler, setAAnnuler] = useState<number | null>(null);
+  const [motif, setMotif] = useState("");
 
   const factureId = facture?.id;
   useEffect(() => {
@@ -23,6 +26,8 @@ export function DialogueEncaissement({ facture, onFermer }: { facture: FactureCa
       setMontant(facture.reste > 0 ? facture.reste.toFixed(2) : "");
       setMode("ESPECES");
       setReference("");
+      setAAnnuler(null);
+      setMotif("");
     }
     // Réinitialisé à l'ouverture d'une autre facture uniquement.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -48,6 +53,19 @@ export function DialogueEncaissement({ facture, onFermer }: { facture: FactureCa
       await queryClient.invalidateQueries({ queryKey: ["accueil-tableau"] });
     },
     onError: (erreur) => toast.error(messageErreur(erreur, "Le paiement n'a pas pu être enregistré.")),
+  });
+
+  const annulation = useMutation({
+    mutationFn: () => annulerEncaissement(aAnnuler as number, motif.trim()),
+    onSuccess: async (resultat) => {
+      toast.success(`Encaissement annulé. Reste à payer : ${formaterMontant(resultat.facture.reste)}.`);
+      setAAnnuler(null);
+      setMotif("");
+      setMontant(resultat.facture.reste > 0 ? resultat.facture.reste.toFixed(2) : "");
+      await queryClient.invalidateQueries({ queryKey: ["accueil-caisse"] });
+      await queryClient.invalidateQueries({ queryKey: ["accueil-tableau"] });
+    },
+    onError: (erreur) => toast.error(messageErreur(erreur, "L'encaissement n'a pas pu être annulé.")),
   });
 
   const valeur = Number(montant.replace(",", "."));
@@ -118,18 +136,55 @@ export function DialogueEncaissement({ facture, onFermer }: { facture: FactureCa
             ) : (
               <ul className="flex flex-col gap-2">
                 {facture.paiements.map((p) => (
-                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-900/10 px-3 py-2">
+                  <li key={p.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 ${
+                    p.contrePassation ? "border-red-200 bg-red-50/60" : "border-brand-900/10"}`}>
                     <div>
-                      <p className="font-semibold text-ink-900">{formaterMontant(p.montant)} · {LIBELLES_MODE[p.mode] ?? p.mode}</p>
+                      <p className={`font-semibold ${p.annule ? "text-muted-foreground line-through" : p.contrePassation ? "text-red-800" : "text-ink-900"}`}>
+                        {formaterMontant(p.montant)} · {LIBELLES_MODE[p.mode] ?? p.mode}
+                        {p.contrePassation && <span className="ml-2 text-xs font-bold no-underline">Annulation</span>}
+                      </p>
+                      {p.annule && <p className="text-xs font-semibold text-red-700">Encaissement annulé</p>}
                       <p className="text-xs text-muted-foreground">
                         {p.code} · {formaterDate(p.date, true)}{p.encaisseur ? ` · ${p.encaisseur}` : ""}
                         {p.reference ? ` · réf. ${p.reference}` : ""}
                       </p>
                     </div>
-                    <Button size="sm" variant="secondary" icon={<FileText className="size-4" aria-hidden="true" />}
-                      iconPosition="left" onClick={() => ouvrir(p.id)}>
-                      Reçu
-                    </Button>
+                    <div className="flex gap-2">
+                      {p.annulable && aAnnuler !== p.id && (
+                        <Button size="sm" variant="ghost" icon={<Undo2 className="size-4" aria-hidden="true" />}
+                          iconPosition="left" onClick={() => { setAAnnuler(p.id); setMotif(""); }}>
+                          Annuler
+                        </Button>
+                      )}
+                      <Button size="sm" variant="secondary" icon={<FileText className="size-4" aria-hidden="true" />}
+                        iconPosition="left" onClick={() => ouvrir(p.id)}>
+                        Reçu
+                      </Button>
+                    </div>
+                    {aAnnuler === p.id && (
+                      <form
+                        className="flex w-full flex-col gap-2 border-t border-brand-900/10 pt-2"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          if (motif.trim().length >= 5) annulation.mutate();
+                        }}
+                      >
+                        <Label htmlFor={`motif-annulation-${p.id}`}>Motif de l'annulation</Label>
+                        <Input id={`motif-annulation-${p.id}`} value={motif} maxLength={200} autoFocus
+                          placeholder="Ex. erreur de montant, mauvais mode de paiement…"
+                          onChange={(event) => setMotif(event.target.value)} />
+                        <p className="text-xs text-muted-foreground">
+                          Une écriture négative compense ce reçu (il n'est jamais supprimé). Possible uniquement le jour même.
+                        </p>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" size="sm" variant="ghost" onClick={() => setAAnnuler(null)}>Retour</Button>
+                          <Button type="submit" size="sm" variant="secondary" className="text-red-700" loading={annulation.isPending}
+                            disabled={motif.trim().length < 5}>
+                            Confirmer l'annulation
+                          </Button>
+                        </div>
+                      </form>
+                    )}
                   </li>
                 ))}
               </ul>

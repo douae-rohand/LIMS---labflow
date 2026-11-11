@@ -80,6 +80,8 @@ public class RapportService {
     private final com.backend.modules.rapport.signature.SignatureNumeriqueService signatureNumeriqueService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final com.backend.modules.rapport.signature.SignatureManuscriteService signatureManuscriteService;
+    private final com.backend.modules.facturation.repository.FactureRepository factureRepository;
+    private final com.backend.modules.notification.service.NotificationsLaboratoire notificationsLaboratoire;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -284,6 +286,19 @@ public class RapportService {
         journalAuditService.enregistrer("SIGNER_RAPPORT", "Rapport", rapport.getId(), acteur.getEmail(),
                 null, "{\"numero\":\"" + rapport.getNumero() + "\",\"statut\":\"ENVOYE\"}",
                 null, acteur.getLaboratoireId());
+
+        // Rapport diffusé mais facture pas encore réglée : l'accueil relance le client au guichet.
+        java.math.BigDecimal resteDu = factureRepository.findByDemande_Id(demande.getId()).stream()
+                .filter(f -> !"PAYEE".equals(f.getStatut()) && !"ANNULEE".equals(f.getStatut()))
+                .map(f -> f.getMontantHt() == null ? java.math.BigDecimal.ZERO : f.getMontantHt())
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+        if (resteDu.signum() > 0) {
+            notificationsLaboratoire.notifierApresCommit(com.backend.modules.utilisateur.entity.RoleUtilisateur.ACCUEIL,
+                    acteur.getLaboratoireId(), "RAPPORT_SIGNE_FACTURE_IMPAYEE",
+                    "Rapport " + rapport.getNumero() + " signé, facture non réglée",
+                    "La demande " + demande.getNumero() + " est terminée mais sa facture n'est pas entièrement payée.",
+                    "/app/caisse");
+        }
 
         Long clientId = demande.getClient() == null ? null : demande.getClient().getUtilisateurId();
         String numero = rapport.getNumero();
