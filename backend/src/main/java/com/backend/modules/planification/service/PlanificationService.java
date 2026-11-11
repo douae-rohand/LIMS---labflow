@@ -147,6 +147,12 @@ public class PlanificationService {
                     "Choisissez un technicien actif de votre laboratoire.");
         }
         List<String> domaines = domainesDes(List.of(technicien.getId())).getOrDefault(technicien.getId(), List.of());
+        // Chaque technicien n'est affecté qu'à son domaine : sans domaine, il ne peut rien recevoir.
+        if (domaines.isEmpty()) {
+            throw new BusinessRuleException("TECHNICIEN_SANS_DOMAINE",
+                    nomComplet(technicien) + " n'a aucun domaine d'analyse : demandez à l'administrateur de lui en attribuer.");
+        }
+        String motif = request.motif() == null || request.motif().isBlank() ? null : request.motif().trim();
 
         List<LigneEssai> lignes = ligneEssaiRepository.findAvecDetails(new HashSet<>(request.ligneIds()));
         if (lignes.size() != new HashSet<>(request.ligneIds()).size()) {
@@ -171,11 +177,16 @@ public class PlanificationService {
             }
             String domaine = ligne.getEssai() == null || ligne.getEssai().getDomaine() == null
                     ? null : ligne.getEssai().getDomaine().getCode();
-            if (!domaines.isEmpty() && domaine != null && !domaines.contains(domaine)) {
+            if (domaine == null || !domaines.contains(domaine)) {
                 throw new BusinessRuleException("DOMAINE_NON_COUVERT",
                         nomComplet(technicien) + " ne couvre pas le domaine de l'analyse " + libelle(ligne) + ".");
             }
             Long avant = ligne.getTechnicienId();
+            boolean reaffectation = avant != null && !avant.equals(technicien.getId());
+            if (reaffectation && motif == null) {
+                throw new BusinessRuleException("MOTIF_REAFFECTATION_OBLIGATOIRE",
+                        "L'analyse " + libelle(ligne) + " est déjà affectée : indiquez le motif de la réaffectation.");
+            }
             ligne.setTechnicienId(technicien.getId());
             ligne.setDateAttribution(maintenant);
             if (datePrevue != null) {
@@ -183,9 +194,10 @@ public class PlanificationService {
             }
             ligneEssaiRepository.save(ligne);
             demandes.add(demande);
-            journalAuditService.enregistrer("AFFECTER_ANALYSE", "LigneEssai", ligne.getId(), acteur.getEmail(),
+            journalAuditService.enregistrer(reaffectation ? "REAFFECTER_ANALYSE" : "AFFECTER_ANALYSE", "LigneEssai",
+                    ligne.getId(), acteur.getEmail(),
                     avant == null ? null : "{\"technicienId\":" + avant + "}",
-                    "{\"technicienId\":" + technicien.getId() + "}", null, laboratoireId);
+                    "{\"technicienId\":" + technicien.getId() + "}", reaffectation ? motif : null, laboratoireId);
         }
         for (Demande demande : demandes) {
             if (StatutDemande.depuis(demande.getStatut()) == StatutDemande.ACCEPTEE) {

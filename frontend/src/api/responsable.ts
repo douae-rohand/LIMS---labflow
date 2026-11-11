@@ -114,11 +114,13 @@ export async function affecterAnalyses(
   ligneIds: number[],
   technicienId: number,
   datePrevue?: string,
+  motif?: string,
 ): Promise<AnalyseTravail[]> {
   const res = await apiClient.post<ApiResponse<AnalyseTravail[]>>("/planifications/affectations", {
     ligneIds,
     technicienId,
     ...(datePrevue ? { datePrevue } : {}),
+    ...(motif ? { motif } : {}),
   });
   return res.data;
 }

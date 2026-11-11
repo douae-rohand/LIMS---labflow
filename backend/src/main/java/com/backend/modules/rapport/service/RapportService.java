@@ -101,12 +101,14 @@ public class RapportService {
     }
 
     /**
-     * Demandes terminées et leur dernier rapport (à générer, à signer ou libéré),
-     * la dernière activité en haut. Requêtes groupées : aucune requête par demande.
+     * Demandes prêtes au rapport (tous les résultats validés, en attente de signature) et demandes
+     * terminées (rapport signé), avec leur dernier rapport, la dernière activité en haut.
      */
     @Transactional(readOnly = true)
     public List<RapportTravailDto> travail() {
-        List<Demande> demandes = demandeRepository.findAvecClientParStatuts(StatutDemande.TERMINEE.aliasesPersistés());
+        List<Demande> demandes = demandeRepository.findAvecClientParStatuts(statutsRapport()).stream()
+                .filter(this::preteAuRapport)
+                .toList();
         if (demandes.isEmpty()) {
             return List.of();
         }
@@ -150,7 +152,10 @@ public class RapportService {
     /** Rapports à signer, pour le tableau de suivi (sans charger les détails). */
     @Transactional(readOnly = true)
     public long compterAPreparer() {
-        List<Long> ids = demandeRepository.findIdsParStatuts(StatutDemande.TERMINEE.aliasesPersistés());
+        List<Long> ids = demandeRepository.findAvecClientParStatuts(statutsRapport()).stream()
+                .filter(this::preteAuRapport)
+                .map(Demande::getId)
+                .toList();
         if (ids.isEmpty()) {
             return 0;
         }
@@ -161,6 +166,31 @@ public class RapportService {
                     || StatutRapport.GENERE.name().equals(rapport.getStatut())
                     || StatutRapport.BROUILLON.name().equals(rapport.getStatut());
         }).count();
+    }
+
+    /** Statuts où un rapport peut exister : en validation (à signer) ou terminée (signé). */
+    private static List<String> statutsRapport() {
+        List<String> statuts = new java.util.ArrayList<>(StatutDemande.TERMINEE.aliasesPersistés());
+        statuts.addAll(StatutDemande.EN_VALIDATION.aliasesPersistés());
+        return statuts;
+    }
+
+    /**
+     * Une demande terminée a son rapport ; une demande en validation n'est prête au rapport que si
+     * toutes ses analyses réalisables sont validées par le responsable.
+     */
+    private boolean preteAuRapport(Demande demande) {
+        if (StatutDemande.depuis(demande.getStatut()) == StatutDemande.TERMINEE) {
+            return true;
+        }
+        List<LigneEssai> lignes = ligneEssaiRepository.findByDemande_Id(demande.getId()).stream()
+                .filter(l -> l.getStatut() != StatutEssai.NON_REALISABLE)
+                .toList();
+        if (lignes.isEmpty()) {
+            return false;
+        }
+        Map<Long, String> etats = assembleur.etats(lignes.stream().map(LigneEssai::getId).toList());
+        return lignes.stream().allMatch(l -> LigneTravailAssembleur.VALIDEE.equals(etats.get(l.getId())));
     }
 
     private Map<Long, Rapport> derniersRapports(Collection<Long> demandeIds) {
@@ -244,6 +274,13 @@ public class RapportService {
         rapport.setStatut(StatutRapport.ENVOYE.name());
         rapport.setDiffuse(true);
         rapportRepository.save(rapport);
+        // Le rapport validé et diffusé clôt la demande (CDC, table 2.3 : TERMINÉE).
+        String statutAvant = demande.getStatut();
+        demande.setStatut(StatutDemande.TERMINEE.name());
+        demandeRepository.save(demande);
+        journalAuditService.enregistrer("CHANGEMENT_STATUT_DEMANDE", "Demande", demande.getId(), acteur.getEmail(),
+                "{\"statut\":\"" + statutAvant + "\"}", "{\"statut\":\"TERMINEE\"}",
+                "Rapport " + rapport.getNumero() + " signé", acteur.getLaboratoireId());
         journalAuditService.enregistrer("SIGNER_RAPPORT", "Rapport", rapport.getId(), acteur.getEmail(),
                 null, "{\"numero\":\"" + rapport.getNumero() + "\",\"statut\":\"ENVOYE\"}",
                 null, acteur.getLaboratoireId());
@@ -274,7 +311,7 @@ public class RapportService {
     private Demande demandeTerminee(Long demandeId) {
         Demande demande = demandeRepository.findById(demandeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", demandeId));
-        if (StatutDemande.depuis(demande.getStatut()) != StatutDemande.TERMINEE) {
+        if (!preteAuRapport(demande)) {
             throw new BusinessRuleException("DEMANDE_NON_TERMINEE",
                     "Le rapport ne peut être signé qu'une fois tous les résultats validés.");
         }

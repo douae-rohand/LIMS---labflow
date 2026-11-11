@@ -22,6 +22,7 @@ import type { ReactNode } from "react";
 import type { RoleUtilisateur, SessionUser } from "@/api/session";
 import { PERMISSIONS_EXPORT } from "@/api/exports";
 import { EspaceShell, type EntreeNavigation } from "@/features/shell/EspaceShell";
+import { CloNotifications } from "@/features/super-admin/CloNotifications";
 
 type EntreeAdminNavigation = EntreeNavigation & {
   permission?: string;
@@ -234,6 +235,7 @@ export function AdminShell({
       titreSection="Laboratoire"
       navigation={navigation}
       onLogout={onLogout}
+      actions={utilisateur.role === "RESPONSABLE" || utilisateur.role === "ACCUEIL" ? <CloNotifications /> : undefined}
     >
       {children}
     </EspaceShell>

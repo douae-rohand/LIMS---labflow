@@ -139,7 +139,7 @@ export function PageRapports() {
         chargement={rapports.isLoading}
         erreur={rapports.isError}
         vide={!rapports.isLoading && visibles.length === 0}
-        messageVide={(rapports.data?.length ?? 0) === 0 ? "Aucune demande terminée pour le moment." : "Aucun rapport ne correspond."}
+        messageVide={(rapports.data?.length ?? 0) === 0 ? "Aucune demande prête au rapport pour le moment." : "Aucun rapport ne correspond."}
         onReessayer={() => void rapports.refetch()}
       />
 

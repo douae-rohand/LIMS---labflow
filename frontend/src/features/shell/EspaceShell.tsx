@@ -120,6 +120,7 @@ export function EspaceShell({
   titreSection,
   navigation,
   onLogout,
+  actions,
 }: {
   children: ReactNode;
   utilisateur: SessionUser;
@@ -128,6 +129,8 @@ export function EspaceShell({
   titreSection: string;
   navigation: EntreeNavigation[];
   onLogout: () => void;
+  /** Boutons facultatifs placés avant la déconnexion (ex. cloche de notifications). */
+  actions?: ReactNode;
 }) {
   const initiales = getInitiales(utilisateur.nomComplet) || "LF";
 
@@ -194,6 +197,7 @@ export function EspaceShell({
                 </p>
                 <p className="truncate text-xs text-muted-foreground">{libelleRole}</p>
               </Link>
+              {actions}
               {/* Bouton déconnexion (icône seule) */}
               <Button
                 variant="ghost"
@@ -216,6 +220,7 @@ export function EspaceShell({
             </Link>
 
             <div className="flex items-center gap-2">
+              {actions}
               {/* Avatar utilisateur mobile */}
               <span
                 className="flex size-8 items-center justify-center rounded-full bg-brand-900 text-xs font-bold text-primary-foreground"

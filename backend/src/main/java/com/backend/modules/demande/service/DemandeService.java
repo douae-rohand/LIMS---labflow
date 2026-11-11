@@ -103,6 +103,7 @@ public class DemandeService {
     private final JournalAuditRepository journalAuditRepository;
     private final FacturationAdminService facturationAdminService;
     private final com.backend.integration.sendgrid.EmailService emailService;
+    private final com.backend.modules.notification.service.NotificationsLaboratoire notificationsLaboratoire;
 
     private static final String STATUT_LABORATOIRE_ACTIF = "ACTIF";
     private static final int MOTIF_MIN = 5;
@@ -213,6 +214,9 @@ public class DemandeService {
 
         enregistrerAuditDemande("CREATION_DEMANDE", nomSchema, demande.getId(),
                 null, StatutDemande.NOUVEAU.name(), null);
+        notificationsLaboratoire.notifierApresCommit(com.backend.modules.utilisateur.entity.RoleUtilisateur.RESPONSABLE, laboratoireId,
+                "DEMANDE_SOUMISE", "Nouvelle demande " + demande.getNumero(),
+                "Un client a soumis une demande : elle attend votre décision.", "/app/demandes-clients");
 
         return obtenirDetailClient(utilisateurId, laboratoireId, demande.getId());
     }
@@ -244,6 +248,11 @@ public class DemandeService {
 
         enregistrerAuditDemande("ANNULATION_DEMANDE", nomSchema, demandeId,
                 StatutDemande.NOUVEAU.name(), StatutDemande.ANNULEE.name(), motifPropre);
+        String numeroAnnule = tenantExecutor.inTenant(nomSchema, () ->
+                demandeRepository.findById(demandeId).map(Demande::getNumero).orElse(""));
+        notificationsLaboratoire.notifierApresCommit(com.backend.modules.utilisateur.entity.RoleUtilisateur.RESPONSABLE, laboratoireId,
+                "DEMANDE_ANNULEE", "Demande " + numeroAnnule + " annulée par le client",
+                "Motif : " + motifPropre, "/app/demandes-clients");
 
         return obtenirDetailClient(utilisateurId, laboratoireId, demandeId);
     }
@@ -446,6 +455,10 @@ public class DemandeService {
         planifierFacturationAutomatique(id);
         Demande acceptee = demandeRepository.save(demande);
         informerClientDecision(acceptee, "Acceptée");
+        notificationsLaboratoire.notifierApresCommit(com.backend.modules.utilisateur.entity.RoleUtilisateur.ACCUEIL,
+                SecurityUtils.principalCourant().getLaboratoireId(),
+                "DEMANDE_ACCEPTEE", "Échantillons attendus : demande " + acceptee.getNumero(),
+                "La demande a été acceptée : préparez la réception de ses échantillons.", "/app/reception");
         return construireDetail(acceptee);
     }
 

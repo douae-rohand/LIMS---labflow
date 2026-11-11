@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, UserCheck } from "lucide-react";
 import { toast } from "sonner";
-import { Badge, Button, Input, Label } from "@/components/lab";
+import { Badge, Button, Input, Label, Textarea } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import {
   affecterAnalyses,
@@ -210,18 +210,23 @@ function DialogueAffectation({ ouvert, analyses, onFermer, onAffecte }: {
 }) {
   const [technicienId, setTechnicienId] = useState<number | null>(null);
   const [datePrevue, setDatePrevue] = useState("");
+  const [motif, setMotif] = useState("");
   const techniciens = useQuery({ queryKey: ["responsable-techniciens"], queryFn: listerTechniciens, enabled: ouvert });
 
   useEffect(() => {
     if (ouvert) {
       setTechnicienId(null);
       setDatePrevue("");
+      setMotif("");
     }
   }, [ouvert]);
 
-  const domainesRequis = [...new Set(analyses.map((a) => a.domaineCode).filter((code): code is string => Boolean(code)))];
+  // Réaffectation : une des analyses est déjà confiée à un autre technicien que celui choisi.
+  const reaffectees = technicienId == null ? [] : analyses.filter((a) => a.technicienId != null && a.technicienId !== technicienId);
+  const motifManquant = reaffectees.length > 0 && !motif.trim();
   const affectation = useMutation({
-    mutationFn: () => affecterAnalyses(analyses.map((a) => a.id), technicienId as number, datePrevue || undefined),
+    mutationFn: () => affecterAnalyses(analyses.map((a) => a.id), technicienId as number, datePrevue || undefined,
+      reaffectees.length > 0 ? motif.trim() : undefined),
     onSuccess: async () => {
       toast.success(`${analyses.length} analyse(s) affectée(s).`);
       await onAffecte();
@@ -233,7 +238,7 @@ function DialogueAffectation({ ouvert, analyses, onFermer, onAffecte }: {
     <Dialogue
       ouvert={ouvert}
       titre={`Affecter ${analyses.length} analyse(s)`}
-      description="Les techniciens les moins chargés sont proposés en premier. Ceux qui ne couvrent pas le domaine des analyses ne peuvent pas être choisis."
+      description="Les techniciens les moins chargés sont proposés en premier. Seuls ceux qui couvrent le domaine des analyses peuvent être choisis."
       onFermer={onFermer}
     >
       <div className="flex flex-col gap-4 text-sm">
@@ -244,7 +249,8 @@ function DialogueAffectation({ ouvert, analyses, onFermer, onAffecte }: {
         <fieldset className="flex max-h-72 flex-col gap-2 overflow-y-auto">
           <legend className="sr-only">Technicien</legend>
           {techniciens.data?.map((technicien) => {
-            const couvre = technicien.domaines.length === 0 || domainesRequis.every((d) => technicien.domaines.includes(d));
+            const sansDomaine = technicien.domaines.length === 0;
+            const couvre = !sansDomaine && analyses.every((a) => a.domaineCode != null && technicien.domaines.includes(a.domaineCode));
             return (
               <label
                 key={technicien.id}
@@ -263,8 +269,8 @@ function DialogueAffectation({ ouvert, analyses, onFermer, onAffecte }: {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-ink-900">{technicien.nomComplet}</p>
                   <p className="text-xs text-muted-foreground">
-                    {technicien.domaines.join(", ") || "Tous domaines"}
-                    {!couvre ? " · domaine non couvert" : ""}
+                    {sansDomaine ? "Aucun domaine attribué" : technicien.domaines.join(", ")}
+                    {!couvre && !sansDomaine ? " · domaine non couvert" : ""}
                   </p>
                 </div>
                 <div className="flex gap-1">
@@ -279,9 +285,19 @@ function DialogueAffectation({ ouvert, analyses, onFermer, onAffecte }: {
           <Label htmlFor="date-prevue">Début prévu (facultatif)</Label>
           <Input id="date-prevue" type="date" min={new Date().toISOString().slice(0, 10)} value={datePrevue} onChange={(event) => setDatePrevue(event.target.value)} />
         </div>
+        {reaffectees.length > 0 && (
+          <div className="flex flex-col gap-1.5 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+            <Label htmlFor="motif-reaffectation">Motif de la réaffectation (obligatoire)</Label>
+            <p className="text-xs text-amber-900">
+              {reaffectees.length} analyse(s) déjà confiée(s) à {[...new Set(reaffectees.map((a) => a.technicienNom ?? "un autre technicien"))].join(", ")}.
+              Le motif est inscrit au journal d'audit.
+            </p>
+            <Textarea id="motif-reaffectation" rows={2} maxLength={500} value={motif} onChange={(event) => setMotif(event.target.value)} />
+          </div>
+        )}
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onFermer}>Annuler</Button>
-          <Button loading={affectation.isPending} disabled={technicienId == null} onClick={() => affectation.mutate()}>
+          <Button loading={affectation.isPending} disabled={technicienId == null || motifManquant} onClick={() => affectation.mutate()}>
             Affecter
           </Button>
         </div>
