@@ -15,6 +15,7 @@ import { apiClient, ApiError } from "@/api/axios";
 import { cn } from "@/lib/utils";
 import { cibleApresConnexion, sanitizeRedirect } from "@/lib/redirect";
 import { RenvoyerLienActivation } from "@/components/auth/RenvoyerLienActivation";
+import { EtapeCodeConnexion } from "@/components/auth/EtapeCodeConnexion";
 
 // ---------------------------------------------------------------------------
 // Garde : si déjà connecté → /app (ou /changer-mot-de-passe)
@@ -126,6 +127,8 @@ function LoginPage() {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
+  /** Deuxième étape : code reçu par e-mail. */
+  const [verification, setVerification] = useState<{ jeton: string; email?: string | undefined; minutes: number } | null>(null);
 
   // Focus sur le premier champ en erreur après soumission
   useEffect(() => {
@@ -143,9 +146,11 @@ function LoginPage() {
         motDePasse: values.motDePasse,
       });
 
-      if (response.requiresTwoFactor) {
-        setError("root", {
-          message: "La double authentification n'est pas encore disponible dans cette interface.",
+      if (response.requiresTwoFactor && response.twoFactorToken) {
+        setVerification({
+          jeton: response.twoFactorToken,
+          email: response.email,
+          minutes: Math.round((response.expiresIn ?? 900) / 60),
         });
         return;
       }
@@ -199,10 +204,21 @@ function LoginPage() {
     <PublicLayout>
       <Container className="grid items-center gap-10 py-16 lg:grid-cols-2">
         <Card variant="glossy" padding="lg" className="mx-auto w-full max-w-md">
-          <h1 className="text-2xl font-extrabold text-ink-900">Se connecter</h1>
+          <h1 className="text-2xl font-extrabold text-ink-900">{verification ? "Vérification" : "Se connecter"}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Espace sécurisé de votre laboratoire.
+            {verification ? "Double authentification de votre compte." : "Espace sécurisé de votre laboratoire."}
           </p>
+
+          {verification ? (
+            <EtapeCodeConnexion
+              jeton={verification.jeton}
+              emailMasque={verification.email}
+              dureeMinutes={verification.minutes}
+              onConnecte={ouvrirSession}
+              onRetour={() => setVerification(null)}
+            />
+          ) : (
+          <>
 
           {/* Erreur globale accessible */}
           {errors.root?.message && (
@@ -289,6 +305,8 @@ function LoginPage() {
               Mot de passe oublié ?
             </Link>
           </p>
+          </>
+          )}
         </Card>
 
         <Photo

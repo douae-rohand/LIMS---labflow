@@ -105,7 +105,7 @@ jwt:
   secret: ${JWT_SECRET:changeme-at-least-64-chars-base64-encoded-secret-for-HS512-algorithm}
   expiration: ${JWT_EXPIRATION:900000}          # 15 minutes en ms
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}  # 7 jours en ms
-  two-factor-expiration: ${JWT_TWO_FACTOR_EXPIRATION:300000}  # 5 minutes en ms
+  two-factor-expiration: ${JWT_TWO_FACTOR_EXPIRATION:900000}  # 15 minutes en ms (code e-mail)
 
 # ============================================================
 # MinIO
