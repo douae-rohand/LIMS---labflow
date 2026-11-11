@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, UserCheck } from "lucide-react";
 import { toast } from "sonner";
-import { Badge, Button, Input, Label, Textarea } from "@/components/lab";
+import { Badge, Button, Input, Label, Select, Textarea } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import {
   affecterAnalyses,
@@ -46,17 +46,33 @@ export function PagePlanification({ filtre, onFiltre }: {
   const [selection, setSelection] = useState<number[]>([]);
   const [dialogue, setDialogue] = useState(false);
   const [recherche, setRecherche] = useState("");
+  const [domaine, setDomaine] = useState("");
+  const [technicien, setTechnicien] = useState("");
 
   const analyses = useQuery({
     queryKey: ["responsable-analyses", filtre],
     queryFn: () => listerAnalyses(filtre),
   });
-  useEffect(() => setSelection([]), [filtre]);
+  useEffect(() => setSelection([]), [filtre, domaine, technicien]);
+  useEffect(() => setTechnicien(""), [filtre]);
+
+  const domaines = useMemo(() => {
+    const parCode = new Map<string, string>();
+    for (const a of analyses.data ?? []) if (a.domaineCode) parCode.set(a.domaineCode, a.domaineLibelle ?? a.domaineCode);
+    return [...parCode.entries()].sort((x, y) => x[1].localeCompare(y[1], "fr"));
+  }, [analyses.data]);
+  const techniciensListes = useMemo(() => {
+    const parId = new Map<number, string>();
+    for (const a of analyses.data ?? []) if (a.technicienId != null) parId.set(a.technicienId, a.technicienNom ?? `#${a.technicienId}`);
+    return [...parId.entries()].sort((x, y) => x[1].localeCompare(y[1], "fr"));
+  }, [analyses.data]);
 
   // Le serveur renvoie les demandes les plus récentes d'abord ; on garde cet ordre en regroupant.
   const groupes = useMemo(() => {
     const parDemande = new Map<number, AnalyseTravail[]>();
     (analyses.data ?? [])
+      .filter((a) => !domaine || a.domaineCode === domaine)
+      .filter((a) => !technicien || String(a.technicienId) === technicien)
       .filter((a) => !recherche.trim()
         || contient(a.demandeReference, recherche)
         || contient(a.demandeTitre, recherche)
@@ -66,7 +82,7 @@ export function PagePlanification({ filtre, onFiltre }: {
         parDemande.set(analyse.demandeId, [...(parDemande.get(analyse.demandeId) ?? []), analyse]);
       });
     return [...parDemande.values()];
-  }, [analyses.data, recherche]);
+  }, [analyses.data, recherche, domaine, technicien]);
 
   const choisies = (analyses.data ?? []).filter((analyse) => selection.includes(analyse.id));
   const basculer = (id: number, coche: boolean) =>
@@ -105,6 +121,18 @@ export function PagePlanification({ filtre, onFiltre }: {
           ))}
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          {domaines.length > 1 && (
+            <Select aria-label="Filtrer par domaine" value={domaine} onChange={(e) => setDomaine(e.target.value)} className="min-w-40">
+              <option value="">Tous les domaines</option>
+              {domaines.map(([code, libelle]) => <option key={code} value={code}>{libelle}</option>)}
+            </Select>
+          )}
+          {filtre !== "A_AFFECTER" && techniciensListes.length > 0 && (
+            <Select aria-label="Filtrer par technicien" value={technicien} onChange={(e) => setTechnicien(e.target.value)} className="min-w-44">
+              <option value="">Tous les techniciens</option>
+              {techniciensListes.map(([id, nom]) => <option key={id} value={String(id)}>{nom}</option>)}
+            </Select>
+          )}
           <Recherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, une analyse…" />
           <Button
             icon={<UserCheck className="size-4" aria-hidden="true" />}
@@ -121,7 +149,7 @@ export function PagePlanification({ filtre, onFiltre }: {
         chargement={analyses.isLoading}
         erreur={analyses.isError}
         vide={!analyses.isLoading && groupes.length === 0}
-        messageVide={recherche.trim() ? "Aucune analyse ne correspond à la recherche."
+        messageVide={recherche.trim() || domaine || technicien ? "Aucune analyse ne correspond aux filtres."
           : filtre === "A_AFFECTER" ? "Toutes les analyses sont affectées."
             : filtre === "EN_RETARD" ? "Aucune analyse en retard." : "Aucune analyse affectée en cours."}
         onReessayer={() => void analyses.refetch()}
@@ -283,7 +311,7 @@ function DialogueAffectation({ ouvert, analyses, onFermer, onAffecte }: {
         </fieldset>
         <div className="flex max-w-xs flex-col gap-1.5">
           <Label htmlFor="date-prevue">Début prévu (facultatif)</Label>
-          <Input id="date-prevue" type="date" min={new Date().toISOString().slice(0, 10)} value={datePrevue} onChange={(event) => setDatePrevue(event.target.value)} />
+          <Input id="date-prevue" type="date" min={new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Casablanca" })} value={datePrevue} onChange={(event) => setDatePrevue(event.target.value)} />
         </div>
         {reaffectees.length > 0 && (
           <div className="flex flex-col gap-1.5 rounded-2xl border border-amber-200 bg-amber-50 p-3">

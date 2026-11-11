@@ -136,6 +136,13 @@ const NAV_ITEMS_RESPONSABLE: EntreeAdminNavigation[] = [
     roles: ["RESPONSABLE"],
   },
   {
+    to: "/app/stock" as const,
+    label: "Stock (consultation)",
+    icon: Activity,
+    permission: "STOCK_CONSULTER",
+    roles: ["RESPONSABLE"],
+  },
+  {
     to: "/app/employes" as const,
     label: "Employés",
     icon: Users,

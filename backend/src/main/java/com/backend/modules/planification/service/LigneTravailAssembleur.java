@@ -17,7 +17,6 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -161,12 +160,13 @@ public class LigneTravailAssembleur {
                 .technicienNom(ligne.getTechnicienId() == null ? null : noms.get(ligne.getTechnicienId()))
                 .statut(ligne.getStatut())
                 .dateAttribution(ligne.getDateAttribution())
-                .datePrevue(ligne.getDateDebut() == null ? null : LocalDate.ofInstant(ligne.getDateDebut(), ZoneOffset.UTC))
+                .datePrevue(ligne.getDateDebut() == null ? null : LocalDate.ofInstant(ligne.getDateDebut(), java.time.ZoneId.of("Africa/Casablanca")))
                 .echeance(echeance)
                 .enRetard(retard)
                 .joursRetard(retard ? Duration.between(echeance, maintenant).toDays() : 0)
                 .valeur(ligne.getValeur())
                 .conformite(ligne.getConformite())
+                .critique(critique(ligne.getValeur(), essai))
                 .dateSaisie(ligne.getDateSaisie())
                 .observations(ligne.getMotif())
                 .etatValidation(etatValidation(historique))
@@ -179,5 +179,20 @@ public class LigneTravailAssembleur {
     private static String nomComplet(Utilisateur u) {
         String prenom = u.getPrenom() == null ? "" : u.getPrenom().trim();
         return (prenom + " " + (u.getNom() == null ? "" : u.getNom().trim())).trim();
+    }
+
+    /** Vrai si la valeur est numérique et sort des seuils critiques définis pour l'essai. */
+    static boolean critique(String valeur, com.backend.modules.essai.entity.Essai essai) {
+        if (valeur == null || essai == null
+                || (essai.getSeuilCritiqueMin() == null && essai.getSeuilCritiqueMax() == null)) {
+            return false;
+        }
+        try {
+            java.math.BigDecimal nombre = new java.math.BigDecimal(valeur.trim().replace(',', '.'));
+            return (essai.getSeuilCritiqueMin() != null && nombre.compareTo(essai.getSeuilCritiqueMin()) < 0)
+                    || (essai.getSeuilCritiqueMax() != null && nombre.compareTo(essai.getSeuilCritiqueMax()) > 0);
+        } catch (NumberFormatException ex) {
+            return false;
+        }
     }
 }

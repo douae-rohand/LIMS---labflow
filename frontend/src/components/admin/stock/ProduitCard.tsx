@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { peut } from "@/api/session";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trash2, Power, PowerOff, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
@@ -96,6 +97,7 @@ export function ProduitCard({ produit, onEdit, onDetails }: ProduitCardProps) {
             <ArrowUpRight className="size-4" aria-hidden="true" />
           </p>
         </button>
+        {peut("STOCK_GERER") && (
         <div className="flex flex-wrap gap-2">
           <Button variant="ghost" size="sm" onClick={() => onEdit(produit.id)}>
             Modifier
@@ -128,6 +130,7 @@ export function ProduitCard({ produit, onEdit, onDetails }: ProduitCardProps) {
             Supprimer
           </Button>
         </div>
+        )}
       </div>
       {(basculerStatut.isError || creerLot.isError || lots.isError) && (
         <p role="alert" className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">

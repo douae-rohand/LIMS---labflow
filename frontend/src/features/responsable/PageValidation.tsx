@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { ClipboardCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
-import { Badge, Button, Label, Textarea } from "@/components/lab";
+import { Badge, Button, Label, Select, Textarea } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import {
   deciderResultat,
@@ -33,15 +33,31 @@ export function PageValidation() {
   const queryClient = useQueryClient();
   const [choisie, setChoisie] = useState<AnalyseTravail | null>(null);
   const [recherche, setRecherche] = useState("");
+  const [domaine, setDomaine] = useState("");
   const resultats = useQuery({
     queryKey: ["responsable-a-valider"],
     queryFn: listerResultatsAValider,
   });
-  // Le serveur trie déjà : la dernière validation technique en haut.
-  const visibles = (resultats.data ?? []).filter((a) => !recherche.trim()
-    || contient(a.demandeReference, recherche)
-    || contient(a.essaiLibelle, recherche)
-    || contient(a.technicienNom, recherche));
+  const domaines = useMemo(() => {
+    const parCode = new Map<string, string>();
+    for (const a of resultats.data ?? []) {
+      if (a.domaineCode) parCode.set(a.domaineCode, a.domaineLibelle ?? a.domaineCode);
+    }
+    return [...parCode.entries()].sort((x, y) => x[1].localeCompare(y[1], "fr"));
+  }, [resultats.data]);
+  // Priorité : critiques, puis hors norme, puis les autres ; à priorité égale, l'ordre du serveur (plus récents en haut).
+  const priorite = (a: AnalyseTravail) => (a.critique ? 0 : a.conformite === false ? 1 : 2);
+  const visibles = (resultats.data ?? [])
+    .filter((a) => !domaine || a.domaineCode === domaine)
+    .filter((a) => !recherche.trim()
+      || contient(a.demandeReference, recherche)
+      || contient(a.essaiLibelle, recherche)
+      || contient(a.technicienNom, recherche))
+    .map((a, index) => ({ a, index }))
+    .sort((x, y) => priorite(x.a) - priorite(y.a) || x.index - y.index)
+    .map(({ a }) => a);
+  const nbCritiques = (resultats.data ?? []).filter((a) => a.critique).length;
+  const nbHorsNorme = (resultats.data ?? []).filter((a) => !a.critique && a.conformite === false).length;
 
   const validationRapide = useMutation({
     mutationFn: (analyse: AnalyseTravail) => deciderResultat(analyse.id, "VALIDER"),
@@ -63,7 +79,7 @@ export function PageValidation() {
       <EnTeteResponsable
         icone={ClipboardCheck}
         titre="Validation des résultats"
-        description="Résultats validés techniquement par le technicien, en attente de votre décision. Les plus récents sont en haut."
+        description="Résultats validés techniquement par le technicien, en attente de votre décision. Les résultats critiques puis hors norme sont en haut."
         action={
           <Actualisation
             misAJour={resultats.dataUpdatedAt}
@@ -74,8 +90,26 @@ export function PageValidation() {
       />
 
       {(resultats.data?.length ?? 0) > 0 && (
-        <div className="mb-4 flex justify-end">
-          <Recherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, une analyse…" />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            {nbCritiques > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-3 py-1 font-semibold text-rose-800">
+                <AlertTriangle className="size-4" aria-hidden="true" /> {nbCritiques} critique(s)
+              </span>
+            )}
+            {nbHorsNorme > 0 && (
+              <span className="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-900">{nbHorsNorme} hors norme</span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {domaines.length > 1 && (
+              <Select aria-label="Filtrer par domaine" value={domaine} onChange={(e) => setDomaine(e.target.value)} className="min-w-44">
+                <option value="">Tous les domaines</option>
+                {domaines.map(([code, libelle]) => <option key={code} value={code}>{libelle}</option>)}
+              </Select>
+            )}
+            <Recherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, une analyse…" />
+          </div>
         </div>
       )}
 
@@ -83,7 +117,7 @@ export function PageValidation() {
         chargement={resultats.isLoading}
         erreur={resultats.isError}
         vide={!resultats.isLoading && visibles.length === 0}
-        messageVide={recherche.trim() ? "Aucun résultat ne correspond à la recherche." : "Aucun résultat en attente de validation."}
+        messageVide={recherche.trim() || domaine ? "Aucun résultat ne correspond aux filtres." : "Aucun résultat en attente de validation."}
         onReessayer={() => void resultats.refetch()}
       />
 
@@ -103,12 +137,19 @@ export function PageValidation() {
             </thead>
             <tbody>
               {visibles.map((analyse) => (
-                <tr key={analyse.id} className="border-t border-brand-900/10">
-                  <td className="px-4 py-3 font-semibold text-ink-900">{analyse.essaiLibelle ?? analyse.code}</td>
+                <tr key={analyse.id} className={`border-t border-brand-900/10 ${analyse.critique ? "bg-rose-50/70" : ""}`}>
+                  <td className="px-4 py-3 font-semibold text-ink-900">
+                    {analyse.essaiLibelle ?? analyse.code}
+                    {analyse.domaineLibelle && <span className="block text-xs font-normal text-muted-foreground">{analyse.domaineLibelle}</span>}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{analyse.demandeReference}</td>
                   <td className="px-4 py-3">
                     <span className="font-semibold text-ink-900">{analyse.valeur} {analyse.unite ?? ""}</span>{" "}
-                    {analyse.conformite != null && (
+                    {analyse.critique ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-xs font-bold text-white">
+                        <AlertTriangle className="size-3" aria-hidden="true" /> Critique
+                      </span>
+                    ) : analyse.conformite != null && (
                       <Badge size="sm" variant={analyse.conformite ? "mint" : "dark"}>{analyse.conformite ? "Conforme" : "Hors norme"}</Badge>
                     )}
                   </td>

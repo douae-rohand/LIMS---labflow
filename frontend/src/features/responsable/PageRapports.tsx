@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Download, Eye, FileSignature, PenLine, ShieldCheck } from "lucide-react";
+import { Download, Eye, FileSignature, PenLine, Send, ShieldCheck } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Badge, Button, Input, Label } from "@/components/lab";
@@ -10,6 +10,7 @@ import {
   lireStatutSignature,
   ouvrirApercuRapport,
   ouvrirPdfRapport,
+  renvoyerRapport,
   signerRapportDemande,
   telechargerRapport,
   type RapportTravail,
@@ -206,6 +207,7 @@ export function PageRapports() {
                     >
                       Télécharger
                     </Button>
+                    <BoutonRenvoi rapportId={rapport.rapportId} />
                   </>
                 )}
               </div>
@@ -246,5 +248,33 @@ export function PageRapports() {
         </form>
       </Dialogue>
     </Container>
+  );
+}
+
+/** Renvoie au client l'e-mail de mise à disposition, avec une confirmation. */
+function BoutonRenvoi({ rapportId }: { rapportId: number }) {
+  const [confirmer, setConfirmer] = useState(false);
+  const renvoi = useMutation({
+    mutationFn: () => renvoyerRapport(rapportId),
+    onSuccess: () => {
+      toast.success("E-mail renvoyé au client.");
+      setConfirmer(false);
+    },
+    onError: (erreur) => toast.error(messageErreur(erreur, "Le renvoi a échoué.")),
+  });
+  if (!confirmer) {
+    return (
+      <Button size="sm" variant="ghost" icon={<Send className="size-4" aria-hidden="true" />} iconPosition="left"
+        onClick={() => setConfirmer(true)}>
+        Renvoyer au client
+      </Button>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-2 rounded-xl bg-surface-alt px-2 py-1 text-xs text-ink-900">
+      Renvoyer l'e-mail au client ?
+      <Button size="sm" loading={renvoi.isPending} onClick={() => renvoi.mutate()}>Confirmer</Button>
+      <Button size="sm" variant="ghost" disabled={renvoi.isPending} onClick={() => setConfirmer(false)}>Annuler</Button>
+    </span>
   );
 }

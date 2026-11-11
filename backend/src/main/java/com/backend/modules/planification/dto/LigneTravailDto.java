@@ -38,6 +38,8 @@ public class LigneTravailDto {
     private long joursRetard;
     private String valeur;
     private Boolean conformite;
+    /** Valeur numérique hors des seuils critiques de l'essai : à traiter en priorité. */
+    private boolean critique;
     private Instant dateSaisie;
     private String observations;
     /** NON_SOUMIS, TECHNIQUE_VALIDEE, VALIDEE, RETOURNEE, REJETEE. */

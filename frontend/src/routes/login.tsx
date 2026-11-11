@@ -45,7 +45,7 @@ export const Route = createFileRoute("/login")({
         });
       }
       if (session?.user.role === "RESPONSABLE") {
-        throw Route.redirect({ to: "/app/demandes-clients" });
+        throw Route.redirect({ to: "/app/suivi" });
       }
       throw Route.redirect({ to: "/app" });
     }
@@ -188,7 +188,7 @@ function LoginPage() {
     const user = toSessionUser(response);
     setSession(response.accessToken, user);
     apiClient.setTenant(user.tenantId);
-    const defaut = user.role === "RESPONSABLE" ? "/app/demandes-clients" : "/app";
+    const defaut = user.role === "RESPONSABLE" ? "/app/suivi" : "/app";
     const cible = user.mustChangePassword
       ? "/changer-mot-de-passe"
       : cibleApresConnexion(user.role, search.redirect, defaut);

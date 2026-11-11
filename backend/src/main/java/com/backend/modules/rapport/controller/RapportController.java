@@ -60,6 +60,14 @@ public class RapportController {
                 rapportService.signerDemande(demandeId, request == null ? null : request.motDePasse())));
     }
 
+    @PostMapping("/{id}/renvoyer")
+    @PreAuthorize("hasRole('RESPONSABLE') and hasAuthority('PERM_RAPPORTS_GERER')")
+    @Operation(summary = "Renvoyer au client l'e-mail de mise à disposition d'un rapport signé")
+    public ResponseEntity<ApiResponse<Void>> renvoyer(@PathVariable Long id) {
+        rapportService.renvoyerAuClient(id);
+        return ResponseEntity.ok(ApiResponse.success("Rapport renvoyé au client", null));
+    }
+
     @GetMapping("/{id}/pdf")
     @PreAuthorize("hasAuthority('PERM_RAPPORTS_GERER')")
     @Operation(summary = "Télécharger le PDF signé")

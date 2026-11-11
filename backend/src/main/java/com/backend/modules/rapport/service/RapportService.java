@@ -308,6 +308,36 @@ public class RapportService {
                 acteur.getNomComplet());
     }
 
+    /**
+     * Renvoie au client l'e-mail « rapport disponible » d'un rapport déjà signé (CDC M07 :
+     * renvoi sécurisé). Le PDF n'est jamais joint : le lien mène au portail, derrière la connexion.
+     */
+    @Transactional(readOnly = true)
+    public void renvoyerAuClient(Long rapportId) {
+        UtilisateurPrincipal acteur = SecurityUtils.principalCourant();
+        Rapport rapport = charger(rapportId);
+        if (!StatutRapport.ENVOYE.name().equals(rapport.getStatut())) {
+            throw new BusinessRuleException("RAPPORT_NON_SIGNE", "Seul un rapport signé peut être renvoyé au client.");
+        }
+        Demande demande = rapport.getDemande();
+        Long clientId = demande.getClient() == null ? null : demande.getClient().getUtilisateurId();
+        Utilisateur client = clientId == null ? null
+                : tenantExecutor.inCentral(() -> utilisateurRepository.findById(clientId).orElse(null));
+        if (client == null || !StringUtils.hasText(client.getEmail())) {
+            throw new BusinessRuleException("CLIENT_SANS_EMAIL", "Ce client n'a pas d'adresse e-mail : renvoi impossible.");
+        }
+        String lien = frontendUrl.replaceAll("/$", "") + "/app/rapports";
+        var resultat = emailService.envoyerHtml(client.getEmail(),
+                "[LabFlow] Votre rapport " + rapport.getNumero() + " est disponible",
+                com.backend.integration.sendgrid.EmailTemplates.rapportDisponible(nomComplet(client), rapport.getNumero(), lien));
+        journalAuditService.enregistrer("RENVOYER_RAPPORT", "Rapport", rapport.getId(), acteur.getEmail(), null,
+                "{\"numero\":\"" + rapport.getNumero() + "\",\"accepte\":" + resultat.accepte() + "}",
+                null, acteur.getLaboratoireId());
+        if (!resultat.accepte()) {
+            throw new BusinessRuleException("ENVOI_ECHOUE", "L'e-mail n'a pas pu être envoyé. Réessayez plus tard.");
+        }
+    }
+
     private Demande demandeTerminee(Long demandeId) {
         Demande demande = demandeRepository.findById(demandeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", demandeId));
@@ -437,9 +467,17 @@ public class RapportService {
                     ligne.getConformite() == null ? "—" : (ligne.getConformite() ? "Conforme" : "Non conforme"),
                     decision == null ? null : noms.get(decision.getValidateurId()));
         }).toList();
+        List<RapportPdfService.AnalyseNonRealisee> nonRealisees = ligneEssaiRepository.findByDemande_Id(demande.getId())
+                .stream()
+                .filter(l -> l.getStatut() == StatutEssai.NON_REALISABLE)
+                .sorted(Comparator.comparing(LigneEssai::getId))
+                .map(l -> new RapportPdfService.AnalyseNonRealisee(
+                        l.getEssai() == null ? l.getCode() : l.getEssai().getDesignation(),
+                        StringUtils.hasText(l.getMotif()) ? l.getMotif() : "Non précisé"))
+                .toList();
         return new DonneesRapport(labo, numero, version,
                 demande.getNumero(), demande.getTitre(), nomClient(demande, noms),
-                dateEmission, lignesRapport, signataire, dateSignature, projet, imageSignature);
+                dateEmission, lignesRapport, signataire, dateSignature, projet, imageSignature, nonRealisees);
     }
 
     private static String reference(BigDecimal min, BigDecimal max) {

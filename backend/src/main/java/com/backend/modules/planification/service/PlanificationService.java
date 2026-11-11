@@ -29,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -160,8 +159,8 @@ public class PlanificationService {
         }
         Instant maintenant = Instant.now();
         Instant datePrevue = request.datePrevue() == null ? null
-                : request.datePrevue().atStartOfDay(ZoneOffset.UTC).toInstant();
-        if (request.datePrevue() != null && request.datePrevue().isBefore(LocalDate.now(ZoneOffset.UTC))) {
+                : request.datePrevue().atStartOfDay(java.time.ZoneId.of("Africa/Casablanca")).toInstant();
+        if (request.datePrevue() != null && request.datePrevue().isBefore(LocalDate.now(java.time.ZoneId.of("Africa/Casablanca")))) {
             throw new BusinessRuleException("DATE_PREVUE_PASSEE", "La date prévue ne peut pas être dans le passé.");
         }
         Set<Demande> demandes = new HashSet<>();
@@ -272,6 +271,6 @@ public class PlanificationService {
     }
 
     private static LocalDate toLocalDate(Instant instant) {
-        return instant == null ? null : LocalDate.ofInstant(instant, ZoneOffset.UTC);
+        return instant == null ? null : LocalDate.ofInstant(instant, java.time.ZoneId.of("Africa/Casablanca"));
     }
 }

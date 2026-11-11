@@ -33,6 +33,8 @@ export interface AnalyseTravail {
   joursRetard: number;
   valeur?: string | null;
   conformite?: boolean | null;
+  /** Valeur hors des seuils critiques de l'essai. */
+  critique?: boolean;
   dateSaisie?: string | null;
   observations?: string | null;
   etatValidation: EtatValidation;
@@ -174,6 +176,11 @@ export async function ouvrirApercuRapport(demandeId: number): Promise<void> {
 /** Ouvre le PDF signé dans un nouvel onglet. */
 export async function ouvrirPdfRapport(rapportId: number): Promise<void> {
   ouvrirBlob(await apiClient.getBlob(`/rapports/${rapportId}/pdf`));
+}
+
+/** Renvoie au client l'e-mail « rapport disponible » (lien vers le portail, sans pièce jointe). */
+export async function renvoyerRapport(rapportId: number): Promise<void> {
+  await apiClient.post<ApiResponse<null>>(`/rapports/${rapportId}/renvoyer`);
 }
 
 export async function telechargerRapport(rapportId: number, numero: string): Promise<void> {
