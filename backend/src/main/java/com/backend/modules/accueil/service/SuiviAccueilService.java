@@ -98,7 +98,8 @@ public class SuiviAccueilService {
     private FactureResumeDto resumeFacture(Facture f) {
         BigDecimal paye = caisseRepository.paiementsDes(List.of(f.getId())).stream()
                 .map(Paiement::getMontant).filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal reste = StatutFacture.PAYEE.name().equals(f.getStatut()) ? BigDecimal.ZERO
+        BigDecimal reste = StatutFacture.PAYEE.name().equals(f.getStatut())
+                || StatutFacture.ANNULEE.name().equals(f.getStatut()) ? BigDecimal.ZERO
                 : f.getMontantHt().subtract(paye).max(BigDecimal.ZERO);
         return new FactureResumeDto(f.getId(), f.getNumero(), f.getMontantHt(), paye, reste, f.getStatut());
     }

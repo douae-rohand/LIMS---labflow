@@ -255,7 +255,7 @@ export function PageNouvelleDemande() {
             </ul>
           )}
           <div className="mt-4 flex items-center justify-between border-t border-brand-900/10 pt-3">
-            <span className="text-sm font-semibold text-ink-900">Total TTC</span>
+            <span className="text-sm font-semibold text-ink-900">Total</span>
             <span className="text-lg font-extrabold text-ink-900">{formaterMontant(total)}</span>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">

@@ -68,7 +68,7 @@ function etiquette(periode: PeriodeFinance, regroupement: Regroupement): string 
   return regroupement === "MOIS" ? MOIS.format(date) : COURT.format(date);
 }
 
-/** TVA retenue par la plateforme sur les factures du laboratoire, sur une période, par jour, semaine ou mois. */
+/** Commission de la plateforme sur les factures du laboratoire, sur une période, par jour, semaine ou mois. */
 export function OngletFinances({ id, code }: { id: number; code: string }) {
   const [raccourci, setRaccourci] = useState<Raccourci>("mois");
   const [filtre, setFiltre] = useState<FiltreFinances>({ ...bornes("mois"), regroupement: "" });
@@ -149,14 +149,14 @@ export function OngletFinances({ id, code }: { id: number; code: string }) {
           {/* Sur la période */}
           <section aria-labelledby="fin-periode">
             <h3 id="fin-periode" className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Sur la période · TVA actuelle du laboratoire : {d.tauxTva} %
+              Sur la période · commission actuelle : {d.tauxCommission} %
             </h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <Carte libelle="TVA retenue" valeur={montant(d.tva)}
-                detail={`sur ${d.demandesFacturees} facture(s) · ${MAD.format(d.facture)} MAD TTC`} couleur="bg-brand-900" mise />
-              <Carte libelle="TVA encaissée" valeur={montant(d.tvaEncaissee)} detail="comprise dans les paiements reçus" couleur="bg-emerald-500" />
-              <Carte libelle="Moyenne par facture" valeur={d.demandesFacturees > 0 ? montant(d.tva / d.demandesFacturees) : "—"}
-                detail="TVA retenue par demande facturée" />
+              <Carte libelle="Commission plateforme" valeur={montant(d.commission)}
+                detail={`sur ${d.demandesFacturees} facture(s) · ${MAD.format(d.facture)} MAD facturés`} couleur="bg-brand-900" mise />
+              <Carte libelle="Commission encaissée" valeur={montant(d.commissionEncaissee)} detail="sur les paiements reçus" couleur="bg-emerald-500" />
+              <Carte libelle="Moyenne par facture" valeur={d.demandesFacturees > 0 ? montant(d.commission / d.demandesFacturees) : "—"}
+                detail="commission par demande facturée" />
             </div>
           </section>
 
@@ -164,13 +164,13 @@ export function OngletFinances({ id, code }: { id: number; code: string }) {
           <section aria-labelledby="fin-jour">
             <h3 id="fin-jour" className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">À ce jour (toutes périodes)</h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Carte libelle="TVA à percevoir" valeur={montant(d.tvaAPercevoir)} detail="sur les factures non encore payées" />
-              <Carte libelle="dont en retard" valeur={montant(d.tvaEnRetard)} detail="échéance dépassée" alerte={d.tvaEnRetard > 0} />
+              <Carte libelle="Commission à percevoir" valeur={montant(d.commissionAPercevoir)} detail="sur les factures non encore payées" />
+              <Carte libelle="dont en retard" valeur={montant(d.commissionEnRetard)} detail="échéance dépassée" alerte={d.commissionEnRetard > 0} />
             </div>
           </section>
 
           <Graphique details={d.details} regroupement={d.regroupement} />
-          <Tableau details={d.details} total={{ demandes: d.demandesFacturees, facture: d.facture, tva: d.tva, tvaEncaissee: d.tvaEncaissee }} />
+          <Tableau details={d.details} total={{ demandes: d.demandesFacturees, facture: d.facture, commission: d.commission, commissionEncaissee: d.commissionEncaissee }} />
 
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-brand-900/10 pt-4">
             {(["pdf", "xlsx", "csv"] as const).map((format) => (
@@ -209,11 +209,11 @@ function Carte({ libelle, valeur, detail, alerte = false, couleur, mise = false 
 
 /** Histogramme vertical : une paire de barres (facturé, encaissé) par jour, semaine ou mois. */
 function Graphique({ details, regroupement }: { details: PeriodeFinance[]; regroupement: Regroupement }) {
-  const max = Math.max(0, ...details.map((p) => Math.max(p.tva, p.tvaEncaissee)));
+  const max = Math.max(0, ...details.map((p) => Math.max(p.commission, p.commissionEncaissee)));
   if (max === 0) {
     return (
       <p className="rounded-2xl border border-dashed border-brand-900/15 p-6 text-center text-sm text-muted-foreground">
-        Aucune TVA retenue ni encaissée sur cette période.
+        Aucune commission sur cette période.
       </p>
     );
   }
@@ -224,11 +224,11 @@ function Graphique({ details, regroupement }: { details: PeriodeFinance[]; regro
     <section aria-label="Évolution sur la période" className="rounded-2xl border border-brand-900/10 bg-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-extrabold text-ink-900">
-          TVA {regroupement === "JOUR" ? "par jour" : regroupement === "SEMAINE" ? "par semaine" : "par mois"}
+          Commission {regroupement === "JOUR" ? "par jour" : regroupement === "SEMAINE" ? "par semaine" : "par mois"}
         </h3>
         <div className="flex gap-3 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-brand-900" aria-hidden="true" />TVA retenue</span>
-          <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-emerald-500" aria-hidden="true" />TVA encaissée</span>
+          <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-brand-900" aria-hidden="true" />Commission</span>
+          <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-emerald-500" aria-hidden="true" />Commission encaissée</span>
         </div>
       </div>
       <div className="flex gap-2">
@@ -244,10 +244,10 @@ function Graphique({ details, regroupement }: { details: PeriodeFinance[]; regro
             ))}
             {details.map((p) => (
               <div key={p.debut} className="group relative flex h-full flex-1 flex-col justify-end"
-                title={`${p.libelle}\nTVA retenue : ${montant(p.tva)}\nTVA encaissée : ${montant(p.tvaEncaissee)}\nFacturé TTC : ${montant(p.facture)} (${p.demandesFacturees} facture(s))`}>
+                title={`${p.libelle}\nCommission : ${montant(p.commission)}\nCommission encaissée : ${montant(p.commissionEncaissee)}\nFacturé : ${montant(p.facture)} (${p.demandesFacturees} facture(s))`}>
                 <div className="flex h-full items-end justify-center gap-0.5">
-                  <span className="w-1/2 max-w-4 rounded-t bg-brand-900 group-hover:opacity-80" style={{ height: `${(p.tva / max) * 100}%` }} />
-                  <span className="w-1/2 max-w-4 rounded-t bg-emerald-500 group-hover:opacity-80" style={{ height: `${(p.tvaEncaissee / max) * 100}%` }} />
+                  <span className="w-1/2 max-w-4 rounded-t bg-brand-900 group-hover:opacity-80" style={{ height: `${(p.commission / max) * 100}%` }} />
+                  <span className="w-1/2 max-w-4 rounded-t bg-emerald-500 group-hover:opacity-80" style={{ height: `${(p.commissionEncaissee / max) * 100}%` }} />
                 </div>
               </div>
             ))}
@@ -269,7 +269,7 @@ function Graphique({ details, regroupement }: { details: PeriodeFinance[]; regro
 /** Détail chiffré, ligne par ligne, avec le total de la période. */
 function Tableau({ details, total }: {
   details: PeriodeFinance[];
-  total: { demandes: number; facture: number; tva: number; tvaEncaissee: number };
+  total: { demandes: number; facture: number; commission: number; commissionEncaissee: number };
 }) {
   return (
     <div className="max-h-80 overflow-auto rounded-2xl border border-brand-900/10">
@@ -278,21 +278,21 @@ function Tableau({ details, total }: {
           <tr>
             <th scope="col" className="px-3 py-2 font-semibold">Période</th>
             <th scope="col" className="px-3 py-2 text-right font-semibold">Demandes</th>
-            <th scope="col" className="px-3 py-2 text-right font-semibold">Facturé TTC</th>
-            <th scope="col" className="px-3 py-2 text-right font-semibold">TVA retenue</th>
-            <th scope="col" className="px-3 py-2 text-right font-semibold">TVA encaissée</th>
+            <th scope="col" className="px-3 py-2 text-right font-semibold">Facturé</th>
+            <th scope="col" className="px-3 py-2 text-right font-semibold">Commission</th>
+            <th scope="col" className="px-3 py-2 text-right font-semibold">Commission encaissée</th>
           </tr>
         </thead>
         <tbody>
           {details.map((p) => {
-            const vide = p.tva === 0 && p.tvaEncaissee === 0;
+            const vide = p.commission === 0 && p.commissionEncaissee === 0;
             return (
               <tr key={p.debut} className={`border-t border-brand-900/10 ${vide ? "text-muted-foreground" : "text-ink-900"}`}>
                 <td className="px-3 py-2">{p.libelle}</td>
                 <td className="px-3 py-2 text-right">{p.demandesFacturees || "—"}</td>
                 <td className="px-3 py-2 text-right">{p.facture ? MAD.format(p.facture) : "—"}</td>
-                <td className="px-3 py-2 text-right font-semibold">{p.tva ? MAD.format(p.tva) : "—"}</td>
-                <td className="px-3 py-2 text-right">{p.tvaEncaissee ? MAD.format(p.tvaEncaissee) : "—"}</td>
+                <td className="px-3 py-2 text-right font-semibold">{p.commission ? MAD.format(p.commission) : "—"}</td>
+                <td className="px-3 py-2 text-right">{p.commissionEncaissee ? MAD.format(p.commissionEncaissee) : "—"}</td>
               </tr>
             );
           })}
@@ -302,8 +302,8 @@ function Tableau({ details, total }: {
             <td className="px-3 py-2">Total</td>
             <td className="px-3 py-2 text-right">{total.demandes}</td>
             <td className="px-3 py-2 text-right">{MAD.format(total.facture)}</td>
-            <td className="px-3 py-2 text-right">{MAD.format(total.tva)}</td>
-            <td className="px-3 py-2 text-right">{MAD.format(total.tvaEncaissee)}</td>
+            <td className="px-3 py-2 text-right">{MAD.format(total.commission)}</td>
+            <td className="px-3 py-2 text-right">{MAD.format(total.commissionEncaissee)}</td>
           </tr>
         </tfoot>
       </table>

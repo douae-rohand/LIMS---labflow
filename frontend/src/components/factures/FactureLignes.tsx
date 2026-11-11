@@ -6,7 +6,7 @@ interface FactureLignesProps {
   montantHt: number | string | null;
 }
 
-/** Tableau des prestations facturées, avec le total TTC en pied de tableau. */
+/** Tableau des prestations facturées, avec le total en pied de tableau. */
 export function FactureLignes({ lignes, montantHt }: FactureLignesProps) {
   return (
     <div className="overflow-hidden rounded-2xl border border-brand-900/10">
@@ -41,7 +41,7 @@ export function FactureLignes({ lignes, montantHt }: FactureLignesProps) {
         </tbody>
         <tfoot>
           <tr className="border-t border-brand-900/10 bg-surface-card">
-            <td className="px-4 py-3 font-semibold text-ink-900">Total TTC</td>
+            <td className="px-4 py-3 font-semibold text-ink-900">Total</td>
             <td className="px-4 py-3 text-right font-bold text-ink-900">
               {formatMontant(montantHt)}
             </td>

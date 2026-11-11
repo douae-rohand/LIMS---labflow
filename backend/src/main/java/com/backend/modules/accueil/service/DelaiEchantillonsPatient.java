@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * Demandes de patients sur site : acceptées d'office à l'accueil, leurs échantillons sont attendus
  * sous 48 h. Passé ce délai, une demande sans aucun échantillon reçu et sans aucun paiement est
- * refusée automatiquement et sa facture (jamais payée) est retirée. Un paiement, même partiel,
+ * refusée automatiquement et sa facture (jamais payée) est annulée par un avoir. Un paiement, même partiel,
  * la maintient en cours.
  */
 @Slf4j
@@ -90,16 +90,19 @@ public class DelaiEchantillonsPatient {
         }
     }
 
-    /** Refus et retrait de la facture impayée, dans une même transaction. */
+    /** Refus et annulation de la facture impayée par un avoir, dans une même transaction. */
     private void refuser(Connection connexion, String schema, DemandeEchue demande, Long laboratoireId) throws SQLException {
         String s = "`" + schema + "`";
         String factures;
         connexion.setAutoCommit(false);
         try {
             factures = numerosFactures(connexion, s, demande.id());
-            executer(connexion, "DELETE fl FROM " + s + ".facture_ligne fl JOIN " + s + ".facture f"
-                    + " ON f.id_facture = fl.facture_id WHERE f.demande_id = ?", demande.id());
-            executer(connexion, "DELETE FROM " + s + ".facture WHERE demande_id = ?", demande.id());
+            // Une facture ne se supprime jamais : elle est annulée par un avoir numéroté.
+            for (Long factureId : facturesNonAnnulees(connexion, s, demande.id())) {
+                executer(connexion, "UPDATE " + s + ".facture SET statut = 'ANNULEE', numero_avoir = ?,"
+                        + " date_annulation = ?, motif_annulation = ? WHERE id_facture = ?",
+                        prochainAvoir(connexion, s), Timestamp.from(Instant.now()), MOTIF, factureId);
+            }
             // Le statut est revérifié : une réception ou un paiement arrivé entre-temps l'emporte.
             int misAJour = executer(connexion, "UPDATE " + s + ".demande SET statut = 'REFUSEE', motif = ?,"
                     + " date_decision = ? WHERE id_demande = ? AND statut IN ('ACCEPTEE', 'EN_COURS')"
@@ -121,7 +124,7 @@ public class DelaiEchantillonsPatient {
         // Même objet que les autres décisions (« schéma/Demande#id ») : le refus apparaît dans l'historique de la demande.
         journalAuditService.enregistrer("REFUS_AUTOMATIQUE_DEMANDE", schema + "/Demande", demande.id(), auteur,
                 "{\"statut\":\"" + demande.statut() + "\"}",
-                "{\"statut\":\"REFUSEE\",\"facturesRetirees\":\"" + factures + "\"}", MOTIF, laboratoireId);
+                "{\"statut\":\"REFUSEE\",\"facturesAnnulees\":\"" + factures + "\"}", MOTIF, laboratoireId);
         notificationsLaboratoire.notifierApresCommit(RoleUtilisateur.ACCUEIL, laboratoireId, "DEMANDE_REFUSEE_DELAI",
                 "Demande " + demande.numero() + " refusée automatiquement", MOTIF, "/app/suivi-demandes");
         notificationsLaboratoire.notifierApresCommit(RoleUtilisateur.RESPONSABLE, laboratoireId, "DEMANDE_REFUSEE_DELAI",
@@ -140,6 +143,37 @@ public class DelaiEchantillonsPatient {
             }
         }
         return String.join(",", numeros);
+    }
+
+    private static List<Long> facturesNonAnnulees(Connection connexion, String s, Long demandeId) throws SQLException {
+        List<Long> ids = new ArrayList<>();
+        try (PreparedStatement requete = connexion.prepareStatement(
+                "SELECT id_facture FROM " + s + ".facture WHERE demande_id = ? AND statut <> 'ANNULEE'")) {
+            requete.setLong(1, demandeId);
+            try (ResultSet rs = requete.executeQuery()) {
+                while (rs.next()) {
+                    ids.add(rs.getLong(1));
+                }
+            }
+        }
+        return ids;
+    }
+
+    /** Prochain numéro d'avoir AV-AAAAMM-NNN du mois (même logique que les factures FAC-). */
+    static String prochainAvoir(Connection connexion, String s) throws SQLException {
+        String prefixe = "AV-" + java.time.LocalDate.now(java.time.ZoneId.of("Africa/Casablanca"))
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMM")) + "-";
+        int dernier = 0;
+        try (PreparedStatement requete = connexion.prepareStatement("SELECT MAX(CAST(SUBSTRING(numero_avoir, "
+                + (prefixe.length() + 1) + ") AS UNSIGNED)) FROM " + s + ".facture WHERE numero_avoir LIKE ?")) {
+            requete.setString(1, prefixe + "%");
+            try (ResultSet rs = requete.executeQuery()) {
+                if (rs.next()) {
+                    dernier = rs.getInt(1);
+                }
+            }
+        }
+        return prefixe + String.format(java.util.Locale.ROOT, "%03d", dernier + 1);
     }
 
     private static int executer(Connection connexion, String sql, Object... parametres) throws SQLException {

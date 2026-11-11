@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardList, FileText, FlaskConical, Wallet } from "lucide-react";
+import { ClipboardList, Download, FileText, FlaskConical, Wallet } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -7,8 +7,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Skeleton } from "@/components/lab";
-import { getFacture, messageErreurFacturesAdmin } from "@/api/facturesAdmin";
+import { Button, Skeleton } from "@/components/lab";
+import { getFacture, messageErreurFacturesAdmin, telechargerAvoirPdf, telechargerFacturePdf } from "@/api/facturesAdmin";
 import { formatMontant } from "@/components/panier/format";
 import { EnregistrerPaiementDialog } from "./EnregistrerPaiementDialog";
 
@@ -23,6 +23,7 @@ const LIBELLES_STATUT: Record<string, string> = {
   PAYEE: "Payée",
   EN_RETARD: "En retard",
   IMPAYEE: "Impayée",
+  ANNULEE: "Annulée (avoir)",
 };
 
 export function FacturePanneau({
@@ -75,6 +76,8 @@ export function FacturePanneau({
                 <span className={`rounded-full px-3 py-1 text-sm font-semibold ${
                   facture.statut === "PAYEE"
                     ? "bg-emerald-100 text-emerald-800"
+                    : facture.statut === "ANNULEE"
+                      ? "bg-slate-200 text-slate-700"
                     : facture.statut === "EN_RETARD"
                       ? "bg-rose-100 text-rose-800"
                       : "bg-amber-100 text-amber-800"
@@ -85,6 +88,26 @@ export function FacturePanneau({
                   Total : {formatMontant(facture.montantHt)}
                 </span>
               </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="secondary" icon={<Download className="size-4" aria-hidden="true" />} iconPosition="left"
+                  onClick={() => void telechargerFacturePdf(facture.id, facture.numero)}>
+                  Facture PDF
+                </Button>
+                {facture.numeroAvoir && (
+                  <Button size="sm" variant="secondary" icon={<Download className="size-4" aria-hidden="true" />} iconPosition="left"
+                    onClick={() => void telechargerAvoirPdf(facture.id, facture.numeroAvoir as string)}>
+                    Avoir {facture.numeroAvoir}
+                  </Button>
+                )}
+              </div>
+
+              {facture.statut === "ANNULEE" && (
+                <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800" role="status">
+                  Facture annulée par l'avoir <strong>{facture.numeroAvoir}</strong>
+                  {facture.motifAnnulation ? ` — ${facture.motifAnnulation}` : ""}. Plus rien n'est dû.
+                </p>
+              )}
 
               <section className="rounded-2xl border border-sky-200 bg-sky-50/70 p-4">
                 <h2 className="mb-3 flex items-center gap-2 font-semibold text-sky-900">
@@ -113,9 +136,9 @@ export function FacturePanneau({
                   <div><dt className="text-muted-foreground">Échéance</dt><dd className="mt-1">{facture.dateEcheance ?? "—"}</dd></div>
                   <div><dt className="text-muted-foreground">Client</dt><dd className="mt-1">{facture.clientNom ?? "—"}</dd></div>
                   <div><dt className="text-muted-foreground">ICE client</dt><dd className="mt-1">{facture.clientIce ?? "—"}</dd></div>
-                  <div><dt className="text-muted-foreground">Total TTC</dt><dd className="mt-1 font-semibold">{formatMontant(facture.montantHt)}</dd></div>
-                  <div><dt className="text-muted-foreground">dont TVA ({facture.tauxTva} %)</dt><dd className="mt-1 font-semibold">−{formatMontant(facture.montantTva)}</dd></div>
-                  <div><dt className="text-muted-foreground">Total hors taxes</dt><dd className="mt-1">{formatMontant(facture.montantHorsTaxes)}</dd></div>
+                  <div><dt className="text-muted-foreground">Montant facturé</dt><dd className="mt-1 font-semibold">{formatMontant(facture.montantHt)}</dd></div>
+                  <div><dt className="text-muted-foreground">Commission plateforme ({facture.tauxCommission} %)</dt><dd className="mt-1 font-semibold">−{formatMontant(facture.montantCommission)}</dd></div>
+                  <div><dt className="text-muted-foreground">Net pour le laboratoire</dt><dd className="mt-1 font-semibold">{formatMontant(facture.montantNetLaboratoire)}</dd></div>
                 </dl>
               </section>
 
@@ -159,7 +182,7 @@ export function FacturePanneau({
                   <p><span className="text-muted-foreground">Payé : </span><span className="font-semibold">{formatMontant(totalPaiements)}</span></p>
                   <p><span className="text-muted-foreground">Reste : </span><span className="font-semibold">{formatMontant(resteAPayer)}</span></p>
                 </div>
-                {resteAPayer > 0 && (
+                {resteAPayer > 0 && facture.statut !== "ANNULEE" && (
                   <div className="mt-4 flex justify-end">
                     <EnregistrerPaiementDialog
                       factureId={facture.id}

@@ -76,6 +76,10 @@ public class CaisseService {
         List<Paiement> anciens = caisseRepository.paiementsDes(List.of(factureId));
         BigDecimal paye = somme(anciens);
         BigDecimal reste = facture.getMontantHt().subtract(paye).max(BigDecimal.ZERO);
+        if (StatutFacture.ANNULEE.name().equals(facture.getStatut())) {
+            throw new BusinessRuleException("FACTURE_ANNULEE", "La facture " + facture.getNumero()
+                    + " est annulée par l'avoir " + facture.getNumeroAvoir() + " : rien n'est à encaisser.");
+        }
         if (reste.signum() == 0 || StatutFacture.PAYEE.name().equals(facture.getStatut())) {
             throw new BusinessRuleException("FACTURE_DEJA_PAYEE", "La facture " + facture.getNumero() + " est déjà réglée.");
         }
@@ -173,7 +177,9 @@ public class CaisseService {
             List<Paiement> siens = paiements.getOrDefault(f.getId(), List.of());
             BigDecimal paye = somme(siens);
             BigDecimal reste = f.getMontantHt().subtract(paye).max(BigDecimal.ZERO);
-            boolean payee = reste.signum() == 0 || StatutFacture.PAYEE.name().equals(f.getStatut());
+            // Une facture annulée (avoir) ou réglée n'a plus rien à encaisser.
+            boolean payee = reste.signum() == 0 || StatutFacture.PAYEE.name().equals(f.getStatut())
+                    || StatutFacture.ANNULEE.name().equals(f.getStatut());
             Demande d = f.getDemande();
             resultat.add(new FactureCaisseDto(f.getId(), f.getNumero(), f.getDateFacture(), f.getDateEcheance(),
                     f.getMontantHt(), paye, payee ? BigDecimal.ZERO : reste, f.getStatut(),

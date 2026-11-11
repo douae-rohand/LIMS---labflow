@@ -3,9 +3,9 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button, Input, Label } from "@/components/lab";
 import {
-  enregistrerFacturation,
+  enregistrerCommission,
   enregistrerIdentite,
-  lireFacturation,
+  lireCommission,
   lireIdentite,
   type IdentitePlateforme,
 } from "@/api/parametresPlateforme";
@@ -115,40 +115,40 @@ export function SectionIdentite() {
 }
 
 // ---------------------------------------------------------------------------
-// TVA de la plateforme
+// Commission de la plateforme
 // ---------------------------------------------------------------------------
 
 const MAD = new Intl.NumberFormat("fr-MA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export function SectionTva() {
+export function SectionCommission() {
   const queryClient = useQueryClient();
-  const facturation = useQuery({ queryKey: ["parametres-facturation"], queryFn: lireFacturation });
+  const commission = useQuery({ queryKey: ["parametres-commission"], queryFn: lireCommission });
   const [taux, setTaux] = useState("");
 
   useEffect(() => {
-    if (facturation.data) setTaux(String(facturation.data.tauxTva));
-  }, [facturation.data]);
+    if (commission.data) setTaux(String(commission.data.tauxCommission));
+  }, [commission.data]);
 
   const enregistrement = useMutation({
-    mutationFn: (valeur: number) => enregistrerFacturation({ tauxTva: valeur }),
+    mutationFn: (valeur: number) => enregistrerCommission({ tauxCommission: valeur }),
     onSuccess: (donnees) => {
-      queryClient.setQueryData(["parametres-facturation"], donnees);
-      toast.success("Taux de TVA enregistré.");
+      queryClient.setQueryData(["parametres-commission"], donnees);
+      toast.success("Taux de commission enregistré.");
     },
     onError: (erreur) => toast.error(messageErreur(erreur, "L'enregistrement a échoué.")),
   });
 
-  if (facturation.isLoading || !facturation.data) {
-    return facturation.isError
-      ? <EtatVide titre="Le taux de TVA n'a pas pu être chargé." />
+  if (commission.isLoading || !commission.data) {
+    return commission.isError
+      ? <EtatVide titre="Le taux de commission n'a pas pu être chargé." />
       : <p className="text-sm text-muted-foreground">Chargement…</p>;
   }
 
   const valeur = Number(taux.replace(",", "."));
   const valide = taux.trim() !== "" && Number.isFinite(valeur) && valeur >= 0 && valeur <= 100;
-  const modifie = valide && valeur !== facturation.data.tauxTva;
-  const exemple = 120;
-  const tvaExemple = valide ? (exemple * valeur) / (100 + valeur) : 0;
+  const modifie = valide && valeur !== commission.data.tauxCommission;
+  const exemple = 1000;
+  const part = valide ? (exemple * valeur) / 100 : 0;
 
   return (
     <form
@@ -159,14 +159,14 @@ export function SectionTva() {
       }}
     >
       <Carte
-        titre="Taux de TVA de la plateforme"
-        description="Les laboratoires saisissent leurs prix TTC. Ce taux sert à calculer la part de TVA comprise dans chaque prix et chaque facture ; un laboratoire peut le remplacer par son propre taux dans ses paramètres. Une facture garde le taux en vigueur à son émission."
+        titre="Commission de la plateforme"
+        description="Pourcentage prélevé par la plateforme sur le montant de chaque facture de demande. Il n'est visible que dans l'espace Administrateur de chaque laboratoire. Un nouveau taux s'applique aussi aux factures pas encore réglées ; les factures payées ou annulées gardent le leur."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex max-w-xs flex-col gap-1.5">
-            <Label htmlFor="taux-tva">Taux de TVA (%)</Label>
+            <Label htmlFor="taux-commission">Commission (%)</Label>
             <Input
-              id="taux-tva"
+              id="taux-commission"
               type="number"
               inputMode="decimal"
               min={0}
@@ -175,18 +175,18 @@ export function SectionTva() {
               value={taux}
               onChange={(event) => setTaux(event.target.value)}
             />
-            <p className="text-xs text-muted-foreground">Entre 0 et 100 %. Au Maroc, le taux normal est de 20 %.</p>
+            <p className="text-xs text-muted-foreground">Entre 0 et 100 %.</p>
           </div>
           <div className="rounded-2xl border border-brand-900/10 bg-surface-alt p-4 text-sm">
             <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Exemple</p>
-            <p className="mt-2 text-ink-900">Prix TTC saisi : <strong>{MAD.format(exemple)} DH</strong></p>
-            <p className="text-ink-900">dont TVA ({valide ? valeur : "—"} %) : <strong>{MAD.format(tvaExemple)} DH</strong></p>
-            <p className="text-ink-900">soit HT : <strong>{MAD.format(exemple - tvaExemple)} DH</strong></p>
+            <p className="mt-2 text-ink-900">Facture de <strong>{MAD.format(exemple)} DH</strong></p>
+            <p className="text-ink-900">Commission ({valide ? valeur : "—"} %) : <strong>{MAD.format(part)} DH</strong></p>
+            <p className="text-ink-900">Net pour le laboratoire : <strong>{MAD.format(exemple - part)} DH</strong></p>
           </div>
         </div>
       </Carte>
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" disabled={!modifie} onClick={() => setTaux(String(facturation.data.tauxTva))}>
+        <Button type="button" variant="ghost" disabled={!modifie} onClick={() => setTaux(String(commission.data.tauxCommission))}>
           Annuler les modifications
         </Button>
         <Button type="submit" loading={enregistrement.isPending} disabled={!modifie}>

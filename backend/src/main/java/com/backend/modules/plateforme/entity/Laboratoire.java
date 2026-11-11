@@ -65,10 +65,6 @@ public class Laboratoire {
     @Column(name = "site_web", length = 255)
     private String siteWeb;
 
-    /** Taux de TVA propre au laboratoire, en pourcentage ; {@code null} = taux de la plateforme. */
-    @Column(name = "taux_tva", precision = 5, scale = 2)
-    private java.math.BigDecimal tauxTva;
-
     @Column(name = "nom_schema", nullable = false, length = 64)
     private String nomSchema;
 

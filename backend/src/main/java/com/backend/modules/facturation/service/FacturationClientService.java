@@ -105,7 +105,7 @@ public class FacturationClientService {
                     .montantHt(facture.getMontantHt())
                     .montantPaye(montantPaye)
                     .resteAPayer(resteAPayer(facture.getMontantHt(), montantPaye))
-                    .statut(statutEffectif(facture.getMontantHt(), montantPaye))
+                    .statut(statutEffectif(facture.getStatut(), facture.getMontantHt(), montantPaye))
                     .ice(ice)
                     .lignes(lignes)
                     .paiements(paiements.stream()
@@ -148,7 +148,7 @@ public class FacturationClientService {
                             .montantTotal(f.getMontantHt())
                             .montantPaye(paye)
                             .resteAPayer(resteAPayer(f.getMontantHt(), paye))
-                            .statut(statutEffectif(f.getMontantHt(), paye))
+                            .statut(statutEffectif(f.getStatut(), f.getMontantHt(), paye))
                             .build();
                 })
                 .toList();
@@ -166,8 +166,14 @@ public class FacturationClientService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    /** Statut recalculé : PAYEE si la somme des paiements couvre le HT, sinon IMPAYEE. */
-    private static StatutFacture statutEffectif(BigDecimal montantHt, BigDecimal montantPaye) {
+    /**
+     * Statut recalculé : ANNULEE si la facture est annulée par un avoir, sinon PAYEE si la somme
+     * des paiements couvre le montant, sinon IMPAYEE.
+     */
+    private static StatutFacture statutEffectif(String statutStocke, BigDecimal montantHt, BigDecimal montantPaye) {
+        if (StatutFacture.ANNULEE.name().equals(statutStocke)) {
+            return StatutFacture.ANNULEE;
+        }
         BigDecimal ht = montantHt == null ? BigDecimal.ZERO : montantHt;
         BigDecimal paye = montantPaye == null ? BigDecimal.ZERO : montantPaye;
         return paye.compareTo(ht) >= 0 ? StatutFacture.PAYEE : StatutFacture.IMPAYEE;

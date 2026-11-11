@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { libelleTva, useTvaLaboratoire } from "@/api/tvaLaboratoire";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Plus, Power, PowerOff, Trash2, X } from "lucide-react";
 import { Button, Select } from "@/components/lab";
@@ -22,7 +21,6 @@ interface EnregistrerEssaiPayload {
 }
 
 export function EssaisTab() {
-  const tva = useTvaLaboratoire();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [actif, setActif] = useState<boolean | undefined>(undefined);
@@ -192,7 +190,7 @@ export function EssaisTab() {
             className="min-w-0 flex-1 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-900"
           >
             <p className={`font-semibold ${essai.actif ? "text-ink-900" : "text-muted-foreground"}`}>{essai.code} - {essai.designation}{!essai.actif && <span className="ml-2 text-xs font-medium uppercase">Inactif</span>}</p>
-            <p className="text-sm text-muted-foreground">{essai.domaineLibelle} - {essai.tarif} MAD TTC{tva.data ? ` (${libelleTva(essai.tarif, tva.data.tauxEffectif)})` : ""}</p>
+            <p className="text-sm text-muted-foreground">{essai.domaineLibelle} - {essai.tarif} MAD</p>
           </button>
           <div className="flex flex-wrap gap-1">
             <Button variant="ghost" size="sm" onClick={() => ouvrirModification(essai.id)}>Modifier</Button>

@@ -1,7 +1,7 @@
 import { Badge, Button, Card } from "@/components/lab";
 import { formatMontant } from "@/components/panier/format";
 import { echeanceDepassee, formatDateLocaleFr } from "@/lib/dates";
-import type { FactureDetailClient } from "@/api/facturesClient";
+import { telechargerFactureClientPdf, type FactureDetailClient } from "@/api/facturesClient";
 import { libelleStatutFacture, variantStatutFacture } from "./libelles";
 
 /** En-tête du détail d'une facture : numéro, statut, dates et montants. */
@@ -31,14 +31,10 @@ export function FactureEntete({ facture }: { facture: FactureDetailClient }) {
             type="button"
             variant="secondary"
             size="sm"
-            disabled
-            aria-describedby="facture-pdf-indisponible"
+            onClick={() => void telechargerFactureClientPdf(facture.laboratoireId, facture.factureId, facture.numero)}
           >
             Télécharger le PDF
           </Button>
-          <p id="facture-pdf-indisponible" className="text-xs text-muted-foreground">
-            Téléchargement bientôt disponible
-          </p>
         </div>
       </div>
 
@@ -69,7 +65,7 @@ export function FactureEntete({ facture }: { facture: FactureDetailClient }) {
         </div>
         <div>
           <dt className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            Montant TTC
+            Montant
           </dt>
           <dd className="mt-1 text-sm font-bold text-ink-900">{formatMontant(facture.montantHt)}</dd>
         </div>
