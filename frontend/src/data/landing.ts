@@ -323,7 +323,7 @@ export const faq = [
   {
     question: "La facturation est-elle conforme au Maroc ?",
     answer:
-      "Les devis et factures reprennent les mentions légales requises, la TVA applicable et une numérotation séquentielle par laboratoire.",
+      "Les factures reprennent les mentions légales requises, le montant en toutes lettres et une numérotation séquentielle par laboratoire ; une facture annulée donne lieu à un avoir.",
   },
 ];
 

@@ -2,7 +2,7 @@ import { RotateCcw, Search, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button, Input, Label, Select } from "@/components/lab";
 
-export type StatutFactureAdmin = "EMISE" | "PAYEE" | "EN_RETARD" | "IMPAYEE";
+export type StatutFactureAdmin = "EMISE" | "PAYEE" | "EN_RETARD" | "IMPAYEE" | "ANNULEE";
 
 interface FacturesAdminFiltresProps {
   recherche: string;

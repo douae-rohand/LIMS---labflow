@@ -39,6 +39,7 @@ public class SuiviAccueilService {
             Map.entry("CREATION_DEMANDE", "Demande soumise"),
             Map.entry("ACCEPTATION_DEMANDE", "Demande acceptée"),
             Map.entry("REFUS_DEMANDE", "Demande refusée"),
+            Map.entry("REFUS_AUTOMATIQUE_DEMANDE", "Refusée automatiquement (48 h sans échantillon)"),
             Map.entry("ANNULATION_DEMANDE", "Demande annulée par le client"),
             Map.entry("CHANGEMENT_STATUT_DEMANDE", "Changement de statut"));
 
@@ -97,7 +98,8 @@ public class SuiviAccueilService {
     private FactureResumeDto resumeFacture(Facture f) {
         BigDecimal paye = caisseRepository.paiementsDes(List.of(f.getId())).stream()
                 .map(Paiement::getMontant).filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal reste = StatutFacture.PAYEE.name().equals(f.getStatut()) ? BigDecimal.ZERO
+        BigDecimal reste = StatutFacture.PAYEE.name().equals(f.getStatut())
+                || StatutFacture.ANNULEE.name().equals(f.getStatut()) ? BigDecimal.ZERO
                 : f.getMontantHt().subtract(paye).max(BigDecimal.ZERO);
         return new FactureResumeDto(f.getId(), f.getNumero(), f.getMontantHt(), paye, reste, f.getStatut());
     }

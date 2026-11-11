@@ -18,7 +18,7 @@ export const Route = createFileRoute("/app/")({
       throw redirect({ to: "/app/employes", search: { page: 1, tri: "nom", direction: "asc" } });
     }
     if (session?.user.role === "RESPONSABLE") {
-      throw redirect({ to: "/app/demandes-clients" });
+      throw redirect({ to: "/app/suivi" });
     }
     // TECHNICIEN, ACCUEIL, CLIENT : aucun redirect — la page s'affiche.
   },

@@ -48,12 +48,12 @@ public final class ParametresPlateformeDtos {
             @NotBlank(message = "Le nom d'expéditeur est obligatoire") @Size(max = 100) String expediteurNom) {
     }
 
-    /** Taux de TVA de la plateforme, en pourcentage (les prix du catalogue sont saisis TTC). */
-    public record Facturation(
-            @NotNull(message = "Le taux de TVA est obligatoire")
-            @DecimalMin(value = "0.00", message = "Le taux de TVA ne peut pas être négatif")
-            @DecimalMax(value = "100.00", message = "Le taux de TVA ne peut pas dépasser 100 %")
-            BigDecimal tauxTva) {
+    /** Commission de la plateforme, en pourcentage du montant de chaque facture de demande. */
+    public record Commission(
+            @NotNull(message = "Le taux de commission est obligatoire")
+            @DecimalMin(value = "0.00", message = "Le taux de commission ne peut pas être négatif")
+            @DecimalMax(value = "100.00", message = "Le taux de commission ne peut pas dépasser 100 %")
+            BigDecimal tauxCommission) {
     }
 
     public record EnregistrerTypeDocument(

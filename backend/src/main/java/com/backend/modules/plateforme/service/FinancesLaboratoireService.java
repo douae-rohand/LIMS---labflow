@@ -46,8 +46,9 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Supervision financière d'un laboratoire par le Super Administrateur : la TVA que la plateforme
- * retient sur chaque facture de demande (prix saisis TTC, TVA = TTC × taux / (100 + taux)),
+ * Supervision financière d'un laboratoire par le Super Administrateur : la commission que la
+ * plateforme prélève sur chaque facture de demande (commission = montant × taux / 100), les factures
+ * annulées par avoir étant exclues,
  * sur une période, regroupée par jour, semaine ou mois. Lecture seule, agrégée.
  */
 @Service
@@ -62,13 +63,13 @@ public class FinancesLaboratoireService {
 
     private final LaboratoireRepository laboratoireRepository;
     private final TenantDataSourceRegistry registry;
-    private final TvaService tvaService;
+    private final ParametrePlateformeService parametrePlateformeService;
 
     public enum Regroupement { JOUR, SEMAINE, MOIS }
 
     /** Une ligne du détail : {@code debut} est le premier jour du jour, de la semaine (lundi) ou du mois. */
     public record PeriodeFinance(LocalDate debut, String libelle, long demandesFacturees,
-                                 BigDecimal facture, BigDecimal tva, BigDecimal tvaEncaissee) {
+                                 BigDecimal facture, BigDecimal commission, BigDecimal commissionEncaissee) {
     }
 
     public record FinancesLaboratoire(
@@ -77,18 +78,18 @@ public class FinancesLaboratoireService {
             LocalDate du,
             LocalDate au,
             Regroupement regroupement,
-            BigDecimal tauxTva,
+            BigDecimal tauxCommission,
             long demandesFacturees,
             /** Total TTC des factures de la période (base de calcul). */
             BigDecimal facture,
-            /** TVA retenue sur les factures de la période. */
-            BigDecimal tva,
-            /** TVA comprise dans les paiements reçus sur la période. */
-            BigDecimal tvaEncaissee,
-            /** TVA restant à percevoir sur les factures non soldées, à ce jour. */
-            BigDecimal tvaAPercevoir,
+            /** Commission de la plateforme sur les factures de la période. */
+            BigDecimal commission,
+            /** Commission sur les paiements reçus pendant la période. */
+            BigDecimal commissionEncaissee,
+            /** Commission restant à percevoir sur les factures non soldées, à ce jour. */
+            BigDecimal commissionAPercevoir,
             /** dont factures dont l'échéance est dépassée, à ce jour. */
-            BigDecimal tvaEnRetard,
+            BigDecimal commissionEnRetard,
             List<PeriodeFinance> details) {
     }
 
@@ -117,29 +118,29 @@ public class FinancesLaboratoireService {
                     + groupe.name().toLowerCase(Locale.ROOT) + " : choisissez un regroupement plus large.");
         }
 
-        BigDecimal tauxCourant = tvaService.tauxEffectifParSchema(schema);
+        BigDecimal tauxCourant = parametrePlateformeService.tauxCommission();
         String f = "`" + schema + "`.facture";
         String p = "`" + schema + "`.paiement";
         LocalDate lendemain = fin.plusDays(1);
 
         try (Connection connexion = registry.getCentral().getConnection()) {
             Map<String, Object> periode = ligne(connexion, "SELECT COUNT(*) nb, COALESCE(SUM(montant_ht), 0) facture,"
-                    + " COALESCE(SUM(" + tva("montant_ht", "taux_tva") + "), 0) tva"
-                    + " FROM " + f + " WHERE date_facture >= ? AND date_facture < ?",
-                    tauxCourant, tauxCourant, debut, lendemain);
-            BigDecimal tvaEncaissee = decimal(ligne(connexion, "SELECT COALESCE(SUM(" + tva("pa.montant", "fa.taux_tva")
+                    + " COALESCE(SUM(" + commission("montant_ht", "taux_commission") + "), 0) commission"
+                    + " FROM " + f + " WHERE statut <> 'ANNULEE' AND date_facture >= ? AND date_facture < ?",
+                    tauxCourant, debut, lendemain);
+            BigDecimal commissionEncaissee = decimal(ligne(connexion, "SELECT COALESCE(SUM(" + commission("pa.montant", "fa.taux_commission")
                     + "), 0) v FROM " + p + " pa JOIN " + f + " fa ON fa.id_facture = pa.facture_id"
                     + " WHERE pa.date_paiement >= ? AND pa.date_paiement < ?",
-                    tauxCourant, tauxCourant, debut.atStartOfDay(), lendemain.atStartOfDay()).get("v"));
+                    tauxCourant, debut.atStartOfDay(), lendemain.atStartOfDay()).get("v"));
 
-            // État à ce jour, indépendant de la période : TVA des montants non encore payés.
+            // État à ce jour, indépendant de la période : commission sur les montants non encore payés.
             String reste = "fa.montant_ht - COALESCE(pa.paye, 0)";
             String nonSoldees = " FROM " + f + " fa LEFT JOIN (SELECT facture_id, SUM(montant) paye FROM " + p
-                    + " GROUP BY facture_id) pa ON pa.facture_id = fa.id_facture WHERE fa.statut <> 'PAYEE'";
-            BigDecimal tvaAPercevoir = decimal(ligne(connexion, "SELECT COALESCE(SUM(" + tva(reste, "fa.taux_tva")
-                    + "), 0) v" + nonSoldees, tauxCourant, tauxCourant).get("v"));
-            BigDecimal tvaEnRetard = decimal(ligne(connexion, "SELECT COALESCE(SUM(" + tva(reste, "fa.taux_tva")
-                    + "), 0) v" + nonSoldees + " AND fa.date_echeance < CURDATE()", tauxCourant, tauxCourant).get("v"));
+                    + " GROUP BY facture_id) pa ON pa.facture_id = fa.id_facture WHERE fa.statut NOT IN ('PAYEE', 'ANNULEE')";
+            BigDecimal commissionAPercevoir = decimal(ligne(connexion, "SELECT COALESCE(SUM(" + commission(reste, "fa.taux_commission")
+                    + "), 0) v" + nonSoldees, tauxCourant).get("v"));
+            BigDecimal commissionEnRetard = decimal(ligne(connexion, "SELECT COALESCE(SUM(" + commission(reste, "fa.taux_commission")
+                    + "), 0) v" + nonSoldees + " AND fa.date_echeance < CURDATE()", tauxCourant).get("v"));
 
             return new FinancesLaboratoire(
                     laboratoire.getId(),
@@ -150,10 +151,10 @@ public class FinancesLaboratoireService {
                     tauxCourant,
                     ((Number) periode.get("nb")).longValue(),
                     arrondi(decimal(periode.get("facture"))),
-                    arrondi(decimal(periode.get("tva"))),
-                    arrondi(tvaEncaissee),
-                    arrondi(tvaAPercevoir.max(BigDecimal.ZERO)),
-                    arrondi(tvaEnRetard.max(BigDecimal.ZERO)),
+                    arrondi(decimal(periode.get("commission"))),
+                    arrondi(commissionEncaissee),
+                    arrondi(commissionAPercevoir.max(BigDecimal.ZERO)),
+                    arrondi(commissionEnRetard.max(BigDecimal.ZERO)),
                     details(connexion, f, p, cles, groupe, debut, lendemain, tauxCourant));
         } catch (SQLException ex) {
             throw new BusinessRuleException("FINANCES_INDISPONIBLES",
@@ -196,12 +197,9 @@ public class FinancesLaboratoireService {
         return cles;
     }
 
-    /**
-     * TVA comprise dans un montant TTC ; le taux de la facture prime, sinon le taux courant
-     * (deux paramètres « ? » à fournir dans cet ordre).
-     */
-    private static String tva(String montant, String colonneTaux) {
-        return "(" + montant + ") * COALESCE(" + colonneTaux + ", ?) / (100 + COALESCE(" + colonneTaux + ", ?))";
+    /** Commission sur un montant : le taux figé sur la facture prime, sinon le taux courant (un paramètre « ? »). */
+    private static String commission(String montant, String colonneTaux) {
+        return "(" + montant + ") * COALESCE(" + colonneTaux + ", ?) / 100";
     }
 
     private static String expressionCle(String colonne, Regroupement groupe) {
@@ -222,35 +220,33 @@ public class FinancesLaboratoireService {
             montants.put(cle, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO});
         }
         try (PreparedStatement requete = connexion.prepareStatement("SELECT " + expressionCle("date_facture", groupe)
-                + " k, COUNT(*) nb, SUM(montant_ht) total, SUM(" + tva("montant_ht", "taux_tva") + ") tva FROM " + f
-                + " WHERE date_facture >= ? AND date_facture < ? GROUP BY k")) {
+                + " k, COUNT(*) nb, SUM(montant_ht) total, SUM(" + commission("montant_ht", "taux_commission") + ") commission FROM " + f
+                + " WHERE statut <> 'ANNULEE' AND date_facture >= ? AND date_facture < ? GROUP BY k")) {
             requete.setObject(1, tauxCourant);
-            requete.setObject(2, tauxCourant);
-            requete.setObject(3, debut);
-            requete.setObject(4, lendemain);
+            requete.setObject(2, debut);
+            requete.setObject(3, lendemain);
             try (ResultSet rs = requete.executeQuery()) {
                 while (rs.next()) {
                     LocalDate cle = LocalDate.parse(rs.getString("k").substring(0, 10));
                     if (nombres.containsKey(cle)) {
                         nombres.get(cle)[0] = rs.getLong("nb");
                         montants.get(cle)[0] = decimal(rs.getBigDecimal("total"));
-                        montants.get(cle)[1] = decimal(rs.getBigDecimal("tva"));
+                        montants.get(cle)[1] = decimal(rs.getBigDecimal("commission"));
                     }
                 }
             }
         }
         try (PreparedStatement requete = connexion.prepareStatement("SELECT " + expressionCle("pa.date_paiement", groupe)
-                + " k, SUM(" + tva("pa.montant", "fa.taux_tva") + ") tva FROM " + p + " pa JOIN " + f
+                + " k, SUM(" + commission("pa.montant", "fa.taux_commission") + ") commission FROM " + p + " pa JOIN " + f
                 + " fa ON fa.id_facture = pa.facture_id WHERE pa.date_paiement >= ? AND pa.date_paiement < ? GROUP BY k")) {
             requete.setObject(1, tauxCourant);
-            requete.setObject(2, tauxCourant);
-            requete.setObject(3, debut.atStartOfDay());
-            requete.setObject(4, lendemain.atStartOfDay());
+            requete.setObject(2, debut.atStartOfDay());
+            requete.setObject(3, lendemain.atStartOfDay());
             try (ResultSet rs = requete.executeQuery()) {
                 while (rs.next()) {
                     LocalDate cle = LocalDate.parse(rs.getString("k").substring(0, 10));
                     if (montants.containsKey(cle)) {
-                        montants.get(cle)[2] = decimal(rs.getBigDecimal("tva"));
+                        montants.get(cle)[2] = decimal(rs.getBigDecimal("commission"));
                     }
                 }
             }
@@ -292,7 +288,7 @@ public class FinancesLaboratoireService {
     }
 
     private static final List<String> COLONNES = List.of(
-            "Période", "Demandes facturées", "Facturé TTC (MAD)", "TVA retenue (MAD)", "TVA encaissée (MAD)");
+            "Période", "Demandes facturées", "Facturé (MAD)", "Commission (MAD)", "Commission encaissée (MAD)");
 
     private static String intitulePeriode(FinancesLaboratoire finances) {
         return "Du " + finances.du().format(JOUR) + " au " + finances.au().format(JOUR);
@@ -302,21 +298,21 @@ public class FinancesLaboratoireService {
         List<List<String>> lignes = new ArrayList<>();
         for (PeriodeFinance d : finances.details()) {
             lignes.add(List.of(d.libelle(), String.valueOf(d.demandesFacturees()),
-                    d.facture().toPlainString(), d.tva().toPlainString(), d.tvaEncaissee().toPlainString()));
+                    d.facture().toPlainString(), d.commission().toPlainString(), d.commissionEncaissee().toPlainString()));
         }
         lignes.add(List.of("Total", String.valueOf(finances.demandesFacturees()),
-                finances.facture().toPlainString(), finances.tva().toPlainString(),
-                finances.tvaEncaissee().toPlainString()));
+                finances.facture().toPlainString(), finances.commission().toPlainString(),
+                finances.commissionEncaissee().toPlainString()));
         return lignes;
     }
 
     private static List<List<String>> resume(FinancesLaboratoire finances) {
         return List.of(
-                List.of("TVA retenue sur la période", finances.tva().toPlainString()),
-                List.of("TVA encaissée sur la période", finances.tvaEncaissee().toPlainString()),
-                List.of("Montant TTC facturé (base)", finances.facture().toPlainString()),
-                List.of("TVA à percevoir (à ce jour)", finances.tvaAPercevoir().toPlainString()),
-                List.of("dont en retard (à ce jour)", finances.tvaEnRetard().toPlainString()));
+                List.of("Commission sur la période", finances.commission().toPlainString()),
+                List.of("Commission encaissée sur la période", finances.commissionEncaissee().toPlainString()),
+                List.of("Montant facturé (base)", finances.facture().toPlainString()),
+                List.of("Commission à percevoir (à ce jour)", finances.commissionAPercevoir().toPlainString()),
+                List.of("dont en retard (à ce jour)", finances.commissionEnRetard().toPlainString()));
     }
 
     private static byte[] csv(FinancesLaboratoire finances) {
@@ -378,9 +374,9 @@ public class FinancesLaboratoireService {
             Font gras = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, new Color(36, 42, 46));
             Font entete = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.WHITE);
 
-            document.add(new Paragraph("TVA retenue — " + finances.laboratoire(), titre));
+            document.add(new Paragraph("Commission plateforme — " + finances.laboratoire(), titre));
             document.add(new Paragraph(intitulePeriode(finances) + " · montants en MAD · taux actuel "
-                    + finances.tauxTva().stripTrailingZeros().toPlainString() + " %", texte));
+                    + finances.tauxCommission().stripTrailingZeros().toPlainString() + " %", texte));
             document.add(new Paragraph(" "));
 
             PdfPTable resume = new PdfPTable(2);

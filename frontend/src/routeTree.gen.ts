@@ -39,6 +39,7 @@ import { Route as AppGestionLaboratoiresRouteImport } from './routes/app/gestion
 import { Route as AppImportRouteImport } from './routes/app/import'
 import { Route as AppJournalAuditRouteImport } from './routes/app/journal-audit'
 import { Route as AppLaboratoiresRouteImport } from './routes/app/laboratoires'
+import { Route as AppNouvelleDemandeRouteImport } from './routes/app/nouvelle-demande'
 import { Route as AppPanierRouteImport } from './routes/app/panier'
 import { Route as AppParametresRouteImport } from './routes/app/parametres'
 import { Route as AppParametresPlateformeRouteImport } from './routes/app/parametres-plateforme'
@@ -231,6 +232,11 @@ const AppJournalAuditRoute = AppJournalAuditRouteImport.update({
 const AppLaboratoiresRoute = AppLaboratoiresRouteImport.update({
   id: '/laboratoires',
   path: '/laboratoires',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNouvelleDemandeRoute = AppNouvelleDemandeRouteImport.update({
+  id: '/nouvelle-demande',
+  path: '/nouvelle-demande',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPanierRoute = AppPanierRouteImport.update({
@@ -485,6 +491,7 @@ export interface FileRoutesByFullPath {
   '/app/import': typeof AppImportRoute
   '/app/journal-audit': typeof AppJournalAuditRoute
   '/app/laboratoires': typeof AppLaboratoiresRouteWithChildren
+  '/app/nouvelle-demande': typeof AppNouvelleDemandeRoute
   '/app/panier': typeof AppPanierRouteWithChildren
   '/app/parametres': typeof AppParametresRoute
   '/app/parametres-plateforme': typeof AppParametresPlateformeRoute
@@ -550,6 +557,7 @@ export interface FileRoutesByTo {
   '/app/gestion-laboratoires': typeof AppGestionLaboratoiresRoute
   '/app/import': typeof AppImportRoute
   '/app/journal-audit': typeof AppJournalAuditRoute
+  '/app/nouvelle-demande': typeof AppNouvelleDemandeRoute
   '/app/parametres': typeof AppParametresRoute
   '/app/parametres-plateforme': typeof AppParametresPlateformeRoute
   '/app/planification': typeof AppPlanificationRoute
@@ -623,6 +631,7 @@ export interface FileRoutesById {
   '/app/import': typeof AppImportRoute
   '/app/journal-audit': typeof AppJournalAuditRoute
   '/app/laboratoires': typeof AppLaboratoiresRouteWithChildren
+  '/app/nouvelle-demande': typeof AppNouvelleDemandeRoute
   '/app/panier': typeof AppPanierRouteWithChildren
   '/app/parametres': typeof AppParametresRoute
   '/app/parametres-plateforme': typeof AppParametresPlateformeRoute
@@ -700,6 +709,7 @@ export interface FileRouteTypes {
     | '/app/import'
     | '/app/journal-audit'
     | '/app/laboratoires'
+    | '/app/nouvelle-demande'
     | '/app/panier'
     | '/app/parametres'
     | '/app/parametres-plateforme'
@@ -765,6 +775,7 @@ export interface FileRouteTypes {
     | '/app/gestion-laboratoires'
     | '/app/import'
     | '/app/journal-audit'
+    | '/app/nouvelle-demande'
     | '/app/parametres'
     | '/app/parametres-plateforme'
     | '/app/planification'
@@ -837,6 +848,7 @@ export interface FileRouteTypes {
     | '/app/import'
     | '/app/journal-audit'
     | '/app/laboratoires'
+    | '/app/nouvelle-demande'
     | '/app/panier'
     | '/app/parametres'
     | '/app/parametres-plateforme'
@@ -1111,6 +1123,13 @@ declare module '@tanstack/react-router' {
       path: '/laboratoires'
       fullPath: '/app/laboratoires'
       preLoaderRoute: typeof AppLaboratoiresRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/nouvelle-demande': {
+      id: '/app/nouvelle-demande'
+      path: '/nouvelle-demande'
+      fullPath: '/app/nouvelle-demande'
+      preLoaderRoute: typeof AppNouvelleDemandeRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/panier': {
@@ -1600,6 +1619,7 @@ interface AppRouteChildren {
   AppImportRoute: typeof AppImportRoute
   AppJournalAuditRoute: typeof AppJournalAuditRoute
   AppLaboratoiresRoute: typeof AppLaboratoiresRouteWithChildren
+  AppNouvelleDemandeRoute: typeof AppNouvelleDemandeRoute
   AppPanierRoute: typeof AppPanierRouteWithChildren
   AppParametresRoute: typeof AppParametresRoute
   AppParametresPlateformeRoute: typeof AppParametresPlateformeRoute
@@ -1640,6 +1660,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppImportRoute: AppImportRoute,
   AppJournalAuditRoute: AppJournalAuditRoute,
   AppLaboratoiresRoute: AppLaboratoiresRouteWithChildren,
+  AppNouvelleDemandeRoute: AppNouvelleDemandeRoute,
   AppPanierRoute: AppPanierRouteWithChildren,
   AppParametresRoute: AppParametresRoute,
   AppParametresPlateformeRoute: AppParametresPlateformeRoute,

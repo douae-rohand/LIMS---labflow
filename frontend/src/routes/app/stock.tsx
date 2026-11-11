@@ -7,7 +7,9 @@ export const Route = createFileRoute("/app/stock")({
     if (!session) {
       throw redirect({ to: "/login" });
     }
-    if (session.user.role !== "ADMINISTRATEUR") {
+    // L'Administrateur gère le stock ; le Responsable le consulte (permission STOCK_CONSULTER).
+    if (session.user.role !== "ADMINISTRATEUR"
+        && !(session.user.role === "RESPONSABLE" && session.user.permissions.includes("STOCK_CONSULTER"))) {
       throw redirect({ to: "/app" });
     }
   },

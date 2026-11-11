@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 /** Vue d'ensemble du responsable : file de travail, charge de l'équipe, retards. */
 @Service
@@ -35,6 +36,20 @@ public class SuiviResponsableService {
         long aAffecter = analyses.stream()
                 .filter(a -> a.getTechnicienId() == null && !termineeOuNonRealisable(a))
                 .count();
+        // Demandes dont au moins une analyse est prête à affecter : échantillon conforme et paiement reçu.
+        Map<Long, String> paiements = planificationService.etatsPaiement(
+                analyses.stream().map(LigneTravailDto::getDemandeId).distinct().toList());
+        long demandesAAffecter = analyses.stream()
+                .filter(a -> a.getTechnicienId() == null && !termineeOuNonRealisable(a))
+                .filter(a -> "CONFORME".equals(a.getEtatEchantillon()))
+                .filter(a -> {
+                    String paiement = paiements.get(a.getDemandeId());
+                    return PlanificationService.PAIEMENT_PARTIELLE.equals(paiement)
+                            || PlanificationService.PAIEMENT_PAYEE.equals(paiement);
+                })
+                .map(LigneTravailDto::getDemandeId)
+                .distinct()
+                .count();
         long enCours = analyses.stream()
                 .filter(a -> a.getTechnicienId() != null && !termineeOuNonRealisable(a))
                 .count();
@@ -49,7 +64,8 @@ public class SuiviResponsableService {
                 .limit(20)
                 .toList();
         return new SuiviResponsableDto(
-                new SuiviResponsableDto.Indicateurs(aDecider, aAffecter, enCours, enRetard.size(), aValider, aPreparer),
+                new SuiviResponsableDto.Indicateurs(aDecider, aAffecter, enCours, enRetard.size(), aValider, aPreparer,
+                        demandesAAffecter),
                 planificationService.techniciens(lignes),
                 retards);
     }

@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { Receipt } from "lucide-react";
 import { Badge, Button } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
-import { listerFacturesCaisse, type FactureCaisse } from "@/api/accueil";
+import { listerFacturesCaisse, ouvrirFactureCaisse, type FactureCaisse } from "@/api/accueil";
 import {
   Actualisation,
   contient,
@@ -118,7 +118,9 @@ export function PageCaisse() {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-semibold text-ink-900">{f.numero}</p>
-                {f.reste === 0 ? (
+                {f.statut === "ANNULEE" ? (
+                  <Badge size="sm" variant="outline">Annulée (avoir)</Badge>
+                ) : f.reste === 0 ? (
                   <Badge size="sm" variant="mint">Réglée</Badge>
                 ) : f.paye > 0 ? (
                   <Badge size="sm" variant="soft">Réglée en partie</Badge>
@@ -138,9 +140,16 @@ export function PageCaisse() {
               <p className="text-sm font-bold text-ink-900">{formaterMontant(f.reste)} <span className="font-normal text-muted-foreground">à payer</span></p>
               <p className="text-xs text-muted-foreground">sur {formaterMontant(f.montant)}</p>
             </div>
-            <Button size="sm" variant={f.reste > 0 ? "primary" : "secondary"} onClick={() => setChoisie(f.id)}>
-              {f.reste > 0 ? "Encaisser" : "Voir les reçus"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="ghost" onClick={() => void ouvrirFactureCaisse(f.id, f.statut === "ANNULEE")}>
+                {f.statut === "ANNULEE" ? "Avoir PDF" : "Facture PDF"}
+              </Button>
+              {f.statut !== "ANNULEE" && (
+                <Button size="sm" variant={f.reste > 0 ? "primary" : "secondary"} onClick={() => setChoisie(f.id)}>
+                  {f.reste > 0 ? "Encaisser" : "Voir les reçus"}
+                </Button>
+              )}
+            </div>
           </li>
         ))}
       </ul>

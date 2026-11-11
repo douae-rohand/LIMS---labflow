@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, UserCheck } from "lucide-react";
 import { toast } from "sonner";
-import { Badge, Button, Input, Label } from "@/components/lab";
+import { Badge, Button, Input, Label, Textarea } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import {
   affecterAnalyses,
@@ -15,12 +15,14 @@ import {
 import { Dialogue } from "@/features/super-admin/Fenetres";
 import {
   Actualisation,
+  BarreFiltres,
   BadgeStatutAnalyse,
   contient,
   EnTeteResponsable,
   EtatChargement,
   formaterDate,
   messageErreur,
+  FiltreSelect,
   Recherche,
 } from "./commun";
 
@@ -29,6 +31,32 @@ const ONGLETS: { id: FiltreAnalyses; libelle: string }[] = [
   { id: "AFFECTEES", libelle: "Affectées" },
   { id: "EN_RETARD", libelle: "En retard" },
 ];
+
+/** Une analyse s'affecte seulement avec un échantillon conforme reçu et une facture au moins en partie payée. */
+function blocage(analyse: AnalyseTravail): string | null {
+  if (analyse.etatEchantillon !== "CONFORME") {
+    return analyse.etatEchantillon === "NON_CONFORME" ? "Échantillon non conforme" : "Échantillon non reçu";
+  }
+  if (analyse.etatPaiement !== "PARTIELLE" && analyse.etatPaiement !== "PAYEE") return "Aucun paiement";
+  return null;
+}
+
+const ECHANTILLON: Record<string, [string, string]> = {
+  CONFORME: ["Échantillon reçu", "bg-emerald-50 text-emerald-800"],
+  NON_CONFORME: ["Échantillon non conforme", "bg-rose-50 text-rose-800"],
+  ATTENDU: ["Échantillon attendu", "bg-amber-50 text-amber-900"],
+};
+const PAIEMENT: Record<string, [string, string]> = {
+  PAYEE: ["Payée", "bg-emerald-50 text-emerald-800"],
+  PARTIELLE: ["Payée en partie", "bg-sky-50 text-sky-800"],
+  NON_PAYEE: ["Non payée", "bg-amber-50 text-amber-900"],
+  AUCUNE_FACTURE: ["Sans facture", "bg-surface-alt text-muted-foreground"],
+};
+
+function Pastille({ valeur, table }: { valeur: string | undefined; table: Record<string, [string, string]> }) {
+  const [libelle, classes] = table[valeur ?? ""] ?? ["—", "bg-surface-alt text-muted-foreground"];
+  return <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ${classes}`}>{libelle}</span>;
+}
 
 /** Durée estimée du catalogue (minutes) en texte lisible. */
 function duree(minutes: number): string {
@@ -46,17 +74,35 @@ export function PagePlanification({ filtre, onFiltre }: {
   const [selection, setSelection] = useState<number[]>([]);
   const [dialogue, setDialogue] = useState(false);
   const [recherche, setRecherche] = useState("");
+  const [domaine, setDomaine] = useState("");
+  const [technicien, setTechnicien] = useState("");
+  const [pretes, setPretes] = useState(true);
 
   const analyses = useQuery({
     queryKey: ["responsable-analyses", filtre],
     queryFn: () => listerAnalyses(filtre),
   });
-  useEffect(() => setSelection([]), [filtre]);
+  useEffect(() => setSelection([]), [filtre, domaine, technicien]);
+  useEffect(() => setTechnicien(""), [filtre]);
+
+  const domaines = useMemo(() => {
+    const parCode = new Map<string, string>();
+    for (const a of analyses.data ?? []) if (a.domaineCode) parCode.set(a.domaineCode, a.domaineLibelle ?? a.domaineCode);
+    return [...parCode.entries()].sort((x, y) => x[1].localeCompare(y[1], "fr"));
+  }, [analyses.data]);
+  const techniciensListes = useMemo(() => {
+    const parId = new Map<number, string>();
+    for (const a of analyses.data ?? []) if (a.technicienId != null) parId.set(a.technicienId, a.technicienNom ?? `#${a.technicienId}`);
+    return [...parId.entries()].sort((x, y) => x[1].localeCompare(y[1], "fr"));
+  }, [analyses.data]);
 
   // Le serveur renvoie les demandes les plus récentes d'abord ; on garde cet ordre en regroupant.
   const groupes = useMemo(() => {
     const parDemande = new Map<number, AnalyseTravail[]>();
     (analyses.data ?? [])
+      .filter((a) => !domaine || a.domaineCode === domaine)
+      .filter((a) => !technicien || String(a.technicienId) === technicien)
+      .filter((a) => !(pretes && filtre === "A_AFFECTER") || blocage(a) === null)
       .filter((a) => !recherche.trim()
         || contient(a.demandeReference, recherche)
         || contient(a.demandeTitre, recherche)
@@ -66,9 +112,11 @@ export function PagePlanification({ filtre, onFiltre }: {
         parDemande.set(analyse.demandeId, [...(parDemande.get(analyse.demandeId) ?? []), analyse]);
       });
     return [...parDemande.values()];
-  }, [analyses.data, recherche]);
+  }, [analyses.data, recherche, domaine, technicien, pretes, filtre]);
+  const enAttente = filtre === "A_AFFECTER" ? (analyses.data ?? []).filter((a) => blocage(a) !== null).length : 0;
 
   const choisies = (analyses.data ?? []).filter((analyse) => selection.includes(analyse.id));
+  const affectable = (analyse: AnalyseTravail) => blocage(analyse) === null;
   const basculer = (id: number, coche: boolean) =>
     setSelection((courant) => (coche ? [...new Set([...courant, id])] : courant.filter((element) => element !== id)));
 
@@ -77,7 +125,7 @@ export function PagePlanification({ filtre, onFiltre }: {
       <EnTeteResponsable
         icone={CalendarClock}
         titre="Planification"
-        description="Affectez les analyses des demandes acceptées aux techniciens. Les demandes les plus récentes sont en haut."
+        description="Affectez aux techniciens les analyses prêtes : échantillon conforme reçu et facture payée, au moins en partie."
         action={
           <Actualisation
             misAJour={analyses.dataUpdatedAt}
@@ -87,8 +135,8 @@ export function PagePlanification({ filtre, onFiltre }: {
         }
       />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex w-full gap-1 rounded-2xl border border-brand-900/10 bg-card p-1 sm:w-auto" role="tablist" aria-label="Filtrer les analyses">
+      <BarreFiltres>
+        <div className="flex shrink-0 gap-1 rounded-xl bg-surface-alt p-1" role="tablist" aria-label="Filtrer les analyses">
           {ONGLETS.map((onglet) => (
             <button
               key={onglet.id}
@@ -96,32 +144,51 @@ export function PagePlanification({ filtre, onFiltre }: {
               role="tab"
               aria-selected={filtre === onglet.id}
               onClick={() => onFiltre(onglet.id)}
-              className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold sm:flex-none ${
-                filtre === onglet.id ? "bg-brand-900 text-primary-foreground" : "text-brand-900 hover:bg-surface-alt"
+              className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-brand-900 lg:flex-none ${
+                filtre === onglet.id ? "bg-brand-900 text-primary-foreground shadow-sm" : "text-brand-900 hover:bg-card"
               }`}
             >
               {onglet.libelle}
             </button>
           ))}
         </div>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-          <Recherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, une analyse…" />
-          <Button
-            icon={<UserCheck className="size-4" aria-hidden="true" />}
-            iconPosition="left"
-            disabled={selection.length === 0}
-            onClick={() => setDialogue(true)}
+        <Recherche className="w-full lg:flex-1" valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, une analyse, un technicien…" />
+        {filtre === "A_AFFECTER" && (
+          <button
+            type="button"
+            aria-pressed={pretes}
+            onClick={() => setPretes(!pretes)}
+            title="Prêtes : échantillon conforme reçu et facture au moins en partie payée"
+            className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold whitespace-nowrap ${
+              pretes ? "border-brand-900 bg-brand-900/5 text-brand-900" : "border-brand-900/15 bg-card text-ink-900"
+            }`}
           >
-            {filtre === "A_AFFECTER" ? "Affecter" : "Réaffecter"} {selection.length > 0 ? `(${selection.length})` : ""}
-          </Button>
-        </div>
-      </div>
+            {pretes ? "Prêtes uniquement" : "Toutes"}
+            {enAttente > 0 && <span className="rounded-full bg-amber-100 px-2 text-[11px] leading-4 text-amber-900">{enAttente} en attente</span>}
+          </button>
+        )}
+        <FiltreSelect className="w-full lg:w-44" libelle="Filtrer par domaine" tous="Tous les domaines" valeur={domaine} onChange={setDomaine}
+          options={domaines} />
+        {filtre !== "A_AFFECTER" && (
+          <FiltreSelect className="w-full lg:w-48" libelle="Filtrer par technicien" tous="Tous les techniciens" valeur={technicien}
+            onChange={setTechnicien} options={techniciensListes.map(([id, nom]) => [String(id), nom])} />
+        )}
+        <Button
+          className="h-10 shrink-0"
+          icon={<UserCheck className="size-4" aria-hidden="true" />}
+          iconPosition="left"
+          disabled={selection.length === 0}
+          onClick={() => setDialogue(true)}
+        >
+          {filtre === "A_AFFECTER" ? "Affecter" : "Réaffecter"}{selection.length > 0 ? ` (${selection.length})` : ""}
+        </Button>
+      </BarreFiltres>
 
       <EtatChargement
         chargement={analyses.isLoading}
         erreur={analyses.isError}
         vide={!analyses.isLoading && groupes.length === 0}
-        messageVide={recherche.trim() ? "Aucune analyse ne correspond à la recherche."
+        messageVide={recherche.trim() || domaine || technicien ? "Aucune analyse ne correspond aux filtres."
           : filtre === "A_AFFECTER" ? "Toutes les analyses sont affectées."
             : filtre === "EN_RETARD" ? "Aucune analyse en retard." : "Aucune analyse affectée en cours."}
         onReessayer={() => void analyses.refetch()}
@@ -131,7 +198,8 @@ export function PagePlanification({ filtre, onFiltre }: {
         {groupes.map((groupe) => {
           const premiere = groupe[0];
           if (!premiere) return null;
-          const tousCoches = groupe.every((analyse) => selection.includes(analyse.id));
+          const affectables = groupe.filter(affectable);
+          const tousCoches = affectables.length > 0 && affectables.every((analyse) => selection.includes(analyse.id));
           return (
             <section key={premiere.demandeId} className="overflow-hidden rounded-2xl border border-brand-900/10 bg-card">
               <header className="flex flex-wrap items-center justify-between gap-2 border-b border-brand-900/10 bg-surface-alt px-4 py-3">
@@ -140,13 +208,15 @@ export function PagePlanification({ filtre, onFiltre }: {
                     type="checkbox"
                     className="size-4 accent-brand-900"
                     checked={tousCoches}
+                    disabled={affectables.length === 0}
                     aria-label={`Sélectionner toutes les analyses de ${premiere.demandeReference}`}
-                    onChange={(event) => groupe.forEach((analyse) => basculer(analyse.id, event.target.checked))}
+                    onChange={(event) => affectables.forEach((analyse) => basculer(analyse.id, event.target.checked))}
                   />
                   {premiere.demandeReference}
                   {premiere.demandeTitre && <span className="font-normal text-muted-foreground">· {premiere.demandeTitre}</span>}
                 </label>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <Pastille valeur={premiere.etatPaiement} table={PAIEMENT} />
                   <span>Reçue le {formaterDate(premiere.demandeDateSoumission)} · {groupe.length} analyse(s)</span>
                   <Link
                     to="/app/demandes-clients"
@@ -164,6 +234,8 @@ export function PagePlanification({ filtre, onFiltre }: {
                       type="checkbox"
                       className="size-4 accent-brand-900"
                       checked={selection.includes(analyse.id)}
+                      disabled={!affectable(analyse)}
+                      title={blocage(analyse) ?? undefined}
                       aria-label={`Sélectionner ${analyse.essaiLibelle ?? analyse.code}`}
                       onChange={(event) => basculer(analyse.id, event.target.checked)}
                     />
@@ -177,6 +249,10 @@ export function PagePlanification({ filtre, onFiltre }: {
                         {analyse.echeance ? ` · échéance ${formaterDate(analyse.echeance)}` : ""}
                       </p>
                     </div>
+                    <Pastille valeur={analyse.etatEchantillon} table={ECHANTILLON} />
+                    {blocage(analyse) && (
+                      <span className="text-[11px] font-semibold text-amber-900">Non affectable : {blocage(analyse)?.toLowerCase()}</span>
+                    )}
                     <BadgeStatutAnalyse analyse={analyse} />
                   </li>
                 ))}
@@ -210,18 +286,23 @@ function DialogueAffectation({ ouvert, analyses, onFermer, onAffecte }: {
 }) {
   const [technicienId, setTechnicienId] = useState<number | null>(null);
   const [datePrevue, setDatePrevue] = useState("");
+  const [motif, setMotif] = useState("");
   const techniciens = useQuery({ queryKey: ["responsable-techniciens"], queryFn: listerTechniciens, enabled: ouvert });
 
   useEffect(() => {
     if (ouvert) {
       setTechnicienId(null);
       setDatePrevue("");
+      setMotif("");
     }
   }, [ouvert]);
 
-  const domainesRequis = [...new Set(analyses.map((a) => a.domaineCode).filter((code): code is string => Boolean(code)))];
+  // Réaffectation : une des analyses est déjà confiée à un autre technicien que celui choisi.
+  const reaffectees = technicienId == null ? [] : analyses.filter((a) => a.technicienId != null && a.technicienId !== technicienId);
+  const motifManquant = reaffectees.length > 0 && !motif.trim();
   const affectation = useMutation({
-    mutationFn: () => affecterAnalyses(analyses.map((a) => a.id), technicienId as number, datePrevue || undefined),
+    mutationFn: () => affecterAnalyses(analyses.map((a) => a.id), technicienId as number, datePrevue || undefined,
+      reaffectees.length > 0 ? motif.trim() : undefined),
     onSuccess: async () => {
       toast.success(`${analyses.length} analyse(s) affectée(s).`);
       await onAffecte();
@@ -233,7 +314,7 @@ function DialogueAffectation({ ouvert, analyses, onFermer, onAffecte }: {
     <Dialogue
       ouvert={ouvert}
       titre={`Affecter ${analyses.length} analyse(s)`}
-      description="Les techniciens les moins chargés sont proposés en premier. Ceux qui ne couvrent pas le domaine des analyses ne peuvent pas être choisis."
+      description="Les techniciens les moins chargés sont proposés en premier. Seuls ceux qui couvrent le domaine des analyses peuvent être choisis."
       onFermer={onFermer}
     >
       <div className="flex flex-col gap-4 text-sm">
@@ -244,7 +325,8 @@ function DialogueAffectation({ ouvert, analyses, onFermer, onAffecte }: {
         <fieldset className="flex max-h-72 flex-col gap-2 overflow-y-auto">
           <legend className="sr-only">Technicien</legend>
           {techniciens.data?.map((technicien) => {
-            const couvre = technicien.domaines.length === 0 || domainesRequis.every((d) => technicien.domaines.includes(d));
+            const sansDomaine = technicien.domaines.length === 0;
+            const couvre = !sansDomaine && analyses.every((a) => a.domaineCode != null && technicien.domaines.includes(a.domaineCode));
             return (
               <label
                 key={technicien.id}
@@ -263,8 +345,8 @@ function DialogueAffectation({ ouvert, analyses, onFermer, onAffecte }: {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-ink-900">{technicien.nomComplet}</p>
                   <p className="text-xs text-muted-foreground">
-                    {technicien.domaines.join(", ") || "Tous domaines"}
-                    {!couvre ? " · domaine non couvert" : ""}
+                    {sansDomaine ? "Aucun domaine attribué" : technicien.domaines.join(", ")}
+                    {!couvre && !sansDomaine ? " · domaine non couvert" : ""}
                   </p>
                 </div>
                 <div className="flex gap-1">
@@ -277,11 +359,21 @@ function DialogueAffectation({ ouvert, analyses, onFermer, onAffecte }: {
         </fieldset>
         <div className="flex max-w-xs flex-col gap-1.5">
           <Label htmlFor="date-prevue">Début prévu (facultatif)</Label>
-          <Input id="date-prevue" type="date" min={new Date().toISOString().slice(0, 10)} value={datePrevue} onChange={(event) => setDatePrevue(event.target.value)} />
+          <Input id="date-prevue" type="date" min={new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Casablanca" })} value={datePrevue} onChange={(event) => setDatePrevue(event.target.value)} />
         </div>
+        {reaffectees.length > 0 && (
+          <div className="flex flex-col gap-1.5 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+            <Label htmlFor="motif-reaffectation">Motif de la réaffectation (obligatoire)</Label>
+            <p className="text-xs text-amber-900">
+              {reaffectees.length} analyse(s) déjà confiée(s) à {[...new Set(reaffectees.map((a) => a.technicienNom ?? "un autre technicien"))].join(", ")}.
+              Le motif est inscrit au journal d'audit.
+            </p>
+            <Textarea id="motif-reaffectation" rows={2} maxLength={500} value={motif} onChange={(event) => setMotif(event.target.value)} />
+          </div>
+        )}
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onFermer}>Annuler</Button>
-          <Button loading={affectation.isPending} disabled={technicienId == null} onClick={() => affectation.mutate()}>
+          <Button loading={affectation.isPending} disabled={technicienId == null || motifManquant} onClick={() => affectation.mutate()}>
             Affecter
           </Button>
         </div>

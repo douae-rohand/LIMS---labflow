@@ -9,30 +9,30 @@ export interface PeriodeFinance {
   debut: string;
   libelle: string;
   demandesFacturees: number;
-  /** Total TTC des factures (base de calcul). */
+  /** Montant des factures (base de calcul). */
   facture: number;
-  /** TVA retenue sur les factures. */
-  tva: number;
-  /** TVA comprise dans les paiements reçus. */
-  tvaEncaissee: number;
+  /** Commission de la plateforme sur les factures. */
+  commission: number;
+  /** Commission sur les paiements reçus. */
+  commissionEncaissee: number;
 }
 
-/** TVA retenue par la plateforme sur les factures de demandes d'un laboratoire, sur une période. */
+/** Commission de la plateforme sur les factures de demandes d'un laboratoire, sur une période. */
 export interface FinancesLaboratoire {
   laboratoireId: number;
   laboratoire: string;
   du: string;
   au: string;
   regroupement: Regroupement;
-  /** Taux de TVA actuellement appliqué au laboratoire (%). */
-  tauxTva: number;
+  /** Taux de commission actuel de la plateforme (%). */
+  tauxCommission: number;
   demandesFacturees: number;
   facture: number;
-  tva: number;
-  tvaEncaissee: number;
+  commission: number;
+  commissionEncaissee: number;
   /** État à ce jour, indépendant de la période. */
-  tvaAPercevoir: number;
-  tvaEnRetard: number;
+  commissionAPercevoir: number;
+  commissionEnRetard: number;
   details: PeriodeFinance[];
 }
 

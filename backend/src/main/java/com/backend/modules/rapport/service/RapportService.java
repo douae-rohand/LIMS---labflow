@@ -101,12 +101,14 @@ public class RapportService {
     }
 
     /**
-     * Demandes terminées et leur dernier rapport (à générer, à signer ou libéré),
-     * la dernière activité en haut. Requêtes groupées : aucune requête par demande.
+     * Demandes prêtes au rapport (tous les résultats validés, en attente de signature) et demandes
+     * terminées (rapport signé), avec leur dernier rapport, la dernière activité en haut.
      */
     @Transactional(readOnly = true)
     public List<RapportTravailDto> travail() {
-        List<Demande> demandes = demandeRepository.findAvecClientParStatuts(StatutDemande.TERMINEE.aliasesPersistés());
+        List<Demande> demandes = demandeRepository.findAvecClientParStatuts(statutsRapport()).stream()
+                .filter(this::preteAuRapport)
+                .toList();
         if (demandes.isEmpty()) {
             return List.of();
         }
@@ -150,7 +152,10 @@ public class RapportService {
     /** Rapports à signer, pour le tableau de suivi (sans charger les détails). */
     @Transactional(readOnly = true)
     public long compterAPreparer() {
-        List<Long> ids = demandeRepository.findIdsParStatuts(StatutDemande.TERMINEE.aliasesPersistés());
+        List<Long> ids = demandeRepository.findAvecClientParStatuts(statutsRapport()).stream()
+                .filter(this::preteAuRapport)
+                .map(Demande::getId)
+                .toList();
         if (ids.isEmpty()) {
             return 0;
         }
@@ -161,6 +166,31 @@ public class RapportService {
                     || StatutRapport.GENERE.name().equals(rapport.getStatut())
                     || StatutRapport.BROUILLON.name().equals(rapport.getStatut());
         }).count();
+    }
+
+    /** Statuts où un rapport peut exister : en validation (à signer) ou terminée (signé). */
+    private static List<String> statutsRapport() {
+        List<String> statuts = new java.util.ArrayList<>(StatutDemande.TERMINEE.aliasesPersistés());
+        statuts.addAll(StatutDemande.EN_VALIDATION.aliasesPersistés());
+        return statuts;
+    }
+
+    /**
+     * Une demande terminée a son rapport ; une demande en validation n'est prête au rapport que si
+     * toutes ses analyses réalisables sont validées par le responsable.
+     */
+    private boolean preteAuRapport(Demande demande) {
+        if (StatutDemande.depuis(demande.getStatut()) == StatutDemande.TERMINEE) {
+            return true;
+        }
+        List<LigneEssai> lignes = ligneEssaiRepository.findByDemande_Id(demande.getId()).stream()
+                .filter(l -> l.getStatut() != StatutEssai.NON_REALISABLE)
+                .toList();
+        if (lignes.isEmpty()) {
+            return false;
+        }
+        Map<Long, String> etats = assembleur.etats(lignes.stream().map(LigneEssai::getId).toList());
+        return lignes.stream().allMatch(l -> LigneTravailAssembleur.VALIDEE.equals(etats.get(l.getId())));
     }
 
     private Map<Long, Rapport> derniersRapports(Collection<Long> demandeIds) {
@@ -244,6 +274,13 @@ public class RapportService {
         rapport.setStatut(StatutRapport.ENVOYE.name());
         rapport.setDiffuse(true);
         rapportRepository.save(rapport);
+        // Le rapport validé et diffusé clôt la demande (CDC, table 2.3 : TERMINÉE).
+        String statutAvant = demande.getStatut();
+        demande.setStatut(StatutDemande.TERMINEE.name());
+        demandeRepository.save(demande);
+        journalAuditService.enregistrer("CHANGEMENT_STATUT_DEMANDE", "Demande", demande.getId(), acteur.getEmail(),
+                "{\"statut\":\"" + statutAvant + "\"}", "{\"statut\":\"TERMINEE\"}",
+                "Rapport " + rapport.getNumero() + " signé", acteur.getLaboratoireId());
         journalAuditService.enregistrer("SIGNER_RAPPORT", "Rapport", rapport.getId(), acteur.getEmail(),
                 null, "{\"numero\":\"" + rapport.getNumero() + "\",\"statut\":\"ENVOYE\"}",
                 null, acteur.getLaboratoireId());
@@ -271,10 +308,40 @@ public class RapportService {
                 acteur.getNomComplet());
     }
 
+    /**
+     * Renvoie au client l'e-mail « rapport disponible » d'un rapport déjà signé (CDC M07 :
+     * renvoi sécurisé). Le PDF n'est jamais joint : le lien mène au portail, derrière la connexion.
+     */
+    @Transactional(readOnly = true)
+    public void renvoyerAuClient(Long rapportId) {
+        UtilisateurPrincipal acteur = SecurityUtils.principalCourant();
+        Rapport rapport = charger(rapportId);
+        if (!StatutRapport.ENVOYE.name().equals(rapport.getStatut())) {
+            throw new BusinessRuleException("RAPPORT_NON_SIGNE", "Seul un rapport signé peut être renvoyé au client.");
+        }
+        Demande demande = rapport.getDemande();
+        Long clientId = demande.getClient() == null ? null : demande.getClient().getUtilisateurId();
+        Utilisateur client = clientId == null ? null
+                : tenantExecutor.inCentral(() -> utilisateurRepository.findById(clientId).orElse(null));
+        if (client == null || !StringUtils.hasText(client.getEmail())) {
+            throw new BusinessRuleException("CLIENT_SANS_EMAIL", "Ce client n'a pas d'adresse e-mail : renvoi impossible.");
+        }
+        String lien = frontendUrl.replaceAll("/$", "") + "/app/rapports";
+        var resultat = emailService.envoyerHtml(client.getEmail(),
+                "[LabFlow] Votre rapport " + rapport.getNumero() + " est disponible",
+                com.backend.integration.sendgrid.EmailTemplates.rapportDisponible(nomComplet(client), rapport.getNumero(), lien));
+        journalAuditService.enregistrer("RENVOYER_RAPPORT", "Rapport", rapport.getId(), acteur.getEmail(), null,
+                "{\"numero\":\"" + rapport.getNumero() + "\",\"accepte\":" + resultat.accepte() + "}",
+                null, acteur.getLaboratoireId());
+        if (!resultat.accepte()) {
+            throw new BusinessRuleException("ENVOI_ECHOUE", "L'e-mail n'a pas pu être envoyé. Réessayez plus tard.");
+        }
+    }
+
     private Demande demandeTerminee(Long demandeId) {
         Demande demande = demandeRepository.findById(demandeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", demandeId));
-        if (StatutDemande.depuis(demande.getStatut()) != StatutDemande.TERMINEE) {
+        if (!preteAuRapport(demande)) {
             throw new BusinessRuleException("DEMANDE_NON_TERMINEE",
                     "Le rapport ne peut être signé qu'une fois tous les résultats validés.");
         }
@@ -400,9 +467,17 @@ public class RapportService {
                     ligne.getConformite() == null ? "—" : (ligne.getConformite() ? "Conforme" : "Non conforme"),
                     decision == null ? null : noms.get(decision.getValidateurId()));
         }).toList();
+        List<RapportPdfService.AnalyseNonRealisee> nonRealisees = ligneEssaiRepository.findByDemande_Id(demande.getId())
+                .stream()
+                .filter(l -> l.getStatut() == StatutEssai.NON_REALISABLE)
+                .sorted(Comparator.comparing(LigneEssai::getId))
+                .map(l -> new RapportPdfService.AnalyseNonRealisee(
+                        l.getEssai() == null ? l.getCode() : l.getEssai().getDesignation(),
+                        StringUtils.hasText(l.getMotif()) ? l.getMotif() : "Non précisé"))
+                .toList();
         return new DonneesRapport(labo, numero, version,
                 demande.getNumero(), demande.getTitre(), nomClient(demande, noms),
-                dateEmission, lignesRapport, signataire, dateSignature, projet, imageSignature);
+                dateEmission, lignesRapport, signataire, dateSignature, projet, imageSignature, nonRealisees);
     }
 
     private static String reference(BigDecimal min, BigDecimal max) {

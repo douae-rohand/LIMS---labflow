@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { libelleTva, useTvaLaboratoire } from "@/api/tvaLaboratoire";
 import { ClipboardList, FlaskConical } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button, Skeleton } from "@/components/lab";
@@ -22,7 +21,6 @@ function Valeur({ label, value }: { label: string; value: string | number | null
 }
 
 export function EssaiPanneau({ essaiId, open, onOpenChange, onEdit }: EssaiPanneauProps) {
-  const tva = useTvaLaboratoire();
   const query = useQuery({
     queryKey: ["catalogue-admin-essai", essaiId],
     queryFn: () => {
@@ -50,7 +48,7 @@ export function EssaiPanneau({ essaiId, open, onOpenChange, onEdit }: EssaiPanne
                 <dl className="grid gap-4 sm:grid-cols-2">
                   <Valeur label="Code" value={essai.code} />
                   <Valeur label="Domaine" value={essai.domaineLibelle} />
-                  <Valeur label="Prix TTC" value={tva.data ? `${essai.tarif} MAD · ${libelleTva(essai.tarif, tva.data.tauxEffectif)}` : `${essai.tarif} MAD`} />
+                  <Valeur label="Tarif" value={`${essai.tarif} MAD`} />
                   <Valeur label="Durée estimée" value={essai.dureeEstimee == null ? null : `${essai.dureeEstimee} jours`} />
                   <Valeur label="Méthode" value={essai.methode} />
                   <Valeur label="Unité" value={essai.unite} />

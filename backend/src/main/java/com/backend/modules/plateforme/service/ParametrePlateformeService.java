@@ -5,7 +5,7 @@ import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.CreerTypeLaboratoire;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.EnregistrerTypeDocument;
-import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Facturation;
+import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Commission;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Identite;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.ModifierTypeLaboratoire;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.ParametresPublics;
@@ -61,11 +61,11 @@ public class ParametrePlateformeService {
     static final String CLE_TELEPHONE = "plateforme.telephone";
     static final String CLE_ADRESSE = "plateforme.adresse";
     static final String CLE_EXPEDITEUR = "email.expediteur_nom";
-    static final String CLE_TVA = "facturation.tva.taux";
+    static final String CLE_COMMISSION = "plateforme.commission.taux";
 
     public static final String NOM_PLATEFORME_DEFAUT = "LabFlow";
     public static final String EXPEDITEUR_DEFAUT = "LabFlow LIMS";
-    public static final BigDecimal TVA_DEFAUT = new BigDecimal("20.00");
+    public static final BigDecimal COMMISSION_DEFAUT = new BigDecimal("5.00");
 
     public static final int LONGUEUR_MDP_MIN = 10;
     private static final int DUREE_SESSION_DEFAUT = 7;
@@ -81,8 +81,8 @@ public class ParametrePlateformeService {
     private volatile Securite securiteEnCache;
     private volatile Identite identiteEnCache;
     private volatile Instant chargementIdentite = Instant.EPOCH;
-    private volatile BigDecimal tvaEnCache;
-    private volatile Instant chargementTva = Instant.EPOCH;
+    private volatile BigDecimal commissionEnCache;
+    private volatile Instant chargementCommission = Instant.EPOCH;
     private volatile Instant chargementCache = Instant.EPOCH;
 
     // -------------------------------------------------------------------------
@@ -208,44 +208,53 @@ public class ParametrePlateformeService {
     }
 
     // -------------------------------------------------------------------------
-    // TVA (les prix du catalogue sont saisis TTC)
+    // Commission de la plateforme
     // -------------------------------------------------------------------------
 
-    /** Taux de TVA de la plateforme, en pourcentage. */
-    public BigDecimal tauxTvaPlateforme() {
-        BigDecimal courant = tvaEnCache;
-        if (courant != null && Instant.now().isBefore(chargementTva.plus(DUREE_CACHE))) {
+    /** Taux de commission de la plateforme (%), prélevé sur le montant de chaque facture. */
+    public BigDecimal tauxCommission() {
+        BigDecimal courant = commissionEnCache;
+        if (courant != null && Instant.now().isBefore(chargementCommission.plus(DUREE_CACHE))) {
             return courant;
         }
-        BigDecimal charge = TVA_DEFAUT;
+        BigDecimal charge = COMMISSION_DEFAUT;
         // Lu dans le schéma central, quel que soit le tenant de la requête en cours.
         String brut = tenantExecutor.inCentral(() ->
-                parametreRepository.findById(CLE_TVA).map(ParametrePlateforme::getValeur).orElse(null));
+                parametreRepository.findById(CLE_COMMISSION).map(ParametrePlateforme::getValeur).orElse(null));
         if (StringUtils.hasText(brut)) {
             try {
                 charge = new BigDecimal(brut.trim()).setScale(2, RoundingMode.HALF_UP);
             } catch (NumberFormatException ex) {
-                log.warn("Taux de TVA illisible ({}), 20 % appliqué", brut);
+                log.warn("Taux de commission illisible ({}), {} % appliqué", brut, COMMISSION_DEFAUT);
             }
         }
-        tvaEnCache = charge;
-        chargementTva = Instant.now();
+        commissionEnCache = charge;
+        chargementCommission = Instant.now();
         return charge;
     }
 
-    public Facturation facturation() {
-        return new Facturation(tauxTvaPlateforme());
+    public Commission commission() {
+        return new Commission(tauxCommission());
     }
 
     @Transactional
-    public Facturation modifierFacturation(Facturation demande, String acteurEmail) {
-        BigDecimal avant = tauxTvaPlateforme();
-        BigDecimal taux = demande.tauxTva().setScale(2, RoundingMode.HALF_UP);
-        ecrire(CLE_TVA, taux.toPlainString(), acteurEmail, Instant.now());
-        journalAuditService.enregistrer("MODIFIER_TVA_PLATEFORME", "ParametresPlateforme", null, acteurEmail,
-                "{\"tauxTva\":" + avant.toPlainString() + "}", "{\"tauxTva\":" + taux.toPlainString() + "}", null);
-        tvaEnCache = null;
-        return new Facturation(taux);
+    public Commission modifierCommission(Commission demande, String acteurEmail) {
+        BigDecimal avant = tauxCommission();
+        BigDecimal taux = demande.tauxCommission().setScale(2, RoundingMode.HALF_UP);
+        ecrire(CLE_COMMISSION, taux.toPlainString(), acteurEmail, Instant.now());
+        journalAuditService.enregistrer("MODIFIER_COMMISSION_PLATEFORME", "ParametresPlateforme", null, acteurEmail,
+                "{\"tauxCommission\":" + avant.toPlainString() + "}",
+                "{\"tauxCommission\":" + taux.toPlainString() + "}", null);
+        commissionEnCache = null;
+        return new Commission(taux);
+    }
+
+    /** Commission sur un montant, arrondie au centime. */
+    public static BigDecimal commissionSur(BigDecimal montant, BigDecimal taux) {
+        if (montant == null || taux == null) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+        return montant.multiply(taux).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
     }
 
     /** Toutes les valeurs, lues dans le schéma central quel que soit le tenant de la requête. */

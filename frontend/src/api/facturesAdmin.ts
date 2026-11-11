@@ -8,11 +8,17 @@ export interface FactureAdminDto {
   type: string;
   dateFacture: string;
   dateEcheance: string | null;
-  /** Total TTC (les prix du catalogue sont saisis TTC). */
+  /** Montant de la facture. */
   montantHt: number;
-  tauxTva: number;
-  montantTva: number;
-  montantHorsTaxes: number;
+  /** Taux de commission de la plateforme (%), figé à l'émission. */
+  tauxCommission: number;
+  montantCommission: number;
+  /** Ce qui revient au laboratoire : montant − commission. */
+  montantNetLaboratoire: number;
+  /** Facture annulée : avoir. */
+  numeroAvoir: string | null;
+  dateAnnulation: string | null;
+  motifAnnulation: string | null;
   statut: string;
   demandeId: number | null;
   demandeReference: string | null;
@@ -75,7 +81,7 @@ export interface SerieMensuelleDto {
 }
 
 export interface ListerFacturesParams {
-  statut?: "EMISE" | "PAYEE" | "EN_RETARD" | "IMPAYEE" | undefined;
+  statut?: "EMISE" | "PAYEE" | "EN_RETARD" | "IMPAYEE" | "ANNULEE" | undefined;
   debut?: string | undefined;
   fin?: string | undefined;
   clientId?: number | undefined;
@@ -148,4 +154,14 @@ export async function getStats(debut?: string, fin?: string): Promise<FactureSta
   if (fin !== undefined) params["fin"] = fin;
   const res = await apiClient.get<ApiResponse<FactureStatsDto>>("/factures-admin/stats", { params });
   return res.data;
+}
+
+/** Facture PDF (mentions, montant en lettres, paiements). */
+export async function telechargerFacturePdf(id: number, numero: string): Promise<void> {
+  await apiClient.download(`/factures-admin/${id}/pdf`, `Facture-${numero}.pdf`);
+}
+
+/** Avoir PDF d'une facture annulée. */
+export async function telechargerAvoirPdf(id: number, numeroAvoir: string): Promise<void> {
+  await apiClient.download(`/factures-admin/${id}/avoir`, `Avoir-${numeroAvoir}.pdf`);
 }

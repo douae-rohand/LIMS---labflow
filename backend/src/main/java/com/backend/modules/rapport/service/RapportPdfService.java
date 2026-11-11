@@ -44,7 +44,12 @@ public class RapportPdfService {
     public record DonneesRapport(Laboratoire laboratoire, String numero, int version, String demandeReference,
                                  String demandeTitre, String client, Instant dateEmission,
                                  List<LigneRapport> lignes, String signataire, Instant dateSignature,
-                                 boolean projet, byte[] imageSignature) {
+                                 boolean projet, byte[] imageSignature,
+                                 List<AnalyseNonRealisee> nonRealisees) {
+    }
+
+    /** Analyse demandée mais non réalisée : le rapport est alors partiel (CDC M07). */
+    public record AnalyseNonRealisee(String essai, String motif) {
     }
 
     public byte[] generer(DonneesRapport donnees) {
@@ -72,6 +77,11 @@ public class RapportPdfService {
             document.add(entete);
             if (donnees.projet()) {
                 document.add(new Paragraph("PROJET — document non signé, sans valeur officielle", projet));
+            }
+            boolean partiel = donnees.nonRealisees() != null && !donnees.nonRealisees().isEmpty();
+            if (partiel) {
+                document.add(new Paragraph("RAPPORT PARTIEL — " + donnees.nonRealisees().size()
+                        + " analyse(s) demandée(s) n'ont pas pu être réalisées (voir la liste ci-dessous).", projet));
             }
             document.add(Chunk.NEWLINE);
 
@@ -104,6 +114,27 @@ public class RapportPdfService {
             }
             document.add(tableau);
             document.add(Chunk.NEWLINE);
+
+            if (partiel) {
+                document.add(new Paragraph("Analyses non réalisées", sousTitre));
+                PdfPTable absentes = new PdfPTable(new float[]{2f, 4f});
+                absentes.setWidthPercentage(100);
+                for (String colonne : List.of("Analyse", "Motif")) {
+                    PdfPCell cellule = new PdfPCell(new Phrase(colonne, entetes));
+                    cellule.setBackgroundColor(MARQUE);
+                    cellule.setPadding(5);
+                    absentes.addCell(cellule);
+                }
+                for (AnalyseNonRealisee absente : donnees.nonRealisees()) {
+                    for (String valeur : List.of(texte(absente.essai()), texte(absente.motif()))) {
+                        PdfPCell cellule = new PdfPCell(new Phrase(valeur, cellules));
+                        cellule.setPadding(4);
+                        absentes.addCell(cellule);
+                    }
+                }
+                document.add(absentes);
+                document.add(Chunk.NEWLINE);
+            }
 
             if (donnees.projet()) {
                 document.add(new Paragraph("Signature : en attente de signature par le responsable du laboratoire.", discret));

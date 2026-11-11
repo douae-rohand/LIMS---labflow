@@ -288,3 +288,53 @@ export async function lireSuiviDemande(id: number): Promise<SuiviDemande> {
   const res = await apiClient.get<ApiResponse<SuiviDemande>>(`/accueil/demandes/${id}`);
   return res.data;
 }
+
+// ------------------------------------------------------------- demande sur site
+/** Essai du catalogue proposé à l'accueil. */
+export interface EssaiCatalogueAccueil {
+  id: number;
+  code: string;
+  designation: string;
+  domaineCode?: string | null;
+  domaineLibelle?: string | null;
+  prix: number;
+  dureeEstimeeMinutes?: number | null;
+}
+
+/** CLIENT : compte client, décision du responsable. PATIENT : patient sur site, acceptée d'office. */
+export type TypeDemandeAccueil = "CLIENT" | "PATIENT";
+
+export interface NouvelleDemandeAccueil {
+  type: TypeDemandeAccueil;
+  clientUtilisateurId?: number | undefined;
+  patientId?: number | undefined;
+  titre: string;
+  objectif?: string | undefined;
+  essaiIds: number[];
+}
+
+export interface DemandeCreee {
+  id: number;
+  numero: string;
+  nombreAnalyses: number;
+  totalTtc: number;
+  statut: string;
+}
+
+export async function listerCatalogueAccueil(): Promise<EssaiCatalogueAccueil[]> {
+  const res = await apiClient.get<ApiResponse<EssaiCatalogueAccueil[]>>("/accueil/catalogue");
+  return res.data;
+}
+
+export async function creerDemandeAccueil(demande: NouvelleDemandeAccueil): Promise<DemandeCreee> {
+  const res = await apiClient.post<ApiResponse<DemandeCreee>>("/accueil/demandes", demande);
+  return res.data;
+}
+
+/** Facture ou avoir PDF remis au guichet. */
+export async function ouvrirFactureCaisse(factureId: number, avoir = false): Promise<void> {
+  const blob = await apiClient.getBlob(`/accueil/caisse/factures/${factureId}/${avoir ? "avoir" : "pdf"}`);
+  const url = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+  window.open(url, "_blank", "noopener,noreferrer");
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}

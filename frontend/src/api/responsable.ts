@@ -33,6 +33,12 @@ export interface AnalyseTravail {
   joursRetard: number;
   valeur?: string | null;
   conformite?: boolean | null;
+  /** Valeur hors des seuils critiques de l'essai. */
+  critique?: boolean;
+  /** État de l'échantillon rattaché à l'analyse. */
+  etatEchantillon?: "ATTENDU" | "CONFORME" | "NON_CONFORME";
+  /** Paiement de la facture de la demande. */
+  etatPaiement?: "AUCUNE_FACTURE" | "NON_PAYEE" | "PARTIELLE" | "PAYEE";
   dateSaisie?: string | null;
   observations?: string | null;
   etatValidation: EtatValidation;
@@ -59,6 +65,8 @@ export interface SuiviResponsable {
     analysesEnRetard: number;
     resultatsAValider: number;
     rapportsAPreparer: number;
+    /** Demandes ayant au moins une analyse sans technicien. */
+    demandesAAffecter: number;
   };
   techniciens: TechnicienCharge[];
   retards: AnalyseTravail[];
@@ -114,11 +122,13 @@ export async function affecterAnalyses(
   ligneIds: number[],
   technicienId: number,
   datePrevue?: string,
+  motif?: string,
 ): Promise<AnalyseTravail[]> {
   const res = await apiClient.post<ApiResponse<AnalyseTravail[]>>("/planifications/affectations", {
     ligneIds,
     technicienId,
     ...(datePrevue ? { datePrevue } : {}),
+    ...(motif ? { motif } : {}),
   });
   return res.data;
 }
@@ -172,6 +182,11 @@ export async function ouvrirApercuRapport(demandeId: number): Promise<void> {
 /** Ouvre le PDF signé dans un nouvel onglet. */
 export async function ouvrirPdfRapport(rapportId: number): Promise<void> {
   ouvrirBlob(await apiClient.getBlob(`/rapports/${rapportId}/pdf`));
+}
+
+/** Renvoie au client l'e-mail « rapport disponible » (lien vers le portail, sans pièce jointe). */
+export async function renvoyerRapport(rapportId: number): Promise<void> {
+  await apiClient.post<ApiResponse<null>>(`/rapports/${rapportId}/renvoyer`);
 }
 
 export async function telechargerRapport(rapportId: number, numero: string): Promise<void> {

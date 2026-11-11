@@ -1,8 +1,9 @@
 -- ============================================================
--- V39 : Identité de la plateforme et TVA
---   * clés d'identité de la plateforme (valeurs par défaut)
---   * taux de TVA de la plateforme (défaut 20 %)
---   * taux de TVA propre à un laboratoire (NULL = taux de la plateforme)
+-- V39 : Identité de la plateforme et commission
+--   * clés d'identité de la plateforme (valeurs par défaut) ;
+--   * commission de la plateforme : pourcentage prélevé sur le montant
+--     de chaque facture de demande (5 % par défaut, paramétrable par le
+--     Super Administrateur).
 -- ============================================================
 
 INSERT IGNORE INTO parametre_plateforme (cle, valeur) VALUES
@@ -11,6 +12,4 @@ INSERT IGNORE INTO parametre_plateforme (cle, valeur) VALUES
     ('plateforme.telephone', ''),
     ('plateforme.adresse', ''),
     ('email.expediteur_nom', 'LabFlow LIMS'),
-    ('facturation.tva.taux', '20');
-
-ALTER TABLE laboratoire ADD COLUMN taux_tva DECIMAL(5,2) NULL;
+    ('plateforme.commission.taux', '5');

@@ -21,33 +21,45 @@ import org.springframework.web.bind.annotation.*;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    /** Les notifications vivent dans le schéma central, quel que soit le laboratoire de l'utilisateur. */
+    private final com.backend.common.tenant.TenantExecutor tenantExecutor;
 
     @GetMapping("/mes")
     @Operation(summary = "Mes notifications (paginées)")
     public ResponseEntity<ApiResponse<java.util.List<NotificationDto>>> mesNotifications(
             @RequestParam(defaultValue = "20") int limite) {
         return ResponseEntity.ok(ApiResponse.success(
-                notificationService.mesNotifications(SecurityUtils.principalCourant().getId(), limite)));
+                tenantExecutor.inCentral(() ->
+                        notificationService.mesNotifications(SecurityUtils.principalCourant().getId(), limite))));
     }
 
     @GetMapping("/non-lues/count")
     @Operation(summary = "Nombre de notifications non lues")
     public ResponseEntity<ApiResponse<Long>> compterNonLues() {
         return ResponseEntity.ok(ApiResponse.success(
-                notificationService.compterNonLues(SecurityUtils.principalCourant().getId())));
+                tenantExecutor.inCentral(() ->
+                        notificationService.compterNonLues(SecurityUtils.principalCourant().getId()))));
     }
 
     @PatchMapping("/{id}/lire")
     @Operation(summary = "Marquer une notification comme lue")
     public ResponseEntity<ApiResponse<Void>> marquerCommeLue(@PathVariable Long id) {
-        notificationService.marquerCommeLue(id, SecurityUtils.principalCourant().getId());
+        Long moi = SecurityUtils.principalCourant().getId();
+        tenantExecutor.inCentral(() -> {
+            notificationService.marquerCommeLue(id, moi);
+            return null;
+        });
         return ResponseEntity.ok(ApiResponse.success("Notification lue", null));
     }
 
     @PatchMapping("/lire-tout")
     @Operation(summary = "Marquer toutes les notifications comme lues")
     public ResponseEntity<ApiResponse<Void>> marquerToutesCommeLues() {
-        notificationService.marquerToutesCommeLues(SecurityUtils.principalCourant().getId());
+        Long moi = SecurityUtils.principalCourant().getId();
+        tenantExecutor.inCentral(() -> {
+            notificationService.marquerToutesCommeLues(moi);
+            return null;
+        });
         return ResponseEntity.ok(ApiResponse.success("Tout marqué comme lu", null));
     }
 

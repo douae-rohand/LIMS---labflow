@@ -68,7 +68,7 @@ public interface ReceptionRepository extends Repository<Echantillon, Long> {
     @Query("""
             SELECT COUNT(f), COALESCE(SUM(f.montantHt - COALESCE(
                 (SELECT SUM(p.montant) FROM Paiement p WHERE p.facture = f), 0)), 0)
-            FROM Facture f WHERE f.statut <> 'PAYEE'
+            FROM Facture f WHERE f.statut NOT IN ('PAYEE', 'ANNULEE')
             """)
     List<Object[]> facturesAEncaisser();
 }

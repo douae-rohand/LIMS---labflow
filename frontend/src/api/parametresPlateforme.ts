@@ -23,9 +23,9 @@ export interface IdentitePlateforme {
   expediteurNom: string;
 }
 
-export interface FacturationPlateforme {
-  /** Taux de TVA en pourcentage ; les prix du catalogue sont saisis TTC. */
-  tauxTva: number;
+export interface CommissionPlateforme {
+  /** Commission de la plateforme, en % du montant de chaque facture de demande. */
+  tauxCommission: number;
 }
 
 export interface ParametresPublics {
@@ -123,12 +123,12 @@ export async function enregistrerIdentite(valeurs: IdentitePlateforme): Promise<
   return res.data;
 }
 
-export async function lireFacturation(): Promise<FacturationPlateforme> {
-  const res = await apiClient.get<ApiResponse<FacturationPlateforme>>(`${BASE}/facturation`);
+export async function lireCommission(): Promise<CommissionPlateforme> {
+  const res = await apiClient.get<ApiResponse<CommissionPlateforme>>(`${BASE}/commission`);
   return res.data;
 }
 
-export async function enregistrerFacturation(valeurs: FacturationPlateforme): Promise<FacturationPlateforme> {
-  const res = await apiClient.put<ApiResponse<FacturationPlateforme>>(`${BASE}/facturation`, valeurs);
+export async function enregistrerCommission(valeurs: CommissionPlateforme): Promise<CommissionPlateforme> {
+  const res = await apiClient.put<ApiResponse<CommissionPlateforme>>(`${BASE}/commission`, valeurs);
   return res.data;
 }
