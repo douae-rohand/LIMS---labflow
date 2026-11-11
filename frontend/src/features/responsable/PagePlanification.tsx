@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, UserCheck } from "lucide-react";
 import { toast } from "sonner";
-import { Badge, Button, Input, Label, Select, Textarea } from "@/components/lab";
+import { Badge, Button, Input, Label, Textarea } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import {
   affecterAnalyses,
@@ -15,12 +15,14 @@ import {
 import { Dialogue } from "@/features/super-admin/Fenetres";
 import {
   Actualisation,
+  BarreFiltres,
   BadgeStatutAnalyse,
   contient,
   EnTeteResponsable,
   EtatChargement,
   formaterDate,
   messageErreur,
+  FiltreSelect,
   Recherche,
 } from "./commun";
 
@@ -93,7 +95,7 @@ export function PagePlanification({ filtre, onFiltre }: {
       <EnTeteResponsable
         icone={CalendarClock}
         titre="Planification"
-        description="Affectez les analyses des demandes acceptées aux techniciens. Les demandes les plus récentes sont en haut."
+        description="Affectez les analyses des demandes acceptées aux techniciens."
         action={
           <Actualisation
             misAJour={analyses.dataUpdatedAt}
@@ -103,8 +105,8 @@ export function PagePlanification({ filtre, onFiltre }: {
         }
       />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex w-full gap-1 rounded-2xl border border-brand-900/10 bg-card p-1 sm:w-auto" role="tablist" aria-label="Filtrer les analyses">
+      <BarreFiltres>
+        <div className="flex shrink-0 gap-1 rounded-xl bg-surface-alt p-1" role="tablist" aria-label="Filtrer les analyses">
           {ONGLETS.map((onglet) => (
             <button
               key={onglet.id}
@@ -112,38 +114,31 @@ export function PagePlanification({ filtre, onFiltre }: {
               role="tab"
               aria-selected={filtre === onglet.id}
               onClick={() => onFiltre(onglet.id)}
-              className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold sm:flex-none ${
-                filtre === onglet.id ? "bg-brand-900 text-primary-foreground" : "text-brand-900 hover:bg-surface-alt"
+              className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-brand-900 lg:flex-none ${
+                filtre === onglet.id ? "bg-brand-900 text-primary-foreground shadow-sm" : "text-brand-900 hover:bg-card"
               }`}
             >
               {onglet.libelle}
             </button>
           ))}
         </div>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-          {domaines.length > 1 && (
-            <Select aria-label="Filtrer par domaine" value={domaine} onChange={(e) => setDomaine(e.target.value)} className="min-w-40">
-              <option value="">Tous les domaines</option>
-              {domaines.map(([code, libelle]) => <option key={code} value={code}>{libelle}</option>)}
-            </Select>
-          )}
-          {filtre !== "A_AFFECTER" && techniciensListes.length > 0 && (
-            <Select aria-label="Filtrer par technicien" value={technicien} onChange={(e) => setTechnicien(e.target.value)} className="min-w-44">
-              <option value="">Tous les techniciens</option>
-              {techniciensListes.map(([id, nom]) => <option key={id} value={String(id)}>{nom}</option>)}
-            </Select>
-          )}
-          <Recherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, une analyse…" />
-          <Button
-            icon={<UserCheck className="size-4" aria-hidden="true" />}
-            iconPosition="left"
-            disabled={selection.length === 0}
-            onClick={() => setDialogue(true)}
-          >
-            {filtre === "A_AFFECTER" ? "Affecter" : "Réaffecter"} {selection.length > 0 ? `(${selection.length})` : ""}
-          </Button>
-        </div>
-      </div>
+        <Recherche className="w-full lg:flex-1" valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, une analyse, un technicien…" />
+        <FiltreSelect className="w-full lg:w-44" libelle="Filtrer par domaine" tous="Tous les domaines" valeur={domaine} onChange={setDomaine}
+          options={domaines} />
+        {filtre !== "A_AFFECTER" && (
+          <FiltreSelect className="w-full lg:w-48" libelle="Filtrer par technicien" tous="Tous les techniciens" valeur={technicien}
+            onChange={setTechnicien} options={techniciensListes.map(([id, nom]) => [String(id), nom])} />
+        )}
+        <Button
+          className="h-10 shrink-0"
+          icon={<UserCheck className="size-4" aria-hidden="true" />}
+          iconPosition="left"
+          disabled={selection.length === 0}
+          onClick={() => setDialogue(true)}
+        >
+          {filtre === "A_AFFECTER" ? "Affecter" : "Réaffecter"}{selection.length > 0 ? ` (${selection.length})` : ""}
+        </Button>
+      </BarreFiltres>
 
       <EtatChargement
         chargement={analyses.isLoading}

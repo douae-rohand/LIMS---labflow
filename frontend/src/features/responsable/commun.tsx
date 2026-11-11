@@ -1,4 +1,4 @@
-import { RefreshCw, type LucideIcon } from "lucide-react";
+import { ChevronDown, RefreshCw, Search, X, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge, Button } from "@/components/lab";
 import { ApiError } from "@/api/axios";
@@ -153,21 +153,73 @@ export function Actualisation({ misAJour, enCours, onActualiser }: {
   );
 }
 
-/** Champ de recherche locale (référence, analyse, technicien, client). */
-export function Recherche({ valeur, onChange, placeholder }: {
+/** Champ de recherche locale (référence, analyse, technicien, client), avec loupe et bouton d'effacement. */
+export function Recherche({ valeur, onChange, placeholder, className }: {
   valeur: string;
   onChange: (valeur: string) => void;
   placeholder: string;
+  className?: string;
 }) {
   return (
-    <input
-      type="search"
-      value={valeur}
-      onChange={(event) => onChange(event.target.value)}
-      placeholder={placeholder}
-      aria-label={placeholder}
-      className="h-10 w-full rounded-xl border border-brand-900/15 bg-card px-3 text-sm text-ink-900 outline-none focus:border-brand-900 focus:ring-2 focus:ring-brand-900/10 sm:w-72"
-    />
+    <div className={`relative min-w-0 ${className ?? "w-full sm:w-72"}`}>
+      <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+      <input
+        type="search"
+        value={valeur}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        aria-label={placeholder}
+        className="h-10 w-full rounded-xl border border-brand-900/15 bg-card pr-9 pl-9 text-sm text-ink-900 outline-none placeholder:text-muted-foreground focus:border-brand-900 focus:ring-2 focus:ring-brand-900/10 [&::-webkit-search-cancel-button]:hidden"
+      />
+      {valeur && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-label="Effacer la recherche"
+          className="absolute top-1/2 right-2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-surface-alt hover:text-ink-900"
+        >
+          <X className="size-3.5" aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Liste déroulante compacte, alignée sur le champ de recherche (même hauteur, même bordure). */
+export function FiltreSelect({ libelle, valeur, onChange, options, tous, className }: {
+  libelle: string;
+  valeur: string;
+  onChange: (valeur: string) => void;
+  options: [string, string][];
+  /** Libellé de l'option « sans filtre ». */
+  tous: string;
+  className?: string;
+}) {
+  const actif = valeur !== "";
+  return (
+    <div className={`relative shrink-0 ${className ?? "w-full sm:w-48"}`}>
+      <select
+        value={valeur}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label={libelle}
+        className={`h-10 w-full appearance-none truncate rounded-xl border bg-card pr-9 pl-3 text-sm outline-none focus:border-brand-900 focus:ring-2 focus:ring-brand-900/10 ${
+          actif ? "border-brand-900 font-semibold text-brand-900" : "border-brand-900/15 text-ink-900"
+        }`}
+      >
+        <option value="">{tous}</option>
+        {options.map(([cle, texte]) => <option key={cle} value={cle}>{texte}</option>)}
+      </select>
+      <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+    </div>
+  );
+}
+
+/** Barre de recherche et de filtres sur une seule ligne (repliée sur petit écran). */
+export function BarreFiltres({ children }: { children: ReactNode }) {
+  return (
+    <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-brand-900/10 bg-card p-2 lg:flex-row lg:items-center">
+      {children}
+    </div>
   );
 }
 

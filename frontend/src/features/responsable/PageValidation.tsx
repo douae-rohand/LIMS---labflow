@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
-import { Badge, Button, Label, Select, Textarea } from "@/components/lab";
+import { Badge, Button, Label, Textarea } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import {
   deciderResultat,
@@ -14,9 +14,11 @@ import {
 import { Panneau } from "@/features/super-admin/Fenetres";
 import {
   Actualisation,
+  BarreFiltres,
   contient,
   EnTeteResponsable,
   EtatChargement,
+  FiltreSelect,
   formaterDate,
   messageErreur,
   Recherche,
@@ -34,6 +36,8 @@ export function PageValidation() {
   const [choisie, setChoisie] = useState<AnalyseTravail | null>(null);
   const [recherche, setRecherche] = useState("");
   const [domaine, setDomaine] = useState("");
+  const [technicien, setTechnicien] = useState("");
+  const [niveau, setNiveau] = useState("");
   const resultats = useQuery({
     queryKey: ["responsable-a-valider"],
     queryFn: listerResultatsAValider,
@@ -45,17 +49,25 @@ export function PageValidation() {
     }
     return [...parCode.entries()].sort((x, y) => x[1].localeCompare(y[1], "fr"));
   }, [resultats.data]);
-  // Priorité : critiques, puis hors norme, puis les autres ; à priorité égale, l'ordre du serveur (plus récents en haut).
+  const techniciens = useMemo(() => {
+    const parId = new Map<string, string>();
+    for (const a of resultats.data ?? []) {
+      if (a.technicienId != null) parId.set(String(a.technicienId), a.technicienNom ?? `#${a.technicienId}`);
+    }
+    return [...parId.entries()].sort((x, y) => x[1].localeCompare(y[1], "fr"));
+  }, [resultats.data]);
+  // Priorité : critiques, puis hors norme, puis conformes ; à priorité égale, le plus récemment soumis en haut.
   const priorite = (a: AnalyseTravail) => (a.critique ? 0 : a.conformite === false ? 1 : 2);
+  const date = (a: AnalyseTravail) => (a.derniereDecisionDate ? Date.parse(a.derniereDecisionDate) : 0);
   const visibles = (resultats.data ?? [])
     .filter((a) => !domaine || a.domaineCode === domaine)
+    .filter((a) => !technicien || String(a.technicienId) === technicien)
+    .filter((a) => !niveau || String(priorite(a)) === niveau)
     .filter((a) => !recherche.trim()
       || contient(a.demandeReference, recherche)
       || contient(a.essaiLibelle, recherche)
       || contient(a.technicienNom, recherche))
-    .map((a, index) => ({ a, index }))
-    .sort((x, y) => priorite(x.a) - priorite(y.a) || x.index - y.index)
-    .map(({ a }) => a);
+    .sort((x, y) => priorite(x) - priorite(y) || date(y) - date(x));
   const nbCritiques = (resultats.data ?? []).filter((a) => a.critique).length;
   const nbHorsNorme = (resultats.data ?? []).filter((a) => !a.critique && a.conformite === false).length;
 
@@ -79,7 +91,7 @@ export function PageValidation() {
       <EnTeteResponsable
         icone={ClipboardCheck}
         titre="Validation des résultats"
-        description="Résultats validés techniquement par le technicien, en attente de votre décision. Les résultats critiques puis hors norme sont en haut."
+        description="Résultats validés techniquement par le technicien, en attente de votre décision."
         action={
           <Actualisation
             misAJour={resultats.dataUpdatedAt}
@@ -90,34 +102,34 @@ export function PageValidation() {
       />
 
       {(resultats.data?.length ?? 0) > 0 && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            {nbCritiques > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-3 py-1 font-semibold text-rose-800">
-                <AlertTriangle className="size-4" aria-hidden="true" /> {nbCritiques} critique(s)
-              </span>
-            )}
-            {nbHorsNorme > 0 && (
-              <span className="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-900">{nbHorsNorme} hors norme</span>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {domaines.length > 1 && (
-              <Select aria-label="Filtrer par domaine" value={domaine} onChange={(e) => setDomaine(e.target.value)} className="min-w-44">
-                <option value="">Tous les domaines</option>
-                {domaines.map(([code, libelle]) => <option key={code} value={code}>{libelle}</option>)}
-              </Select>
-            )}
-            <Recherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, une analyse…" />
-          </div>
-        </div>
+        <BarreFiltres>
+          <Recherche className="w-full lg:flex-1" valeur={recherche} onChange={setRecherche}
+            placeholder="Rechercher une demande, une analyse, un technicien…" />
+          <FiltreSelect className="w-full lg:w-48" libelle="Filtrer par priorité" tous="Toutes les priorités" valeur={niveau}
+            onChange={setNiveau}
+            options={[["0", `Critiques (${nbCritiques})`], ["1", `Hors norme (${nbHorsNorme})`],
+              ["2", `Conformes (${(resultats.data?.length ?? 0) - nbCritiques - nbHorsNorme})`]]} />
+          <FiltreSelect className="w-full lg:w-44" libelle="Filtrer par domaine" tous="Tous les domaines" valeur={domaine}
+            onChange={setDomaine} options={domaines} />
+          <FiltreSelect className="w-full lg:w-48" libelle="Filtrer par technicien" tous="Tous les techniciens" valeur={technicien}
+            onChange={setTechnicien} options={techniciens} />
+          {nbCritiques > 0 && (
+            <button
+              type="button"
+              onClick={() => setNiveau(niveau === "0" ? "" : "0")}
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-rose-100 px-3 text-sm font-semibold text-rose-800 hover:bg-rose-200"
+            >
+              <AlertTriangle className="size-4" aria-hidden="true" /> {nbCritiques} critique(s)
+            </button>
+          )}
+        </BarreFiltres>
       )}
 
       <EtatChargement
         chargement={resultats.isLoading}
         erreur={resultats.isError}
         vide={!resultats.isLoading && visibles.length === 0}
-        messageVide={recherche.trim() || domaine ? "Aucun résultat ne correspond aux filtres." : "Aucun résultat en attente de validation."}
+        messageVide={recherche.trim() || domaine || technicien || niveau ? "Aucun résultat ne correspond aux filtres." : "Aucun résultat en attente de validation."}
         onReessayer={() => void resultats.refetch()}
       />
 

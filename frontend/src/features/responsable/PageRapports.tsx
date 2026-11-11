@@ -18,6 +18,7 @@ import {
 import { Dialogue } from "@/features/super-admin/Fenetres";
 import {
   Actualisation,
+  BarreFiltres,
   contient,
   EnTeteResponsable,
   EtatChargement,
@@ -27,6 +28,11 @@ import {
 } from "./commun";
 
 type Filtre = "tous" | "a-signer" | "signe";
+
+function dateRapport(rapport: RapportTravail): number {
+  const valeur = rapport.dateSignature ?? rapport.dateEmission;
+  return valeur ? Date.parse(valeur) : 0;
+}
 
 function estSigne(rapport: RapportTravail): boolean {
   return rapport.statut === "ENVOYE" || rapport.statut === "SIGNE" || rapport.statut === "ARCHIVE";
@@ -66,7 +72,13 @@ export function PageRapports() {
       || contient(r.demandeReference, recherche)
       || contient(r.numero, recherche)
       || contient(r.client, recherche)
-      || contient(r.demandeTitre, recherche));
+      || contient(r.demandeTitre, recherche))
+    // À signer d'abord (action attendue), puis du plus récent au plus ancien (signature, sinon émission).
+    .map((r, index) => ({ r, index }))
+    .sort((x, y) => Number(estSigne(x.r)) - Number(estSigne(y.r))
+      || dateRapport(y.r) - dateRapport(x.r)
+      || x.index - y.index)
+    .map(({ r }) => r);
 
   const signature = useMutation({
     mutationFn: (demandeId: number) => signerRapportDemande(demandeId, motDePasse),
@@ -91,7 +103,7 @@ export function PageRapports() {
       <EnTeteResponsable
         icone={FileSignature}
         titre="Rapports"
-        description="Demandes dont tous les résultats sont validés. Signez le rapport : il devient aussitôt visible pour le client."
+        description="Demandes dont tous les résultats sont validés. Une fois signé, le rapport est aussitôt visible pour le client."
         action={
           <Actualisation
             misAJour={rapports.dataUpdatedAt}
@@ -113,8 +125,8 @@ export function PageRapports() {
         </div>
       )}
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex w-full flex-wrap gap-1 rounded-2xl border border-brand-900/10 bg-card p-1 sm:w-auto" role="tablist" aria-label="Filtrer les rapports">
+      <BarreFiltres>
+        <div className="flex shrink-0 flex-wrap gap-1 rounded-xl bg-surface-alt p-1" role="tablist" aria-label="Filtrer les rapports">
           {FILTRES.map((item) => (
             <button
               key={item.id}
@@ -122,19 +134,19 @@ export function PageRapports() {
               role="tab"
               aria-selected={filtre === item.id}
               onClick={() => setFiltre(item.id)}
-              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold sm:flex-none ${
-                filtre === item.id ? "bg-brand-900 text-primary-foreground" : "text-brand-900 hover:bg-surface-alt"
+              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold whitespace-nowrap lg:flex-none ${
+                filtre === item.id ? "bg-brand-900 text-primary-foreground shadow-sm" : "text-brand-900 hover:bg-card"
               }`}
             >
               {item.libelle}
-              <span className={`rounded-full px-2 py-0.5 text-[11px] ${filtre === item.id ? "bg-white/15" : "bg-surface-alt"}`}>
+              <span className={`rounded-full px-2 text-[11px] leading-4 ${filtre === item.id ? "bg-white/15" : "bg-card"}`}>
                 {compteurs[item.id]}
               </span>
             </button>
           ))}
         </div>
-        <Recherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, un client…" />
-      </div>
+        <Recherche className="w-full lg:flex-1" valeur={recherche} onChange={setRecherche} placeholder="Rechercher une demande, un client…" />
+      </BarreFiltres>
 
       <EtatChargement
         chargement={rapports.isLoading}
