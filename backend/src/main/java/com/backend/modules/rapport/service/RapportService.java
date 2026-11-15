@@ -244,7 +244,6 @@ public class RapportService {
         } else {
             rapport = rapportRepository.save(Rapport.builder()
                     .numero("RAP-" + demande.getNumero())
-                    .type("ANALYSE")
                     .version((short) 1)
                     .demande(demande)
                     .statut(StatutRapport.GENERE.name())
@@ -273,17 +272,44 @@ public class RapportService {
         rapport.setClePdf(cle);
         rapport.setSignataireId(acteur.getId());
         rapport.setDateSignature(maintenant);
+        rapport.setStatut(StatutRapport.SIGNE.name());
+        rapport.setDiffuse(false);
+        rapportRepository.save(rapport);
+        journalAuditService.enregistrer("SIGNER_RAPPORT", "Rapport", rapport.getId(), acteur.getEmail(),
+                null, "{\"numero\":\"" + rapport.getNumero() + "\",\"statut\":\"SIGNE\"}",
+                null, acteur.getLaboratoireId());
+        Map<Long, String> noms = assembleur.nomsUtilisateurs(List.of(acteur.getId()));
+        return new RapportTravailDto(demande.getId(), demande.getNumero(), demande.getTitre(), nomClient(demande, noms),
+                lignes.size(), rapport.getId(), rapport.getNumero(), StatutRapport.SIGNE, rapport.getDateEmission(), maintenant,
+                acteur.getNomComplet());
+    }
+
+    /**
+     * Envoie un rapport signé au client : le rapport passe à ENVOYE, la demande est clôturée,
+     * le client est notifié par e-mail.
+     */
+    @Transactional
+    public RapportTravailDto envoyerRapport(Long rapportId) {
+        UtilisateurPrincipal acteur = SecurityUtils.principalCourant();
+        Rapport rapport = charger(rapportId);
+        if (!StatutRapport.SIGNE.name().equals(rapport.getStatut())) {
+            throw new BusinessRuleException("RAPPORT_NON_SIGNE", "Seul un rapport signé peut être envoyé au client.");
+        }
+        Demande demande = rapport.getDemande();
+
+        Instant maintenant = Instant.now();
         rapport.setStatut(StatutRapport.ENVOYE.name());
         rapport.setDiffuse(true);
         rapportRepository.save(rapport);
-        // Le rapport validé et diffusé clôt la demande (CDC, table 2.3 : TERMINÉE).
+
+        // Le rapport diffusé clôt la demande (CDC, table 2.3 : TERMINÉE).
         String statutAvant = demande.getStatut();
         demande.setStatut(StatutDemande.TERMINEE.name());
         demandeRepository.save(demande);
         journalAuditService.enregistrer("CHANGEMENT_STATUT_DEMANDE", "Demande", demande.getId(), acteur.getEmail(),
                 "{\"statut\":\"" + statutAvant + "\"}", "{\"statut\":\"TERMINEE\"}",
-                "Rapport " + rapport.getNumero() + " signé", acteur.getLaboratoireId());
-        journalAuditService.enregistrer("SIGNER_RAPPORT", "Rapport", rapport.getId(), acteur.getEmail(),
+                "Rapport " + rapport.getNumero() + " envoyé", acteur.getLaboratoireId());
+        journalAuditService.enregistrer("ENVOYER_RAPPORT", "Rapport", rapport.getId(), acteur.getEmail(),
                 null, "{\"numero\":\"" + rapport.getNumero() + "\",\"statut\":\"ENVOYE\"}",
                 null, acteur.getLaboratoireId());
 
@@ -295,7 +321,7 @@ public class RapportService {
         if (resteDu.signum() > 0) {
             notificationsLaboratoire.notifierApresCommit(com.backend.modules.utilisateur.entity.RoleUtilisateur.ACCUEIL,
                     acteur.getLaboratoireId(), "RAPPORT_SIGNE_FACTURE_IMPAYEE",
-                    "Rapport " + rapport.getNumero() + " signé, facture non réglée",
+                    "Rapport " + rapport.getNumero() + " envoyé, facture non réglée",
                     "La demande " + demande.getNumero() + " est terminée mais sa facture n'est pas entièrement payée.",
                     "/app/caisse");
         }
@@ -319,7 +345,7 @@ public class RapportService {
         Map<Long, String> noms = assembleur.nomsUtilisateurs(
                 clientId == null ? List.of(acteur.getId()) : List.of(acteur.getId(), clientId));
         return new RapportTravailDto(demande.getId(), demande.getNumero(), demande.getTitre(), nomClient(demande, noms),
-                lignes.size(), rapport.getId(), numero, StatutRapport.ENVOYE, rapport.getDateEmission(), maintenant,
+                0, rapport.getId(), numero, StatutRapport.ENVOYE, rapport.getDateEmission(), maintenant,
                 acteur.getNomComplet());
     }
 

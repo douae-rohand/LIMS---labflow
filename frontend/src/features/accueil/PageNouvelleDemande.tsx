@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Building2, Check, ClipboardPlus, Clock, PackageCheck, UserPlus, UserRound } from "lucide-react";
+import { Building2, Check, ClipboardPlus, Clock, PackageCheck, Upload, UserPlus, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   creerDemandeAccueil,
   listerCatalogueAccueil,
   listerClients,
   listerPatients,
+  type PieceJointeUpload,
   type TypeDemandeAccueil,
 } from "@/api/accueil";
 import { Button, Input, Label, Textarea } from "@/components/lab";
@@ -47,6 +48,7 @@ export function PageNouvelleDemande() {
   const [domaine, setDomaine] = useState("");
   const [clientOuvert, setClientOuvert] = useState(false);
   const [patientOuvert, setPatientOuvert] = useState(false);
+  const [piecesJointes, setPiecesJointes] = useState<PieceJointeUpload[]>([]);
 
   const essais = catalogue.data ?? [];
   const domaines = useMemo(() => {
@@ -62,11 +64,39 @@ export function PageNouvelleDemande() {
   const basculer = (id: number) =>
     setChoisis((courant) => (courant.includes(id) ? courant.filter((x) => x !== id) : [...courant, id]));
 
+  const handleAjouterPieceJointe = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const fichier = event.target.files?.[0];
+    if (!fichier) return;
+    if (piecesJointes.length >= 2) {
+      toast.error("Maximum 2 pièces jointes autorisées.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const contenu = e.target?.result as ArrayBuffer;
+      setPiecesJointes((courant) => [
+        ...courant,
+        {
+          nomFichier: fichier.name,
+          typeMime: fichier.type,
+          contenu,
+        },
+      ]);
+    };
+    reader.readAsArrayBuffer(fichier);
+    event.target.value = "";
+  };
+
+  const handleSupprimerPieceJointe = (index: number) => {
+    setPiecesJointes((courant) => courant.filter((_, i) => i !== index));
+  };
+
   const patient = type === "PATIENT";
   const manquant = patient && !patientId ? "Choisissez le patient."
     : !patient && !clientId ? "Choisissez le client."
       : !titre.trim() ? "Indiquez l'intitulé de la demande."
-        : choisis.length === 0 ? "Choisissez au moins une analyse." : null;
+        : choisis.length === 0 ? "Choisissez au moins une analyse."
+        : piecesJointes.length > 2 ? "Maximum 2 pièces jointes autorisées." : null;
 
   const creation = useMutation({
     mutationFn: () => creerDemandeAccueil({
@@ -76,6 +106,7 @@ export function PageNouvelleDemande() {
       titre: titre.trim(),
       objectif: objectif.trim() || undefined,
       essaiIds: choisis,
+      piecesJointes: piecesJointes.length > 0 ? piecesJointes : undefined,
     }),
     onSuccess: async (demande) => {
       await queryClient.invalidateQueries({ queryKey: ["accueil-demandes"] });
@@ -161,6 +192,43 @@ export function PageNouvelleDemande() {
                 <Label htmlFor="nd-objectif">Objectif (facultatif)</Label>
                 <Textarea id="nd-objectif" rows={2} maxLength={2000} value={objectif} onChange={(e) => setObjectif(e.target.value)} />
               </div>
+            </div>
+          </section>
+
+          {/* Pièces jointes */}
+          <section className="rounded-2xl border border-brand-900/10 bg-card p-5">
+            <h2 className="mb-4 text-sm font-extrabold text-ink-900">Pièces jointes (max 2)</h2>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <Label htmlFor="nd-pieces-jointes" className="shrink-0">
+                  <Upload className="size-4" aria-hidden="true" />
+                </Label>
+                <Input
+                  id="nd-pieces-jointes"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  disabled={piecesJointes.length >= 2}
+                  onChange={handleAjouterPieceJointe}
+                  className="flex-1"
+                />
+                <span className="text-xs text-muted-foreground">{piecesJointes.length}/2</span>
+              </div>
+              {piecesJointes.length > 0 && (
+                <ul className="flex flex-col gap-2">
+                  {piecesJointes.map((piece, index) => (
+                    <li key={index} className="flex items-center justify-between rounded-lg border border-brand-900/10 bg-surface-alt px-3 py-2">
+                      <span className="text-sm text-ink-900">{piece.nomFichier}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleSupprimerPieceJointe(index)}
+                        className="shrink-0 text-muted-foreground hover:text-ink-900"
+                      >
+                        <X className="size-4" aria-hidden="true" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </section>
 

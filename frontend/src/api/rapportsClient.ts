@@ -4,7 +4,7 @@ import { messageErreurClient, type ListeAgregee } from "./clientAgrege";
 
 /**
  * rapportsClient.ts — Mes rapports (endpoints /api/client/rapports).
- * Lecture seule ; le téléchargement PDF n'existe pas encore (telechargeable=false).
+ * Lecture seule ; téléchargement PDF disponible pour les rapports signés.
  */
 
 export interface RapportResumeClient {
@@ -14,10 +14,9 @@ export interface RapportResumeClient {
   demandeId: number | null;
   demandeReference: string | null;
   demandeTitre: string | null;
-  type: string | null;
   version: number | null;
   dateEmission: string | null;
-  /** Toujours false : aucun stockage PDF côté serveur. */
+  /** true si le rapport est signé et disponible au téléchargement. */
   telechargeable: boolean;
 }
 
@@ -61,4 +60,15 @@ export async function detailRapportClient(
     `/client/rapports/${laboratoireId}/${rapportId}`,
   );
   return res.data;
+}
+
+export async function telechargerRapportClient(
+  laboratoireId: number,
+  rapportId: number,
+  numero: string,
+): Promise<void> {
+  await apiClient.download(
+    `/client/rapports/${laboratoireId}/${rapportId}/pdf`,
+    `Rapport-${numero}.pdf`,
+  );
 }

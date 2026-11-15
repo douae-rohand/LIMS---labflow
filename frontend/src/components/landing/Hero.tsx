@@ -82,7 +82,6 @@ export function Hero() {
               nombreLaboratoires={data?.statistiques?.nombreLaboratoiresActifs}
               nombreRoles={data?.statistiques?.nombreRoles}
               laboratoires={data?.laboratoires}
-              statutsDemande={data?.statutsDemande}
             />
           </motion.div>
         </motion.div>

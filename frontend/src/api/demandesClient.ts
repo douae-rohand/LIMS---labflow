@@ -42,10 +42,21 @@ export interface DemandeDetailClient {
   dateSoumission: string | null;
   motif: string | null;
   laboratoireNom: string;
+  laboratoireId: number;
   lignes: LigneEssaiClient[];
   total: number | string | null;
   echantillons: EchantillonClient[];
   historique: HistoriqueEntree[];
+  documents: DocumentDemande[];
+}
+
+export interface DocumentDemande {
+  id: number;
+  code: string;
+  nomFichier: string | null;
+  typeMime: string | null;
+  taille: number | null;
+  dateAjout: string | null;
 }
 
 /** Ligne de la liste « Mes demandes » (tous laboratoires). */
@@ -102,17 +113,38 @@ export function messageErreurAnnulation(error: unknown): string {
 
 export async function creerDemandeDepuisPanier(
   laboratoireId: number,
-  payload: { titre: string; objectif?: string | undefined },
+  payload: { titre: string; objectif?: string | undefined; piecesJointes?: PieceJointeUpload[] | undefined },
 ): Promise<DemandeDetailClient> {
-  const body: { titre: string; objectif?: string } = { titre: payload.titre };
+  const body: { titre: string; objectif?: string; piecesJointes?: PieceJointeUpload[] } = { titre: payload.titre };
   if (payload.objectif !== undefined && payload.objectif.trim().length > 0) {
     body.objectif = payload.objectif.trim();
+  }
+  if (payload.piecesJointes && payload.piecesJointes.length > 0) {
+    body.piecesJointes = payload.piecesJointes.map((pj) => ({
+      ...pj,
+      contenu: arrayBufferToBase64(pj.contenu),
+    }));
   }
   const res = await apiClient.post<ApiResponse<DemandeDetailClient>>(
     `/client/demandes/${laboratoireId}`,
     body,
   );
   return res.data;
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+export interface PieceJointeUpload {
+  nomFichier: string;
+  typeMime: string;
+  contenu: ArrayBuffer;
 }
 
 export async function listerDemandesClient(): Promise<DemandeResumeClient[]> {

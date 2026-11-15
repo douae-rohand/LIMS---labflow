@@ -25,9 +25,6 @@ public class Rapport {
     @Column(nullable = false, length = 50)
     private String numero;
 
-    @Column(name = "type", length = 50)
-    private String type;
-
     @Builder.Default
     private Short version = 1;
 

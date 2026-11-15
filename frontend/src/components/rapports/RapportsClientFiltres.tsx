@@ -2,29 +2,25 @@ import { Label, Select, Input } from "@/components/lab";
 import { Search } from "lucide-react";
 
 interface RapportsClientFiltresProps {
-  type: string | undefined;
   laboratoireId: number | undefined;
   recherche: string | undefined;
   laboratoires: { id: number; nom: string }[];
-  onTypeChange: (valeur: string | undefined) => void;
   onLaboratoireChange: (valeur: number | undefined) => void;
   onRechercheChange: (valeur: string | undefined) => void;
 }
 
-/** Filtres de la liste « Mes rapports » : type, labo et recherche. */
+/** Filtres de la liste « Mes rapports » : labo et recherche. */
 export function RapportsClientFiltres({
-  type,
   laboratoireId,
   recherche,
   laboratoires,
-  onTypeChange,
   onLaboratoireChange,
   onRechercheChange,
 }: RapportsClientFiltresProps) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
       {/* Recherche */}
-      <div className="flex-1 sm:max-w-xs">
+      <div className="flex-1 sm:max-w-md">
         <Label htmlFor="mes-rapports-recherche" className="mb-2 block">
           Rechercher
         </Label>
@@ -42,7 +38,7 @@ export function RapportsClientFiltres({
       </div>
 
       {/* Laboratoire */}
-      <div className="w-full sm:max-w-xs">
+      <div className="w-full sm:w-64">
         <Label htmlFor="mes-rapports-labo" className="mb-2 block">
           Laboratoire
         </Label>
@@ -60,26 +56,6 @@ export function RapportsClientFiltres({
               {lab.nom}
             </option>
           ))}
-        </Select>
-      </div>
-
-      {/* Type */}
-      <div className="w-full sm:max-w-xs">
-        <Label htmlFor="mes-rapports-type" className="mb-2 block">
-          Type
-        </Label>
-        <Select
-          id="mes-rapports-type"
-          value={type ?? ""}
-          onChange={(e) => {
-            const valeur = e.target.value;
-            onTypeChange(valeur === "" ? undefined : valeur);
-          }}
-        >
-          <option value="">Tous les types</option>
-          <option value="FINAL">Final</option>
-          <option value="PARTIEL">Partiel</option>
-          <option value="INTERMEDIAIRE">Intermédiaire</option>
         </Select>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   AlertCircle,
   ClipboardList,
+  Download,
   FileText,
   FlaskConical,
   RefreshCw,
@@ -38,6 +39,7 @@ import {
   detailDemandeLaboratoire,
   messageErreurDemande,
   refuserDemande,
+  telechargerPieceJointeDemande,
   type DemandeLaboratoire,
   type StatutDemande,
 } from "@/api/demandes";
@@ -349,18 +351,33 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
                   ) : (
                     <ul className="space-y-2">
                       {demande.documents.map((document) => (
-                        <li key={document.id} className="flex items-start gap-3 rounded-2xl border border-brand-900/10 px-4 py-3">
-                          <FileText className="mt-0.5 size-4 shrink-0 text-brand-900" aria-hidden="true" />
-                          <div>
-                            <p className="text-sm font-semibold text-ink-900">
-                              {document.nomFichier || document.code}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {[document.typeMime, formatTaille(document.taille), document.dateAjout ? formatDate(document.dateAjout) : null]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </p>
+                        <li key={document.id} className="flex items-start justify-between gap-3 rounded-2xl border border-brand-900/10 px-4 py-3">
+                          <div className="flex items-start gap-3">
+                            <FileText className="mt-0.5 size-4 shrink-0 text-brand-900" aria-hidden="true" />
+                            <div>
+                              <p className="text-sm font-semibold text-ink-900">
+                                {document.nomFichier || document.code}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {[document.typeMime, formatTaille(document.taille), document.dateAjout ? formatDate(document.dateAjout) : null]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </p>
+                            </div>
                           </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            icon={<Download className="size-4" aria-hidden="true" />}
+                            iconPosition="left"
+                            onClick={() => void telechargerPieceJointeDemande(
+                              demande.id,
+                              document.id,
+                              document.nomFichier || document.code,
+                            )}
+                          >
+                            Télécharger
+                          </Button>
                         </li>
                       ))}
                     </ul>

@@ -29,8 +29,10 @@ public class DemandeDetailClientDto {
     private Instant dateSoumission;
     private String motif;
     private String laboratoireNom;
+    private Long laboratoireId;
     private List<LigneEssaiClientDto> lignes;
     private BigDecimal total;
     private List<EchantillonClientDto> echantillons;
     private List<HistoriqueEntreeDto> historique;
+    private List<DocumentDemandeDto> documents;
 }

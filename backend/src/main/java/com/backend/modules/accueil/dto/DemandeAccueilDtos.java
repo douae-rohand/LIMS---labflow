@@ -23,7 +23,14 @@ public final class DemandeAccueilDtos {
             Long patientId,
             @NotBlank(message = "L'intitulé est obligatoire") @Size(max = 255) String titre,
             @Size(max = 2000) String objectif,
-            @NotEmpty(message = "Choisissez au moins une analyse") List<@NotNull Long> essaiIds) {
+            @NotEmpty(message = "Choisissez au moins une analyse") List<@NotNull Long> essaiIds,
+            List<PieceJointeRequest> piecesJointes) {
+
+        public record PieceJointeRequest(
+                @NotBlank(message = "Le nom du fichier est obligatoire") String nomFichier,
+                @NotBlank(message = "Le type MIME est obligatoire") String typeMime,
+                @NotNull(message = "Le contenu est obligatoire") String contenu) { // Base64 encoded
+        }
     }
 
     public record DemandeCreeeDto(Long id, String numero, int nombreAnalyses, BigDecimal totalTtc, String statut) {

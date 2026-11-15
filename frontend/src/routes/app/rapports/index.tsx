@@ -14,7 +14,6 @@ const PAGE_SIZE = 10;
 const MAX_PAGE = 10_000;
 
 export interface MesRapportsSearch {
-  type?: string | undefined;
   laboratoireId?: number | undefined;
   recherche?: string | undefined;
   page?: number | undefined;
@@ -38,7 +37,6 @@ export const Route = createFileRoute("/app/rapports/")({
     meta: [{ title: "Mes rapports — LabFlow LIMS" }],
   }),
   validateSearch: (search: Record<string, unknown>): MesRapportsSearch => ({
-    type: typeof search["type"] === "string" ? search["type"] : undefined,
     laboratoireId: parseId(search["laboratoireId"]),
     recherche: typeof search["recherche"] === "string" ? search["recherche"] : undefined,
     page: parsePage(search["page"]) ?? 1,
@@ -62,10 +60,6 @@ function MesRapportsPage() {
   const filtrees = useMemo(() => {
     let result = rapports;
 
-    if (search.type !== undefined) {
-      result = result.filter((r) => r.type === search.type);
-    }
-
     if (search.laboratoireId !== undefined) {
       result = result.filter((r) => r.laboratoireId === search.laboratoireId);
     }
@@ -80,7 +74,7 @@ function MesRapportsPage() {
     }
 
     return result;
-  }, [rapports, search.type, search.laboratoireId, search.recherche]);
+  }, [rapports, search.laboratoireId, search.recherche]);
 
   const totalPages = Math.max(1, Math.ceil(filtrees.length / PAGE_SIZE));
   const page = Math.min(pageDemandee, totalPages);
@@ -121,11 +115,9 @@ function MesRapportsPage() {
 
       <div className="mb-4">
         <RapportsClientFiltres
-          type={search.type}
           laboratoireId={search.laboratoireId}
           recherche={search.recherche}
           laboratoires={laboratoires}
-          onTypeChange={(type) => aller({ type, page: 1 })}
           onLaboratoireChange={(laboratoireId) => aller({ laboratoireId, page: 1 })}
           onRechercheChange={(recherche) => aller({ recherche, page: 1 })}
         />

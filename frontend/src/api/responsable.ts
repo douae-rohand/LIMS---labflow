@@ -189,6 +189,12 @@ export async function renvoyerRapport(rapportId: number): Promise<void> {
   await apiClient.post<ApiResponse<null>>(`/rapports/${rapportId}/renvoyer`);
 }
 
+/** Envoie un rapport signé au client (statut SIGNE → ENVOYE). */
+export async function envoyerRapport(rapportId: number): Promise<RapportTravail> {
+  const res = await apiClient.post<ApiResponse<RapportTravail>>(`/rapports/${rapportId}/envoyer`);
+  return res.data;
+}
+
 export async function telechargerRapport(rapportId: number, numero: string): Promise<void> {
   await apiClient.download(`/rapports/${rapportId}/pdf`, `${numero}.pdf`);
 }

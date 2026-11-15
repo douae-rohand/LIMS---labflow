@@ -104,6 +104,7 @@ public class DemandeService {
     private final FacturationAdminService facturationAdminService;
     private final com.backend.integration.sendgrid.EmailService emailService;
     private final com.backend.modules.notification.service.NotificationsLaboratoire notificationsLaboratoire;
+    private final com.backend.integration.minio.StockageFichierService stockageFichierService;
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager entityManager;
 
@@ -126,9 +127,15 @@ public class DemandeService {
      * sont effectués, chacun dans une nouvelle transaction.
      */
     public DemandeDetailClientDto creerDepuisPanier(Long utilisateurId, Long laboratoireId,
-                                                    String titre, String objectif) {
+                                                    String titre, String objectif,
+                                                    java.util.List<com.backend.modules.demande.dto.CreerDemandeRequest.PieceJointeRequest> piecesJointes) {
         Laboratoire labo = exigerLaboratoireActif(laboratoireId);
         String nomSchema = labo.getNomSchema();
+
+        // Validation des pièces jointes : max 2
+        if (piecesJointes != null && piecesJointes.size() > 2) {
+            throw new BusinessRuleException("PIECES_JOINTES_MAX", "Maximum 2 pièces jointes autorisées.");
+        }
 
         List<Long> essaiIds = tenantExecutor.inCentral(() -> {
             Optional<Panier> panierOpt = panierRepository
@@ -150,6 +157,33 @@ public class DemandeService {
         Client fiche = clientService.assurerFicheLocale(utilisateurId, nomSchema);
         Demande demande = enregistrerNouvelleDemande(nomSchema, fiche.getId(), essaiIds, essaisValides,
                 titre, objectif, null);
+
+        // Ajout des pièces jointes
+        if (piecesJointes != null && !piecesJointes.isEmpty()) {
+            final Long demandeIdPourPieces = demande.getId();
+            tenantExecutor.inTenant(nomSchema, () -> {
+                Demande d = charger(demandeIdPourPieces);
+                for (var piece : piecesJointes) {
+                    String uuid = java.util.UUID.randomUUID().toString();
+                    String code = uuid.substring(0, Math.min(50, uuid.length()));
+                    String cleObjet = "pieces-jointes/" + nomSchema + "/" + code;
+                    byte[] contenu = java.util.Base64.getDecoder().decode(piece.getContenu());
+                    stockageFichierService.televerser(cleObjet,
+                            new java.io.ByteArrayInputStream(contenu), contenu.length, piece.getTypeMime());
+                    PieceJointe pj = PieceJointe.builder()
+                            .code(code)
+                            .nomFichier(piece.getNomFichier())
+                            .typeMime(piece.getTypeMime())
+                            .taille((long) contenu.length)
+                            .cleObjet(cleObjet)
+                            .dateAjout(java.time.Instant.now())
+                            .demande(d)
+                            .build();
+                    pieceJointeRepository.save(pj);
+                }
+                return null;
+            });
+        }
 
         viderPanierApresCommit(utilisateurId, laboratoireId, demande.getNumero());
 
@@ -254,6 +288,11 @@ public class DemandeService {
         String nomSchema = labo.getNomSchema();
         boolean patientSurSite = request.type() == com.backend.modules.accueil.dto.DemandeAccueilDtos.TypeDemandeAccueil.PATIENT;
 
+        // Validation des pièces jointes : max 2
+        if (request.piecesJointes() != null && request.piecesJointes().size() > 2) {
+            throw new BusinessRuleException("PIECES_JOINTES_MAX", "Maximum 2 pièces jointes autorisées.");
+        }
+
         Long ficheClientId = null;
         if (patientSurSite) {
             if (request.patientId() == null) {
@@ -283,6 +322,33 @@ public class DemandeService {
         Map<Long, Essai> essaisValides = essaisDisponibles(nomSchema, essaiIds);
         Demande demande = enregistrerNouvelleDemande(nomSchema, ficheClientId, essaiIds, essaisValides,
                 request.titre().trim(), texteOuNull(request.objectif()), request.patientId());
+
+        // Ajout des pièces jointes
+        final Long demandeIdPourPieces = demande.getId();
+        if (request.piecesJointes() != null && !request.piecesJointes().isEmpty()) {
+            tenantExecutor.inTenant(nomSchema, () -> {
+                Demande d = charger(demandeIdPourPieces);
+                for (var piece : request.piecesJointes()) {
+                    String uuid = java.util.UUID.randomUUID().toString();
+                    String code = uuid.substring(0, Math.min(50, uuid.length()));
+                    String cleObjet = "pieces-jointes/" + nomSchema + "/" + code;
+                    byte[] contenu = java.util.Base64.getDecoder().decode(piece.contenu());
+                    stockageFichierService.televerser(cleObjet,
+                            new java.io.ByteArrayInputStream(contenu), contenu.length, piece.typeMime());
+                    PieceJointe pj = PieceJointe.builder()
+                            .code(code)
+                            .nomFichier(piece.nomFichier())
+                            .typeMime(piece.typeMime())
+                            .taille((long) contenu.length)
+                            .cleObjet(cleObjet)
+                            .dateAjout(java.time.Instant.now())
+                            .demande(d)
+                            .build();
+                    pieceJointeRepository.save(pj);
+                }
+                return null;
+            });
+        }
 
         enregistrerAuditDemande("CREATION_DEMANDE", nomSchema, demande.getId(), null, StatutDemande.NOUVEAU.name(),
                 patientSurSite ? "Demande patient enregistrée à l'accueil" : "Demande enregistrée à l'accueil pour le client");
@@ -385,6 +451,11 @@ public class DemandeService {
                         .map(ja -> toHistorique(ja, utilisateurId))
                         .toList());
 
+        List<DocumentDemandeDto> documentsDto = tenantExecutor.inTenant(nomSchema, () ->
+                pieceJointeRepository.findByDemande_Id(demandeId).stream()
+                        .map(this::toDocument)
+                        .toList());
+
         BigDecimal total = lignesDto.stream()
                 .map(LigneEssaiClientDto::getTarif)
                 .filter(Objects::nonNull)
@@ -399,10 +470,12 @@ public class DemandeService {
                 .dateSoumission(demande.getDateSoumission())
                 .motif(demande.getMotif())
                 .laboratoireNom(labo.getRaisonSociale())
+                .laboratoireId(labo.getId())
                 .lignes(lignesDto)
                 .total(total)
                 .echantillons(echantillonsDto)
                 .historique(historiqueDto)
+                .documents(documentsDto)
                 .build();
     }
 
@@ -842,6 +915,63 @@ public class DemandeService {
                 .taille(piece.getTaille())
                 .dateAjout(piece.getDateAjout())
                 .build();
+    }
+
+    /** Enregistrement pour télécharger une pièce jointe d'une demande. */
+    public record FichierPieceJointe(String nomFichier, String typeMime, byte[] contenu) {
+    }
+
+    /**
+     * Télécharge une pièce jointe d'une demande.
+     * Vérifie que la pièce jointe appartient à la demande.
+     */
+    @Transactional(readOnly = true)
+    public FichierPieceJointe telechargerPieceJointe(Long demandeId, Long pieceJointeId) {
+        Demande demande = charger(demandeId);
+        PieceJointe piece = pieceJointeRepository.findById(pieceJointeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pièce jointe", "id", pieceJointeId));
+        if (!piece.getDemande().getId().equals(demande.getId())) {
+            throw new BusinessRuleException("PIECE_JOINTE_DEMANDE_INVALIDE",
+                    "Cette pièce jointe n'appartient pas à cette demande.");
+        }
+        try (java.io.InputStream stream = stockageFichierService.telecharger(piece.getCleObjet())) {
+            byte[] contenu = stream.readAllBytes();
+            return new FichierPieceJointe(piece.getNomFichier(), piece.getTypeMime(), contenu);
+        } catch (java.io.IOException ex) {
+            throw new BusinessRuleException("LECTURE_FICHIER_ECHOUEE",
+                    "Impossible de lire le fichier : " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Télécharge une pièce jointe d'une demande du client.
+     * Vérifie que la demande appartient au client.
+     */
+    @Transactional(readOnly = true)
+    public FichierPieceJointe telechargerPieceJointeClient(Long utilisateurId, Long laboratoireId, Long demandeId, Long pieceJointeId) {
+        Laboratoire labo = exigerLaboratoireExistant(laboratoireId);
+        String nomSchema = labo.getNomSchema();
+
+        Demande demande = tenantExecutor.inTenant(nomSchema, () ->
+                demandeRepository.findByIdAndClient_UtilisateurId(demandeId, utilisateurId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", demandeId)));
+
+        PieceJointe piece = tenantExecutor.inTenant(nomSchema, () ->
+                pieceJointeRepository.findById(pieceJointeId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Pièce jointe", "id", pieceJointeId)));
+
+        if (!piece.getDemande().getId().equals(demande.getId())) {
+            throw new BusinessRuleException("PIECE_JOINTE_DEMANDE_INVALIDE",
+                    "Cette pièce jointe n'appartient pas à cette demande.");
+        }
+
+        try (java.io.InputStream stream = stockageFichierService.telecharger(piece.getCleObjet())) {
+            byte[] contenu = stream.readAllBytes();
+            return new FichierPieceJointe(piece.getNomFichier(), piece.getTypeMime(), contenu);
+        } catch (java.io.IOException ex) {
+            throw new BusinessRuleException("LECTURE_FICHIER_ECHOUEE",
+                    "Impossible de lire le fichier : " + ex.getMessage());
+        }
     }
 
     private static String nomComplet(String prenom, String nom) {

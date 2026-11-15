@@ -385,6 +385,13 @@ export interface NouvelleDemandeAccueil {
   titre: string;
   objectif?: string | undefined;
   essaiIds: number[];
+  piecesJointes?: PieceJointeUpload[] | undefined;
+}
+
+export interface PieceJointeUpload {
+  nomFichier: string;
+  typeMime: string;
+  contenu: ArrayBuffer;
 }
 
 export interface DemandeCreee {
@@ -401,8 +408,24 @@ export async function listerCatalogueAccueil(): Promise<EssaiCatalogueAccueil[]>
 }
 
 export async function creerDemandeAccueil(demande: NouvelleDemandeAccueil): Promise<DemandeCreee> {
-  const res = await apiClient.post<ApiResponse<DemandeCreee>>("/accueil/demandes", demande);
+  const body = { ...demande };
+  if (demande.piecesJointes && demande.piecesJointes.length > 0) {
+    body.piecesJointes = demande.piecesJointes.map((pj) => ({
+      ...pj,
+      contenu: arrayBufferToBase64(pj.contenu),
+    }));
+  }
+  const res = await apiClient.post<ApiResponse<DemandeCreee>>("/accueil/demandes", body);
   return res.data;
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 /** Facture ou avoir PDF remis au guichet. */
