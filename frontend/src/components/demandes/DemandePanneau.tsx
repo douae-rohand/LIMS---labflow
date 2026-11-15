@@ -173,6 +173,9 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
     queryClient.setQueryData(["demande-laboratoire", detail.id], detail);
     void queryClient.invalidateQueries({ queryKey: ["demandes-laboratoire"] });
     void queryClient.invalidateQueries({ queryKey: ["demandes-indicateurs"] });
+    // Tableau de suivi et planification du responsable (sans effet pour l'administrateur).
+    void queryClient.invalidateQueries({ queryKey: ["responsable-suivi"] });
+    void queryClient.invalidateQueries({ queryKey: ["responsable-analyses"] });
   }
 
   const acceptation = useMutation({

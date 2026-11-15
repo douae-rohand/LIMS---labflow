@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { ClipboardCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Badge, Button, Label, Textarea } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
@@ -12,7 +12,18 @@ import {
   type DecisionResultat,
 } from "@/api/responsable";
 import { Panneau } from "@/features/super-admin/Fenetres";
-import { EnTeteResponsable, EtatChargement, formaterDate, messageErreur, reference } from "./commun";
+import {
+  Actualisation,
+  BarreFiltres,
+  contient,
+  EnTeteResponsable,
+  EtatChargement,
+  FiltreSelect,
+  formaterDate,
+  messageErreur,
+  Recherche,
+  reference,
+} from "./commun";
 
 const LIBELLES_DECISION: Record<DecisionResultat, string> = {
   VALIDER: "Valider",
@@ -23,7 +34,51 @@ const LIBELLES_DECISION: Record<DecisionResultat, string> = {
 export function PageValidation() {
   const queryClient = useQueryClient();
   const [choisie, setChoisie] = useState<AnalyseTravail | null>(null);
-  const resultats = useQuery({ queryKey: ["responsable-a-valider"], queryFn: listerResultatsAValider });
+  const [recherche, setRecherche] = useState("");
+  const [domaine, setDomaine] = useState("");
+  const [technicien, setTechnicien] = useState("");
+  const [niveau, setNiveau] = useState("");
+  const resultats = useQuery({
+    queryKey: ["responsable-a-valider"],
+    queryFn: listerResultatsAValider,
+  });
+  const domaines = useMemo(() => {
+    const parCode = new Map<string, string>();
+    for (const a of resultats.data ?? []) {
+      if (a.domaineCode) parCode.set(a.domaineCode, a.domaineLibelle ?? a.domaineCode);
+    }
+    return [...parCode.entries()].sort((x, y) => x[1].localeCompare(y[1], "fr"));
+  }, [resultats.data]);
+  const techniciens = useMemo(() => {
+    const parId = new Map<string, string>();
+    for (const a of resultats.data ?? []) {
+      if (a.technicienId != null) parId.set(String(a.technicienId), a.technicienNom ?? `#${a.technicienId}`);
+    }
+    return [...parId.entries()].sort((x, y) => x[1].localeCompare(y[1], "fr"));
+  }, [resultats.data]);
+  // Priorité : critiques, puis hors norme, puis conformes ; à priorité égale, le plus récemment soumis en haut.
+  const priorite = (a: AnalyseTravail) => (a.critique ? 0 : a.conformite === false ? 1 : 2);
+  const date = (a: AnalyseTravail) => (a.derniereDecisionDate ? Date.parse(a.derniereDecisionDate) : 0);
+  const visibles = (resultats.data ?? [])
+    .filter((a) => !domaine || a.domaineCode === domaine)
+    .filter((a) => !technicien || String(a.technicienId) === technicien)
+    .filter((a) => !niveau || String(priorite(a)) === niveau)
+    .filter((a) => !recherche.trim()
+      || contient(a.demandeReference, recherche)
+      || contient(a.essaiLibelle, recherche)
+      || contient(a.technicienNom, recherche))
+    .sort((x, y) => priorite(x) - priorite(y) || date(y) - date(x));
+  const nbCritiques = (resultats.data ?? []).filter((a) => a.critique).length;
+  const nbHorsNorme = (resultats.data ?? []).filter((a) => !a.critique && a.conformite === false).length;
+
+  const validationRapide = useMutation({
+    mutationFn: (analyse: AnalyseTravail) => deciderResultat(analyse.id, "VALIDER"),
+    onSuccess: async (_donnees, analyse) => {
+      toast.success(`${analyse.essaiLibelle ?? "Résultat"} validé.`);
+      await actualiser();
+    },
+    onError: (erreur) => toast.error(messageErreur(erreur, "La validation a échoué.")),
+  });
 
   const actualiser = async () => {
     await queryClient.invalidateQueries({ queryKey: ["responsable-a-valider"] });
@@ -37,17 +92,48 @@ export function PageValidation() {
         icone={ClipboardCheck}
         titre="Validation des résultats"
         description="Résultats validés techniquement par le technicien, en attente de votre décision."
+        action={
+          <Actualisation
+            misAJour={resultats.dataUpdatedAt}
+            enCours={resultats.isFetching}
+            onActualiser={() => void resultats.refetch()}
+          />
+        }
       />
+
+      {(resultats.data?.length ?? 0) > 0 && (
+        <BarreFiltres>
+          <Recherche className="w-full lg:flex-1" valeur={recherche} onChange={setRecherche}
+            placeholder="Rechercher une demande, une analyse, un technicien…" />
+          <FiltreSelect className="w-full lg:w-48" libelle="Filtrer par priorité" tous="Toutes les priorités" valeur={niveau}
+            onChange={setNiveau}
+            options={[["0", `Critiques (${nbCritiques})`], ["1", `Hors norme (${nbHorsNorme})`],
+              ["2", `Conformes (${(resultats.data?.length ?? 0) - nbCritiques - nbHorsNorme})`]]} />
+          <FiltreSelect className="w-full lg:w-44" libelle="Filtrer par domaine" tous="Tous les domaines" valeur={domaine}
+            onChange={setDomaine} options={domaines} />
+          <FiltreSelect className="w-full lg:w-48" libelle="Filtrer par technicien" tous="Tous les techniciens" valeur={technicien}
+            onChange={setTechnicien} options={techniciens} />
+          {nbCritiques > 0 && (
+            <button
+              type="button"
+              onClick={() => setNiveau(niveau === "0" ? "" : "0")}
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-rose-100 px-3 text-sm font-semibold text-rose-800 hover:bg-rose-200"
+            >
+              <AlertTriangle className="size-4" aria-hidden="true" /> {nbCritiques} critique(s)
+            </button>
+          )}
+        </BarreFiltres>
+      )}
 
       <EtatChargement
         chargement={resultats.isLoading}
         erreur={resultats.isError}
-        vide={!resultats.isLoading && (resultats.data?.length ?? 0) === 0}
-        messageVide="Aucun résultat en attente de validation."
+        vide={!resultats.isLoading && visibles.length === 0}
+        messageVide={recherche.trim() || domaine || technicien || niveau ? "Aucun résultat ne correspond aux filtres." : "Aucun résultat en attente de validation."}
         onReessayer={() => void resultats.refetch()}
       />
 
-      {(resultats.data?.length ?? 0) > 0 && (
+      {visibles.length > 0 && (
         <div className="overflow-x-auto rounded-2xl border border-brand-900/10 bg-card">
           <table className="w-full min-w-[820px] text-left text-sm">
             <thead>
@@ -57,24 +143,43 @@ export function PageValidation() {
                 <th className="px-4 py-3">Résultat</th>
                 <th className="px-4 py-3">Référence</th>
                 <th className="px-4 py-3">Technicien</th>
-                <th className="px-4 py-3 text-right">Action</th>
+                <th className="px-4 py-3">Soumis le</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {resultats.data?.map((analyse) => (
-                <tr key={analyse.id} className="border-t border-brand-900/10">
-                  <td className="px-4 py-3 font-semibold text-ink-900">{analyse.essaiLibelle ?? analyse.code}</td>
+              {visibles.map((analyse) => (
+                <tr key={analyse.id} className={`border-t border-brand-900/10 ${analyse.critique ? "bg-rose-50/70" : ""}`}>
+                  <td className="px-4 py-3 font-semibold text-ink-900">
+                    {analyse.essaiLibelle ?? analyse.code}
+                    {analyse.domaineLibelle && <span className="block text-xs font-normal text-muted-foreground">{analyse.domaineLibelle}</span>}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{analyse.demandeReference}</td>
                   <td className="px-4 py-3">
                     <span className="font-semibold text-ink-900">{analyse.valeur} {analyse.unite ?? ""}</span>{" "}
-                    {analyse.conformite != null && (
+                    {analyse.critique ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-xs font-bold text-white">
+                        <AlertTriangle className="size-3" aria-hidden="true" /> Critique
+                      </span>
+                    ) : analyse.conformite != null && (
                       <Badge size="sm" variant={analyse.conformite ? "mint" : "dark"}>{analyse.conformite ? "Conforme" : "Hors norme"}</Badge>
                     )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{reference(analyse)}</td>
                   <td className="px-4 py-3">{analyse.technicienNom ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{formaterDate(analyse.derniereDecisionDate, true)}</td>
                   <td className="px-4 py-3 text-right">
-                    <Button size="sm" variant="secondary" onClick={() => setChoisie(analyse)}>Examiner</Button>
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => setChoisie(analyse)}>Examiner</Button>
+                      <Button
+                        size="sm"
+                        loading={validationRapide.isPending && validationRapide.variables?.id === analyse.id}
+                        disabled={validationRapide.isPending}
+                        onClick={() => validationRapide.mutate(analyse)}
+                      >
+                        Valider
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

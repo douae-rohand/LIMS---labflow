@@ -5,6 +5,7 @@ import { trouverUtilisateurParId } from "@/api/utilisateurs";
 import { Card, Skeleton } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import { ProfilDeuxFacteurs } from "./ProfilDeuxFacteurs";
+import { ProfilSignature } from "./ProfilSignature";
 
 const LIBELLES_ROLES: Record<string, string> = {
   ADMINISTRATEUR: "Administrateur",
@@ -82,6 +83,7 @@ export function ProfilEmploye() {
             </dl>
           </Card>
           <ProfilDeuxFacteurs active={utilisateur.deuxFacteursActif} />
+          {session?.user.role === "RESPONSABLE" && <ProfilSignature />}
         </div>
       )}
     </Container>

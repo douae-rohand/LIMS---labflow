@@ -36,6 +36,7 @@ public class MotDePasseService {
     private final PasswordEncoder passwordEncoder;
     private final AuthService authService;
     private final com.backend.modules.plateforme.service.ParametrePlateformeService parametrePlateformeService;
+    private final com.backend.common.audit.JournalAuditService journalAuditService;
 
     @Transactional
     public AuthService.LoginResult changerMotDePasse(ChangerMotDePasseRequest request,
@@ -69,6 +70,8 @@ public class MotDePasseService {
         // 4. Révocation de TOUS les refresh tokens existants (invalidation des sessions ouvertes)
         int nbRevoked = refreshTokenRepository.revoquerTousParUtilisateur(utilisateur.getId());
         log.debug("Révocation de {} refresh token(s) pour userId={}", nbRevoked, utilisateur.getId());
+        journalAuditService.enregistrer("CHANGER_MOT_DE_PASSE", "Utilisateur", utilisateur.getId(),
+                utilisateur.getEmail(), null, "{\"sessionsRevoquees\":" + nbRevoked + "}", null);
 
         // 5. Émission d'une nouvelle paire (accès + refresh) — principal rechargé avec mustChangePassword=false
         UtilisateurPrincipal principalMisAJour = UtilisateurPrincipal.builder()

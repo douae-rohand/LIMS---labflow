@@ -3,20 +3,18 @@ package com.backend.modules.planification.service;
 import com.backend.modules.demande.entity.StatutDemande;
 import com.backend.modules.demande.repository.DemandeRepository;
 import com.backend.modules.essai.entity.LigneEssai;
+import com.backend.modules.essai.entity.StatutEssai;
 import com.backend.modules.essai.repository.LigneEssaiRepository;
 import com.backend.modules.planification.dto.LigneTravailDto;
 import com.backend.modules.planification.dto.SuiviResponsableDto;
-import com.backend.modules.rapport.dto.RapportTravailDto;
-import com.backend.modules.rapport.entity.StatutRapport;
 import com.backend.modules.rapport.service.RapportService;
-import com.backend.modules.validation.service.ValidationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 /** Vue d'ensemble du responsable : file de travail, charge de l'équipe, retards. */
 @Service
@@ -27,37 +25,52 @@ public class SuiviResponsableService {
     private final LigneEssaiRepository ligneEssaiRepository;
     private final LigneTravailAssembleur assembleur;
     private final PlanificationService planificationService;
-    private final ValidationService validationService;
     private final RapportService rapportService;
 
     @Transactional(readOnly = true)
     public SuiviResponsableDto suivi() {
-        long aDecider = StatutDemande.NOUVEAU.aliasesPersistés().stream()
-                .mapToLong(demandeRepository::countByStatut)
-                .sum();
-        Instant maintenant = Instant.now();
+        long aDecider = demandeRepository.findIdsParStatuts(StatutDemande.NOUVEAU.aliasesPersistés()).size();
+        // Une seule lecture des analyses, de leurs validations et des noms : tout le reste en découle.
         List<LigneEssai> lignes = ligneEssaiRepository.findLignesDesDemandes(PlanificationService.STATUTS_DEMANDES_ACTIVES);
-        long aAffecter = lignes.stream()
-                .filter(l -> l.getTechnicienId() == null && !LigneTravailAssembleur.terminee(l))
+        List<LigneTravailDto> analyses = assembleur.assembler(lignes);
+        long aAffecter = analyses.stream()
+                .filter(a -> a.getTechnicienId() == null && !termineeOuNonRealisable(a))
                 .count();
-        long enCours = lignes.stream()
-                .filter(l -> l.getTechnicienId() != null && !LigneTravailAssembleur.terminee(l))
+        // Demandes dont au moins une analyse est prête à affecter : échantillon conforme et paiement reçu.
+        Map<Long, String> paiements = planificationService.etatsPaiement(
+                analyses.stream().map(LigneTravailDto::getDemandeId).distinct().toList());
+        long demandesAAffecter = analyses.stream()
+                .filter(a -> a.getTechnicienId() == null && !termineeOuNonRealisable(a))
+                .filter(a -> "CONFORME".equals(a.getEtatEchantillon()))
+                .filter(a -> {
+                    String paiement = paiements.get(a.getDemandeId());
+                    return PlanificationService.PAIEMENT_PARTIELLE.equals(paiement)
+                            || PlanificationService.PAIEMENT_PAYEE.equals(paiement);
+                })
+                .map(LigneTravailDto::getDemandeId)
+                .distinct()
                 .count();
-        List<LigneEssai> enRetard = lignes.stream()
-                .filter(l -> LigneTravailAssembleur.enRetard(l, maintenant))
-                .toList();
-        long aValider = validationService.resultatsAValider().size();
-        long aPreparer = rapportService.travail().stream()
-                .map(RapportTravailDto::statut)
-                .filter(statut -> statut == null || statut == StatutRapport.GENERE || statut == StatutRapport.BROUILLON)
+        long enCours = analyses.stream()
+                .filter(a -> a.getTechnicienId() != null && !termineeOuNonRealisable(a))
                 .count();
-        List<LigneTravailDto> retards = assembleur.assembler(enRetard).stream()
+        List<LigneTravailDto> enRetard = analyses.stream().filter(LigneTravailDto::isEnRetard).toList();
+        long aValider = analyses.stream()
+                .filter(a -> a.getStatut() == StatutEssai.TERMINE
+                        && LigneTravailAssembleur.TECHNIQUE_VALIDEE.equals(a.getEtatValidation()))
+                .count();
+        long aPreparer = rapportService.compterAPreparer();
+        List<LigneTravailDto> retards = enRetard.stream()
                 .sorted(Comparator.comparingLong(LigneTravailDto::getJoursRetard).reversed())
                 .limit(20)
                 .toList();
         return new SuiviResponsableDto(
-                new SuiviResponsableDto.Indicateurs(aDecider, aAffecter, enCours, enRetard.size(), aValider, aPreparer),
-                planificationService.techniciens(),
+                new SuiviResponsableDto.Indicateurs(aDecider, aAffecter, enCours, enRetard.size(), aValider, aPreparer,
+                        demandesAAffecter),
+                planificationService.techniciens(lignes),
                 retards);
+    }
+
+    private static boolean termineeOuNonRealisable(LigneTravailDto analyse) {
+        return analyse.getStatut() == StatutEssai.TERMINE || analyse.getStatut() == StatutEssai.NON_REALISABLE;
     }
 }

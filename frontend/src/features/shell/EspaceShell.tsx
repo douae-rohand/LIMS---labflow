@@ -30,6 +30,7 @@ export type CheminEspace =
   | "/app/demandes"
   | "/app/catalogue"
   | "/app/demandes-clients"
+  | "/app/nouvelle-demande"
   | "/app/employes"
   | "/app/panier"
   | "/app/laboratoires"
@@ -51,7 +52,11 @@ export type CheminEspace =
   | "/app/suivi"
   | "/app/planification"
   | "/app/validation-resultats"
-  | "/app/rapports-laboratoire";
+  | "/app/rapports-laboratoire"
+  | "/app/reception"
+  | "/app/caisse"
+  | "/app/clients-accueil"
+  | "/app/suivi-demandes";
 
 export type EntreeNavigation = {
   to: CheminEspace;
@@ -116,6 +121,7 @@ export function EspaceShell({
   titreSection,
   navigation,
   onLogout,
+  actions,
 }: {
   children: ReactNode;
   utilisateur: SessionUser;
@@ -124,6 +130,8 @@ export function EspaceShell({
   titreSection: string;
   navigation: EntreeNavigation[];
   onLogout: () => void;
+  /** Boutons facultatifs placés avant la déconnexion (ex. cloche de notifications). */
+  actions?: ReactNode;
 }) {
   const initiales = getInitiales(utilisateur.nomComplet) || "LF";
 
@@ -190,6 +198,7 @@ export function EspaceShell({
                 </p>
                 <p className="truncate text-xs text-muted-foreground">{libelleRole}</p>
               </Link>
+              {actions}
               {/* Bouton déconnexion (icône seule) */}
               <Button
                 variant="ghost"
@@ -212,6 +221,7 @@ export function EspaceShell({
             </Link>
 
             <div className="flex items-center gap-2">
+              {actions}
               {/* Avatar utilisateur mobile */}
               <span
                 className="flex size-8 items-center justify-center rounded-full bg-brand-900 text-xs font-bold text-primary-foreground"

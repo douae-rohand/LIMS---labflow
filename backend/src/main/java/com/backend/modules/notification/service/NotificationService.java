@@ -93,6 +93,44 @@ public class NotificationService {
      * Notifie tous les comptes actifs d'un rôle (ex. les Super Administrateurs
      * à chaque nouvelle demande d'intégration). Ne fait jamais échouer l'appelant.
      */
+    /**
+     * Notification in-app à des utilisateurs précis (client d'une demande, techniciens affectés…),
+     * choisis par le code métier et non par l'utilisateur. Ne fait jamais échouer l'appelant.
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void notifierUtilisateurs(java.util.Collection<Long> utilisateurIds, String type, String titre,
+                                     String corps, String lien) {
+        if (utilisateurIds == null || utilisateurIds.isEmpty()) {
+            return;
+        }
+        try {
+            List<Utilisateur> destinataires = utilisateurRepository.findAllById(new java.util.HashSet<>(utilisateurIds));
+            if (destinataires.isEmpty()) {
+                return;
+            }
+            Notification notification = notificationRepository.save(Notification.builder()
+                    .code("NOT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                    .titre(titre)
+                    .corps(corps)
+                    .lien(lien)
+                    .type(type)
+                    .dateCreation(Instant.now())
+                    .build());
+            for (Utilisateur utilisateur : destinataires) {
+                receptionRepository.save(NotificationReception.builder()
+                        .notification(notification)
+                        .utilisateur(utilisateur)
+                        .canal(CanalNotification.IN_APP)
+                        .statutEnvoi(StatutEnvoi.ENVOYE)
+                        .lue(false)
+                        .build());
+                livrerInApp(utilisateur.getId(), notification, NotificationDto.builder().build());
+            }
+        } catch (RuntimeException ex) {
+            log.error("Notification « {} » non enregistrée : {}", titre, ex.getMessage());
+        }
+    }
+
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void notifierRole(RoleUtilisateur role, String type, String titre, String corps, String lien) {
         try {

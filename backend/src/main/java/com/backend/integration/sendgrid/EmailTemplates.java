@@ -157,6 +157,24 @@ public final class EmailTemplates {
         );
     }
 
+    /** Compte client créé à l'accueil du laboratoire : le client choisit lui-même son mot de passe. */
+    public static String invitationClient(String nomComplet, String nomLaboratoire,
+                                          String lienActivation, int ttlHeures) {
+        return page(
+                "Votre espace client",
+                "Activez votre compte pour suivre vos analyses en ligne.",
+                """
+                <p>Bonjour %s,</p>
+                <p>L'accueil de <strong>%s</strong> a créé votre espace client LabFlow. Vous pourrez y suivre
+                vos demandes d'analyse, recevoir vos rapports et consulter vos factures.</p>
+                <p>Cliquez sur le bouton ci-dessous pour choisir votre mot de passe. Ce lien expire dans
+                <strong>%d heures</strong> et ne peut être utilisé qu'une seule fois.</p>
+                """.formatted(e(nomComplet), e(nomLaboratoire), ttlHeures),
+                lienActivation,
+                "Activer mon espace"
+        );
+    }
+
     public static String codeOtp(String code, int ttlMinutes) {
         return page(
                 "Code de vérification",
@@ -183,6 +201,24 @@ public final class EmailTemplates {
                 null,
                 null
         );
+    }
+
+    /** Échantillons reçus par le laboratoire ; les non conformes sont listés avec leur motif. */
+    public static String echantillonsRecus(String nomClient, String reference, int recus,
+                                           java.util.List<String> nonConformes, String lien) {
+        StringBuilder corps = new StringBuilder("""
+                <p>Bonjour %s,</p>
+                <p>Le laboratoire a réceptionné <strong>%d échantillon(s)</strong> pour votre demande <strong>%s</strong>.</p>
+                """.formatted(e(nomClient), recus, e(reference)));
+        if (nonConformes != null && !nonConformes.isEmpty()) {
+            corps.append("<p>Certains échantillons ne sont pas conformes et devront être déposés à nouveau :</p><ul>");
+            nonConformes.forEach(ligne -> corps.append("<li>").append(e(ligne)).append("</li>"));
+            corps.append("</ul>");
+        } else {
+            corps.append("<p>Les analyses vont pouvoir démarrer.</p>");
+        }
+        return page("Échantillons reçus", "Vos échantillons sont arrivés au laboratoire.", corps.toString(),
+                lien, "Suivre ma demande");
     }
 
     public static String rapportDisponible(String nomClient, String reference, String lien) {

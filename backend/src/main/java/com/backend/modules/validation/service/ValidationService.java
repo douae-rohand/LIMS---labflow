@@ -44,6 +44,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class ValidationService {
 
+    private final com.backend.modules.notification.service.NotificationsLaboratoire notificationsLaboratoire;
     private final ValidationRepository validationRepository;
     private final LigneEssaiRepository ligneEssaiRepository;
     private final DemandeRepository demandeRepository;
@@ -69,8 +70,11 @@ public class ValidationService {
         List<LigneEssai> lignes = ligneEssaiRepository.findLignesDesDemandes(statutsDemandesSuivies()).stream()
                 .filter(l -> l.getStatut() == StatutEssai.TERMINE)
                 .toList();
+        // Les plus récemment soumis d'abord.
         return assembleur.assembler(lignes).stream()
                 .filter(l -> LigneTravailAssembleur.TECHNIQUE_VALIDEE.equals(l.getEtatValidation()))
+                .sorted(Comparator.comparing(LigneTravailDto::getDerniereDecisionDate,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
     }
 
@@ -79,7 +83,12 @@ public class ValidationService {
     public ValidationDto validerTechniquement(Long ligneId, String commentaire) {
         UtilisateurPrincipal acteur = SecurityUtils.principalCourant();
         LigneEssai ligne = charger(ligneId);
-        if (acteur.getRole() == RoleUtilisateur.TECHNICIEN && !acteur.getId().equals(ligne.getTechnicienId())) {
+        // Validation à deux niveaux (CDC M06) : le niveau 1 appartient au seul technicien affecté.
+        if (acteur.getRole() != RoleUtilisateur.TECHNICIEN) {
+            throw new BusinessRuleException("VALIDATION_TECHNIQUE_RESERVEE",
+                    "La validation technique est réservée au technicien affecté à l'analyse.");
+        }
+        if (!acteur.getId().equals(ligne.getTechnicienId())) {
             throw new BusinessRuleException("ANALYSE_NON_AFFECTEE", "Cette analyse ne vous est pas affectée.");
         }
         if (ligne.getStatut() != StatutEssai.TERMINE || !StringUtils.hasText(ligne.getValeur())) {
@@ -90,6 +99,11 @@ public class ValidationService {
             throw new BusinessRuleException("DEJA_VALIDEE", "Ce résultat est déjà validé.");
         }
         Validation validation = enregistrer(ligne, 1, StatutValidation.VALIDEE, texte(commentaire), acteur);
+        String analyse = ligne.getEssai() == null ? "Analyse" : ligne.getEssai().getDesignation();
+        notificationsLaboratoire.notifierApresCommit(com.backend.modules.utilisateur.entity.RoleUtilisateur.RESPONSABLE,
+                acteur.getLaboratoireId(), "RESULTAT_A_VALIDER",
+                "Résultat à valider : " + ligne.getDemande().getNumero(),
+                analyse + " — validé techniquement par " + acteur.getNomComplet() + ".", "/app/validation-resultats");
         Demande demande = ligne.getDemande();
         if (StatutDemande.depuis(demande.getStatut()) == StatutDemande.EN_COURS
                 || StatutDemande.depuis(demande.getStatut()) == StatutDemande.ACCEPTEE) {
@@ -104,10 +118,21 @@ public class ValidationService {
     public LigneTravailDto decider(Long ligneId, DecisionValidationRequest request) {
         UtilisateurPrincipal acteur = SecurityUtils.principalCourant();
         LigneEssai ligne = charger(ligneId);
-        String etat = LigneTravailAssembleur.etatValidation(historique(ligneId));
+        List<Validation> historique = historique(ligneId);
+        String etat = LigneTravailAssembleur.etatValidation(historique);
         if (!LigneTravailAssembleur.TECHNIQUE_VALIDEE.equals(etat)) {
             throw new BusinessRuleException("PAS_EN_ATTENTE",
                     "Ce résultat n'attend pas de décision (il doit d'abord être validé par le technicien).");
+        }
+        // Deux personnes distinctes : celui qui a validé techniquement ne peut pas trancher au niveau 2.
+        Long auteurNiveau1 = historique.stream()
+                .filter(v -> Integer.valueOf(1).equals(v.getNiveau()))
+                .reduce((premiere, derniere) -> derniere)
+                .map(Validation::getValidateurId)
+                .orElse(null);
+        if (acteur.getId().equals(auteurNiveau1) || acteur.getId().equals(ligne.getTechnicienId())) {
+            throw new BusinessRuleException("VALIDATEUR_IDENTIQUE",
+                    "Vous avez réalisé ou validé techniquement ce résultat : la validation finale doit être faite par une autre personne.");
         }
         String motif = texte(request.motif());
         if (request.decision() != DecisionValidationRequest.Decision.VALIDER && motif == null) {
@@ -142,24 +167,26 @@ public class ValidationService {
     }
 
     /**
-     * Toutes les analyses réalisables validées par le responsable : la demande est terminée.
+     * Toutes les analyses réalisables validées par le responsable : la demande reste « en validation »
+     * jusqu'à la signature du rapport, qui la fait passer « terminée » (CDC, table 2.3).
      * Sinon, une demande « en validation » sans résultat en attente repasse « en cours ».
      */
     private void mettreAJourDemande(Demande demande) {
         List<LigneEssai> lignes = ligneEssaiRepository.findByDemande_Id(demande.getId()).stream()
                 .filter(l -> l.getStatut() != StatutEssai.NON_REALISABLE)
                 .toList();
-        boolean toutesValidees = !lignes.isEmpty() && lignes.stream()
-                .allMatch(l -> LigneTravailAssembleur.VALIDEE.equals(
-                        LigneTravailAssembleur.etatValidation(historique(l.getId()))));
+        Map<Long, String> etats = assembleur.etats(lignes.stream().map(LigneEssai::getId).toList());
+        boolean toutesValidees = !lignes.isEmpty() && etats.values().stream()
+                .allMatch(LigneTravailAssembleur.VALIDEE::equals);
         StatutDemande actuel = StatutDemande.depuis(demande.getStatut());
         if (toutesValidees) {
-            demande.setStatut(StatutDemande.TERMINEE.name());
-            demandeRepository.save(demande);
+            if (actuel != StatutDemande.EN_VALIDATION && actuel != StatutDemande.TERMINEE) {
+                demande.setStatut(StatutDemande.EN_VALIDATION.name());
+                demandeRepository.save(demande);
+            }
             return;
         }
-        boolean enAttente = lignes.stream().anyMatch(l -> LigneTravailAssembleur.TECHNIQUE_VALIDEE.equals(
-                LigneTravailAssembleur.etatValidation(historique(l.getId()))));
+        boolean enAttente = etats.values().stream().anyMatch(LigneTravailAssembleur.TECHNIQUE_VALIDEE::equals);
         if (actuel == StatutDemande.EN_VALIDATION && !enAttente) {
             demande.setStatut(StatutDemande.EN_COURS.name());
             demandeRepository.save(demande);

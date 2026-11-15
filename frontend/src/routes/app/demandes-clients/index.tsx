@@ -12,6 +12,9 @@ import { DemandesPagination } from "@/components/demandes/DemandesPagination";
 import { IndicateursDemandesCartes } from "@/components/demandes/IndicateursDemandes";
 import { DemandePanneau } from "@/components/demandes/DemandePanneau";
 import { ExportButton } from "@/components/admin/exports/ExportButton";
+import { getSession } from "@/api/session";
+
+/** Le responsable voit arriver les nouvelles demandes sans recharger la page. */
 
 export interface DemandesSearch {
   page: number;

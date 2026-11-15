@@ -47,7 +47,13 @@ class ParametrePlateformeServiceTest {
     @BeforeEach
     void preparer() {
         service = new ParametrePlateformeService(parametreRepository, typeDocumentRepository,
-                typeLaboratoireRepository, journalAuditService, new ObjectMapper());
+                typeLaboratoireRepository, journalAuditService, new ObjectMapper(),
+                new com.backend.common.tenant.TenantExecutor(null) {
+                    @Override
+                    public <T> T inCentral(java.util.function.Supplier<T> action) {
+                        return action.get();
+                    }
+                });
         lenient().when(parametreRepository.findAll()).thenAnswer(invocation -> new ArrayList<>(base.values()));
         lenient().when(parametreRepository.findById(anyString()))
                 .thenAnswer(invocation -> Optional.ofNullable(base.get(invocation.<String>getArgument(0))));

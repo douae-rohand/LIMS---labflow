@@ -15,9 +15,23 @@ export interface PolitiqueMotDePasse {
   exigerCaractereSpecial: boolean;
 }
 
+export interface IdentitePlateforme {
+  nom: string;
+  emailContact: string;
+  telephone: string;
+  adresse: string;
+  expediteurNom: string;
+}
+
+export interface CommissionPlateforme {
+  /** Commission de la plateforme, en % du montant de chaque facture de demande. */
+  tauxCommission: number;
+}
+
 export interface ParametresPublics {
   politiqueMotDePasse: PolitiqueMotDePasse;
   typesLaboratoire: string[];
+  identite?: IdentitePlateforme | null;
 }
 
 export interface TypeLaboratoireReference {
@@ -96,5 +110,25 @@ export async function modifierTypeLaboratoire(
     actif,
     ordre,
   });
+  return res.data;
+}
+
+export async function lireIdentite(): Promise<IdentitePlateforme> {
+  const res = await apiClient.get<ApiResponse<IdentitePlateforme>>(`${BASE}/identite`);
+  return res.data;
+}
+
+export async function enregistrerIdentite(valeurs: IdentitePlateforme): Promise<IdentitePlateforme> {
+  const res = await apiClient.put<ApiResponse<IdentitePlateforme>>(`${BASE}/identite`, valeurs);
+  return res.data;
+}
+
+export async function lireCommission(): Promise<CommissionPlateforme> {
+  const res = await apiClient.get<ApiResponse<CommissionPlateforme>>(`${BASE}/commission`);
+  return res.data;
+}
+
+export async function enregistrerCommission(valeurs: CommissionPlateforme): Promise<CommissionPlateforme> {
+  const res = await apiClient.put<ApiResponse<CommissionPlateforme>>(`${BASE}/commission`, valeurs);
   return res.data;
 }

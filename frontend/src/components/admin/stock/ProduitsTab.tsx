@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { peut } from "@/api/session";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
@@ -67,17 +68,19 @@ export function ProduitsTab() {
         <h2 className="text-lg font-semibold">Produits</h2>
         <div className="flex flex-wrap items-center gap-2">
           <ExportButton jeu="produits" />
-          <Button
-            variant="primary"
-            size="sm"
-            icon={<Plus className="size-4" />}
-            onClick={() => {
-              setSelectedId(null);
-              setFormOpen(true);
-            }}
-          >
-            Nouveau produit
-          </Button>
+          {peut("STOCK_GERER") && (
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<Plus className="size-4" />}
+              onClick={() => {
+                setSelectedId(null);
+                setFormOpen(true);
+              }}
+            >
+              Nouveau produit
+            </Button>
+          )}
         </div>
       </div>
       {produits.isLoading && (

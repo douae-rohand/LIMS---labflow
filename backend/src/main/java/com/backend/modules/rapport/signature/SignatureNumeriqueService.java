@@ -23,13 +23,11 @@ import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.BasicConstraints;
 import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.KeyUsage;
-import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaCertStore;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.cms.*;
 import org.bouncycastle.cms.jcajce.JcaSignerInfoGeneratorBuilder;
-import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoVerifierBuilder;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
@@ -100,11 +98,6 @@ public class SignatureNumeriqueService {
     public record PdfSigne(byte[] contenu, Instant horodatage) {
     }
 
-    /** Résultat de la vérification cryptographique d'un PDF. */
-    public record Verification(boolean signaturePresente, boolean signatureValide, boolean documentComplet,
-                               String signataire, String certificat, Instant dateSignature, Instant horodatage) {
-    }
-
     /**
      * Signe le PDF au nom du laboratoire.
      *
@@ -147,39 +140,6 @@ public class SignatureNumeriqueService {
         } catch (IOException ex) {
             log.error("Échec de la signature PAdES : {}", ex.getMessage());
             throw new BusinessRuleException("SIGNATURE_ECHOUEE", "La signature électronique du PDF a échoué.");
-        }
-    }
-
-    /** Vérifie la signature d'un PDF : intégrité, couverture complète du fichier et horodatage. */
-    public Verification verifier(byte[] fichier) {
-        try (PDDocument document = PDDocument.load(fichier)) {
-            List<PDSignature> signatures = document.getSignatureDictionaries();
-            if (signatures.isEmpty()) {
-                return new Verification(false, false, false, null, null, null, null);
-            }
-            PDSignature signature = signatures.getLast();
-            int[] plage = signature.getByteRange();
-            boolean complet = plage != null && plage.length == 4 && (long) plage[2] + plage[3] == fichier.length;
-            byte[] contenuSigne = signature.getSignedContent(fichier);
-            CMSSignedData cms = new CMSSignedData(new CMSProcessableByteArray(contenuSigne), signature.getContents(fichier));
-            SignerInformation signerInfo = cms.getSignerInfos().getSigners().iterator().next();
-            @SuppressWarnings("unchecked")
-            Collection<X509CertificateHolder> certificats = cms.getCertificates().getMatches(signerInfo.getSID());
-            X509CertificateHolder certificat = certificats.iterator().next();
-            boolean valide = signerInfo.verify(new JcaSimpleSignerInfoVerifierBuilder().build(certificat));
-            Instant horodatage = null;
-            AttributeTable nonSignes = signerInfo.getUnsignedAttributes();
-            if (nonSignes != null && nonSignes.get(PKCSObjectIdentifiers.id_aa_signatureTimeStampToken) != null) {
-                Attribute attribut = nonSignes.get(PKCSObjectIdentifiers.id_aa_signatureTimeStampToken);
-                TimeStampToken jeton = new TimeStampToken(new CMSSignedData(
-                        attribut.getAttrValues().getObjectAt(0).toASN1Primitive().getEncoded()));
-                horodatage = jeton.getTimeStampInfo().getGenTime().toInstant();
-            }
-            return new Verification(true, valide, complet, signature.getName(), certificat.getSubject().toString(),
-                    signature.getSignDate() == null ? null : signature.getSignDate().toInstant(), horodatage);
-        } catch (Exception ex) {
-            log.warn("Vérification de signature impossible : {}", ex.getMessage());
-            return new Verification(true, false, false, null, null, null, null);
         }
     }
 

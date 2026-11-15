@@ -58,6 +58,8 @@ export interface LoginResponse {
   requiresTwoFactor?: boolean;
   setupRequired?: boolean;
   twoFactorToken?: string;
+  /** Pendant la 2FA : durée de validité du code en secondes. */
+  expiresIn?: number;
 }
 
 /** Réponse de POST /api/auth/refresh. */
@@ -144,6 +146,11 @@ export async function login(body: LoginBody): Promise<LoginResponse> {
 export async function valider2FA(body: TwoFactorValiderBody): Promise<LoginResponse> {
   const res = await apiClient.post<ApiResponse<LoginResponse>>('/auth/2fa/valider', body);
   return res.data;
+}
+
+/** Nouveau code de connexion par e-mail (au plus une fois par minute). */
+export async function renvoyerCode2FA(twoFactorToken: string): Promise<void> {
+  await apiClient.post<ApiResponse<null>>('/auth/2fa/renvoyer', { twoFactorToken });
 }
 
 export async function setup2FA(body: TwoFactorSetupBody = {}): Promise<TwoFactorSetupResponse> {

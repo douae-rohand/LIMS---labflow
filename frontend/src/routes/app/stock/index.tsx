@@ -12,7 +12,7 @@ export const Route = createFileRoute("/app/stock/")({
   beforeLoad: () => {
     const session = getSession();
     if (!session) throw redirect({ to: "/login" });
-    if (session.user.role !== "ADMINISTRATEUR") throw redirect({ to: "/app" });
+    // Rôles autorisés (Administrateur, Responsable en consultation) : contrôlés par la route parente /app/stock.
   },
   component: StockPage,
 });

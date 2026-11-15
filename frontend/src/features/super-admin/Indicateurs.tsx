@@ -6,7 +6,6 @@ export function useStatistiquesPlateforme() {
   return useQuery({
     queryKey: ["statistiques-plateforme"],
     queryFn: obtenirStatistiquesPlateforme,
-    refetchInterval: 30_000,
   });
 }
 

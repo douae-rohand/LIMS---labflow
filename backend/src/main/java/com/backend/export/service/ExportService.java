@@ -112,7 +112,7 @@ public class ExportService {
     }
 
     private ExportResult exporterFactures(String format) {
-        List<String> entetes = List.of("ID", "Numéro", "Date facture", "Date échéance", "Montant HT", "Statut", "Demande", "Client");
+        List<String> entetes = List.of("ID", "Numéro", "Date facture", "Date échéance", "Montant TTC", "Statut", "Demande", "Client");
         List<List<String>> lignes = new ArrayList<>();
 
         Page<FactureAdminDto> page = facturationAdminService.toutesFactures(PageRequest.of(0, MAX_LIGNES));

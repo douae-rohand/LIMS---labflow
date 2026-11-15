@@ -475,7 +475,7 @@ function PanneauCompte({ compte, onFermer }: { compte: CompteUtilisateur | null;
               {compte.statut === "ACTIF" ? "Actif" : "Inactif"}
             </Badge>
             {compte.role === "SUPER_ADMINISTRATEUR" && (
-              <Badge variant="brand" size="sm">Compte plateforme</Badge>
+              <Badge variant="dark" size="sm">Compte plateforme</Badge>
             )}
           </div>
 

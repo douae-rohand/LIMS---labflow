@@ -134,6 +134,7 @@ export function EssaiForm({
           <label className="block space-y-1 text-sm font-medium">
             Tarif (MAD) *
             <Input type="number" min="0.01" step="0.01" value={formData.tarif ?? 0} onChange={(event) => mettreAJour("tarif", Number(event.target.value))} required />
+
           </label>
         </div>
       )}

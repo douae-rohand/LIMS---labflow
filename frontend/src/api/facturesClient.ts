@@ -10,7 +10,7 @@ import { messageErreurClient, type ListeAgregee } from "./clientAgrege";
  * « YYYY-MM-DD » : ne jamais les passer à `new Date(...)`.
  */
 
-export type StatutFactureClient = "PAYEE" | "IMPAYEE";
+export type StatutFactureClient = "PAYEE" | "IMPAYEE" | "ANNULEE";
 
 export interface FactureResumeClient {
   factureId: number;
@@ -21,7 +21,7 @@ export interface FactureResumeClient {
   demandeTitre: string | null;
   dateEmission: string | null;
   dateEcheance: string | null;
-  /** Montant HT (aucune TVA en base). */
+  /** Montant de la facture. */
   montantTotal: number | string | null;
   montantPaye: number | string | null;
   resteAPayer: number | string | null;
@@ -77,4 +77,9 @@ export async function detailFactureClient(
     `/client/factures/${laboratoireId}/${factureId}`,
   );
   return res.data;
+}
+
+/** Facture PDF du client (ses propres factures uniquement). */
+export async function telechargerFactureClientPdf(laboratoireId: number, factureId: number, numero: string): Promise<void> {
+  await apiClient.download(`/client/factures/${laboratoireId}/${factureId}/pdf`, `Facture-${numero}.pdf`);
 }

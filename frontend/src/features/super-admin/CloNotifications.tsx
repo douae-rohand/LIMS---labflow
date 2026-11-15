@@ -11,7 +11,6 @@ import {
   type NotificationRecue,
 } from "@/api/notifications";
 
-const INTERVALLE = 30_000;
 
 function depuis(valeur: string): string {
   const minutes = Math.round((Date.now() - new Date(valeur).getTime()) / 60_000);
@@ -30,12 +29,10 @@ export function CloNotifications() {
   const compteur = useQuery({
     queryKey: ["notifications-non-lues"],
     queryFn: compterNotificationsNonLues,
-    refetchInterval: INTERVALLE,
   });
   const liste = useQuery({
     queryKey: ["notifications-mes"],
     queryFn: () => listerMesNotifications(20),
-    refetchInterval: INTERVALLE,
   });
 
   const invalider = async () => {

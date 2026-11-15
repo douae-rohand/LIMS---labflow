@@ -17,7 +17,6 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -59,6 +58,30 @@ public class LigneTravailAssembleur {
                 .toList();
     }
 
+    /** État de validation de plusieurs analyses, en une seule requête. */
+    public Map<Long, String> etats(Collection<Long> ligneIds) {
+        if (ligneIds == null || ligneIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, List<Validation>> historiques = validationRepository
+                .findByLigneEssai_IdInOrderByDateValidationAscIdAsc(ligneIds).stream()
+                .collect(Collectors.groupingBy(v -> v.getLigneEssai().getId()));
+        Map<Long, String> etats = new HashMap<>();
+        for (Long id : ligneIds) {
+            etats.put(id, etatValidation(historiques.getOrDefault(id, List.of())));
+        }
+        return etats;
+    }
+
+    /** Historiques de validation de plusieurs analyses, en une seule requête. */
+    public Map<Long, List<Validation>> historiques(Collection<Long> ligneIds) {
+        if (ligneIds == null || ligneIds.isEmpty()) {
+            return Map.of();
+        }
+        return validationRepository.findByLigneEssai_IdInOrderByDateValidationAscIdAsc(ligneIds).stream()
+                .collect(Collectors.groupingBy(v -> v.getLigneEssai().getId()));
+    }
+
     public Map<Long, String> nomsUtilisateurs(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return Map.of();
@@ -91,13 +114,13 @@ public class LigneTravailAssembleur {
         return NON_SOUMIS;
     }
 
-    /** Échéance = date d'affectation + durée estimée de l'essai (en jours, comme dans le catalogue). */
+    /** Échéance = date d'affectation + durée estimée de l'essai, en minutes (catalogue client, espace technicien). */
     public static Instant echeance(LigneEssai ligne) {
         Essai essai = ligne.getEssai();
         if (ligne.getDateAttribution() == null || essai == null || essai.getDureeEstimee() == null) {
             return null;
         }
-        return ligne.getDateAttribution().plus(Duration.ofDays(essai.getDureeEstimee()));
+        return ligne.getDateAttribution().plus(Duration.ofMinutes(essai.getDureeEstimee()));
     }
 
     public static boolean terminee(LigneEssai ligne) {
@@ -123,25 +146,29 @@ public class LigneTravailAssembleur {
                 .demandeReference(demande == null ? null : demande.getNumero())
                 .demandeTitre(demande == null ? null : demande.getTitre())
                 .demandeStatut(demande == null ? null : demande.getStatut())
+                .demandeDateSoumission(demande == null ? null : demande.getDateSoumission())
                 .essaiCode(essai == null ? null : essai.getCode())
                 .essaiLibelle(essai == null ? null : essai.getDesignation())
                 .methode(essai == null ? null : essai.getMethode())
                 .unite(essai == null ? null : essai.getUnite())
                 .limiteMin(essai == null ? null : essai.getLimiteMin())
                 .limiteMax(essai == null ? null : essai.getLimiteMax())
-                .dureeEstimeeJours(essai == null ? null : essai.getDureeEstimee())
+                .dureeEstimeeMinutes(essai == null ? null : essai.getDureeEstimee())
                 .domaineCode(essai == null || essai.getDomaine() == null ? null : essai.getDomaine().getCode())
                 .domaineLibelle(essai == null || essai.getDomaine() == null ? null : essai.getDomaine().getLibelle())
                 .technicienId(ligne.getTechnicienId())
                 .technicienNom(ligne.getTechnicienId() == null ? null : noms.get(ligne.getTechnicienId()))
                 .statut(ligne.getStatut())
                 .dateAttribution(ligne.getDateAttribution())
-                .datePrevue(ligne.getDateDebut() == null ? null : LocalDate.ofInstant(ligne.getDateDebut(), ZoneOffset.UTC))
+                .datePrevue(ligne.getDateDebut() == null ? null : LocalDate.ofInstant(ligne.getDateDebut(), java.time.ZoneId.of("Africa/Casablanca")))
                 .echeance(echeance)
                 .enRetard(retard)
                 .joursRetard(retard ? Duration.between(echeance, maintenant).toDays() : 0)
                 .valeur(ligne.getValeur())
                 .conformite(ligne.getConformite())
+                .critique(critique(ligne.getValeur(), essai))
+                .etatEchantillon(ligne.getEchantillon() == null ? "ATTENDU"
+                        : Boolean.TRUE.equals(ligne.getEchantillon().getConformite()) ? "CONFORME" : "NON_CONFORME")
                 .dateSaisie(ligne.getDateSaisie())
                 .observations(ligne.getMotif())
                 .etatValidation(etatValidation(historique))
@@ -154,5 +181,20 @@ public class LigneTravailAssembleur {
     private static String nomComplet(Utilisateur u) {
         String prenom = u.getPrenom() == null ? "" : u.getPrenom().trim();
         return (prenom + " " + (u.getNom() == null ? "" : u.getNom().trim())).trim();
+    }
+
+    /** Vrai si la valeur est numérique et sort des seuils critiques définis pour l'essai. */
+    static boolean critique(String valeur, com.backend.modules.essai.entity.Essai essai) {
+        if (valeur == null || essai == null
+                || (essai.getSeuilCritiqueMin() == null && essai.getSeuilCritiqueMax() == null)) {
+            return false;
+        }
+        try {
+            java.math.BigDecimal nombre = new java.math.BigDecimal(valeur.trim().replace(',', '.'));
+            return (essai.getSeuilCritiqueMin() != null && nombre.compareTo(essai.getSeuilCritiqueMin()) < 0)
+                    || (essai.getSeuilCritiqueMax() != null && nombre.compareTo(essai.getSeuilCritiqueMax()) > 0);
+        } catch (NumberFormatException ex) {
+            return false;
+        }
     }
 }

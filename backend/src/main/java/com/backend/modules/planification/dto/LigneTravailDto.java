@@ -18,13 +18,14 @@ public class LigneTravailDto {
     private String demandeReference;
     private String demandeTitre;
     private String demandeStatut;
+    private Instant demandeDateSoumission;
     private String essaiCode;
     private String essaiLibelle;
     private String methode;
     private String unite;
     private BigDecimal limiteMin;
     private BigDecimal limiteMax;
-    private Integer dureeEstimeeJours;
+    private Integer dureeEstimeeMinutes;
     private String domaineCode;
     private String domaineLibelle;
     private Long technicienId;
@@ -37,6 +38,12 @@ public class LigneTravailDto {
     private long joursRetard;
     private String valeur;
     private Boolean conformite;
+    /** Valeur numérique hors des seuils critiques de l'essai : à traiter en priorité. */
+    private boolean critique;
+    /** ATTENDU, CONFORME ou NON_CONFORME : état de l'échantillon rattaché à l'analyse. */
+    private String etatEchantillon;
+    /** AUCUNE_FACTURE, NON_PAYEE, PARTIELLE ou PAYEE : paiement de la facture de la demande. */
+    private String etatPaiement;
     private Instant dateSaisie;
     private String observations;
     /** NON_SOUMIS, TECHNIQUE_VALIDEE, VALIDEE, RETOURNEE, REJETEE. */

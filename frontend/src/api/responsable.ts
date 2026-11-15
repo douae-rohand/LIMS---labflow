@@ -13,13 +13,14 @@ export interface AnalyseTravail {
   demandeReference: string;
   demandeTitre?: string | null;
   demandeStatut?: string | null;
+  demandeDateSoumission?: string | null;
   essaiCode?: string | null;
   essaiLibelle?: string | null;
   methode?: string | null;
   unite?: string | null;
   limiteMin?: number | null;
   limiteMax?: number | null;
-  dureeEstimeeJours?: number | null;
+  dureeEstimeeMinutes?: number | null;
   domaineCode?: string | null;
   domaineLibelle?: string | null;
   technicienId?: number | null;
@@ -32,6 +33,12 @@ export interface AnalyseTravail {
   joursRetard: number;
   valeur?: string | null;
   conformite?: boolean | null;
+  /** Valeur hors des seuils critiques de l'essai. */
+  critique?: boolean;
+  /** État de l'échantillon rattaché à l'analyse. */
+  etatEchantillon?: "ATTENDU" | "CONFORME" | "NON_CONFORME";
+  /** Paiement de la facture de la demande. */
+  etatPaiement?: "AUCUNE_FACTURE" | "NON_PAYEE" | "PARTIELLE" | "PAYEE";
   dateSaisie?: string | null;
   observations?: string | null;
   etatValidation: EtatValidation;
@@ -58,6 +65,8 @@ export interface SuiviResponsable {
     analysesEnRetard: number;
     resultatsAValider: number;
     rapportsAPreparer: number;
+    /** Demandes ayant au moins une analyse sans technicien. */
+    demandesAAffecter: number;
   };
   techniciens: TechnicienCharge[];
   retards: AnalyseTravail[];
@@ -88,7 +97,6 @@ export interface RapportTravail {
   dateEmission?: string | null;
   dateSignature?: string | null;
   signataire?: string | null;
-  empreinte?: string | null;
 }
 
 // ------------------------------------------------------------- suivi
@@ -114,11 +122,13 @@ export async function affecterAnalyses(
   ligneIds: number[],
   technicienId: number,
   datePrevue?: string,
+  motif?: string,
 ): Promise<AnalyseTravail[]> {
   const res = await apiClient.post<ApiResponse<AnalyseTravail[]>>("/planifications/affectations", {
     ligneIds,
     technicienId,
     ...(datePrevue ? { datePrevue } : {}),
+    ...(motif ? { motif } : {}),
   });
   return res.data;
 }
@@ -152,57 +162,60 @@ export async function listerRapportsTravail(): Promise<RapportTravail[]> {
   return res.data;
 }
 
-export async function genererRapport(demandeId: number): Promise<void> {
-  await apiClient.post<ApiResponse<unknown>>(`/rapports/generer/${demandeId}`);
-}
-
-/** Signe et libère le rapport ; le mot de passe confirme l'identité du signataire. */
-export async function signerRapport(rapportId: number, motDePasse: string): Promise<RapportTravail> {
-  const res = await apiClient.post<ApiResponse<RapportTravail>>(`/rapports/${rapportId}/signer`, { motDePasse });
+/** Signe le rapport de la demande ; le mot de passe confirme l'identité du signataire. */
+export async function signerRapportDemande(demandeId: number, motDePasse: string): Promise<RapportTravail> {
+  const res = await apiClient.post<ApiResponse<RapportTravail>>(`/rapports/demande/${demandeId}/signer`, { motDePasse });
   return res.data;
 }
 
-// ------------------------------------------------------------- vérification publique
-export interface VerificationRapport {
-  laboratoire: string;
-  numero: string;
-  statut: string;
-  dateSignature?: string | null;
-  signataire?: string | null;
-  fichierAuthentique?: boolean | null;
-  signatureValide?: boolean | null;
-  documentComplet?: boolean | null;
-  horodatage?: string | null;
-  certificat?: string | null;
-}
-
-export async function statutRapportPublic(laboratoire: string, numero: string): Promise<VerificationRapport> {
-  const params = new URLSearchParams({ laboratoire, numero });
-  const res = await apiClient.get<ApiResponse<VerificationRapport>>(`/public/rapports/verification?${params.toString()}`);
-  return res.data;
-}
-
-export async function verifierFichierRapport(
-  laboratoire: string,
-  numero: string,
-  fichier: File,
-): Promise<VerificationRapport> {
-  const formulaire = new FormData();
-  formulaire.append("laboratoire", laboratoire);
-  formulaire.append("numero", numero);
-  formulaire.append("fichier", fichier);
-  const res = await apiClient.upload<ApiResponse<VerificationRapport>>("/public/rapports/verification", formulaire);
-  return res.data;
-}
-
-/** Ouvre l'aperçu (projet) ou le PDF signé dans un nouvel onglet. */
-export async function ouvrirPdfRapport(rapportId: number, signe: boolean): Promise<void> {
-  const blob = await apiClient.getBlob(`/rapports/${rapportId}/${signe ? "pdf" : "apercu"}`);
+function ouvrirBlob(blob: Blob) {
   const url = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
   window.open(url, "_blank", "noopener,noreferrer");
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+/** Aperçu du rapport d'une demande, avant signature. */
+export async function ouvrirApercuRapport(demandeId: number): Promise<void> {
+  ouvrirBlob(await apiClient.getBlob(`/rapports/demande/${demandeId}/apercu`));
+}
+
+/** Ouvre le PDF signé dans un nouvel onglet. */
+export async function ouvrirPdfRapport(rapportId: number): Promise<void> {
+  ouvrirBlob(await apiClient.getBlob(`/rapports/${rapportId}/pdf`));
+}
+
+/** Renvoie au client l'e-mail « rapport disponible » (lien vers le portail, sans pièce jointe). */
+export async function renvoyerRapport(rapportId: number): Promise<void> {
+  await apiClient.post<ApiResponse<null>>(`/rapports/${rapportId}/renvoyer`);
+}
+
 export async function telechargerRapport(rapportId: number, numero: string): Promise<void> {
   await apiClient.download(`/rapports/${rapportId}/pdf`, `${numero}.pdf`);
+}
+
+// ------------------------------------------------------------- signature manuscrite (profil)
+export interface StatutSignature {
+  presente: boolean;
+  miseAJour?: string | null;
+}
+
+export async function lireStatutSignature(): Promise<StatutSignature> {
+  const res = await apiClient.get<ApiResponse<StatutSignature>>("/responsable/signature/statut");
+  return res.data;
+}
+
+export async function lireImageSignature(): Promise<Blob> {
+  return apiClient.getBlob("/responsable/signature");
+}
+
+export async function importerSignature(fichier: File): Promise<StatutSignature> {
+  const formulaire = new FormData();
+  formulaire.append("fichier", fichier);
+  const res = await apiClient.upload<ApiResponse<StatutSignature>>("/responsable/signature", formulaire);
+  return res.data;
+}
+
+export async function supprimerSignature(): Promise<StatutSignature> {
+  const res = await apiClient.delete<ApiResponse<StatutSignature>>("/responsable/signature");
+  return res.data;
 }

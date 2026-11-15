@@ -20,11 +20,14 @@ import type { RoleUtilisateur } from "@/api/session";
 import { Dialogue } from "../Fenetres";
 import { EtatVide } from "../EtatVide";
 import { messageErreur } from "../texte";
+import { SectionCommission, SectionIdentite } from "./SectionsIdentiteCommission";
 
-export type OngletParametres = "securite" | "documents" | "types";
+export type OngletParametres = "securite" | "identite" | "commission" | "documents" | "types";
 
 const ONGLETS: { id: OngletParametres; libelle: string }[] = [
   { id: "securite", libelle: "Sécurité" },
+  { id: "identite", libelle: "Identité" },
+  { id: "commission", libelle: "Commission" },
   { id: "documents", libelle: "Documents d'intégration" },
   { id: "types", libelle: "Types de laboratoire" },
 ];
@@ -68,6 +71,8 @@ export function PageParametres({
         ))}
       </div>
       {onglet === "securite" && <SectionSecurite />}
+      {onglet === "identite" && <SectionIdentite />}
+      {onglet === "commission" && <SectionCommission />}
       {onglet === "documents" && <SectionDocuments />}
       {onglet === "types" && <SectionTypesLaboratoire />}
     </>
@@ -143,7 +148,7 @@ function SectionSecurite() {
     >
       <Carte
         titre="Double authentification obligatoire"
-        description="Choisissez les rôles pour lesquels la double authentification sera obligatoire. Ce réglage est enregistré mais n'est pas encore appliqué à la connexion."
+        description="Pour les rôles cochés, chaque connexion demande en plus un code à 6 chiffres envoyé par e-mail, valable 15 minutes. Le CDC l'exige pour le Responsable et l'Administrateur."
       >
         <div className="grid gap-2 sm:grid-cols-2">
           {ROLES.map((role) => (

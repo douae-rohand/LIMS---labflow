@@ -39,6 +39,8 @@ public class AuthService {
     private final UtilisateurRepository utilisateurRepository;
     private final PasswordEncoder passwordEncoder;
     private final TwoFactorRateLimiter twoFactorRateLimiter;
+    private final CodeConnexionService codeConnexionService;
+    private final com.backend.modules.plateforme.service.ParametrePlateformeService parametrePlateformeService;
 
     // -------------------------------------------------------------------------
     // Connexion
@@ -80,39 +82,17 @@ public class AuthService {
             throw new DisabledException("Compte désactivé");
         }
 
-        Utilisateur utilisateur = utilisateurRepository.findById(principal.getId())
-                .orElseThrow(() -> new BusinessRuleException("USER_NOT_FOUND", "Utilisateur introuvable"));
-
-        boolean is2faRequiredByRole = is2faRequiredForRole(principal.getRole());
-        boolean is2faConfigured = utilisateur.isDoubleAuthentification()
-                && utilisateur.getSecret2fa() != null
-                && !utilisateur.getSecret2fa().isBlank();
-
-        if (is2faConfigured) {
+        // 2FA par e-mail : un code à 6 chiffres, valable 15 minutes, à chaque connexion des rôles
+        // choisis par le Super Administrateur. La session ne s'ouvre qu'après /2fa/valider.
+        if (is2faRequiredForRole(principal.getRole())) {
+            codeConnexionService.envoyer(principal.getEmail());
             String twoFactorToken = jwtTokenProvider.generateTwoFactorToken(principal.getEmail());
-            log.debug("2FA requise pour {} — token 2FA généré", principal.getEmail());
             return LoginResponse.builder()
                     .requiresTwoFactor(true)
                     .setupRequired(false)
                     .twoFactorToken(twoFactorToken)
-                    .userId(principal.getId())
-                    .email(principal.getEmail())
-                    .nomComplet(principal.getNomComplet())
-                    .role(principal.getRole().name())
-                    .build();
-        }
-
-        if (is2faRequiredByRole) {
-            String twoFactorToken = jwtTokenProvider.generateTwoFactorToken(principal.getEmail());
-            log.debug("2FA obligatoire mais non configurée pour {} — token 2FA généré pour enrôlement", principal.getEmail());
-            return LoginResponse.builder()
-                    .requiresTwoFactor(true)
-                    .setupRequired(true)
-                    .twoFactorToken(twoFactorToken)
-                    .userId(principal.getId())
-                    .email(principal.getEmail())
-                    .nomComplet(principal.getNomComplet())
-                    .role(principal.getRole().name())
+                    .expiresIn(CodeConnexionService.DUREE_MINUTES * 60L)
+                    .email(masquer(principal.getEmail()))
                     .build();
         }
 
@@ -120,14 +100,31 @@ public class AuthService {
         return buildLoginResult(principal, httpRequest);
     }
 
-    /**
-     * Détermine si la 2FA est obligatoire pour un rôle.
-     * L'obligation reste coupée tant que l'interface de connexion ne finalise pas l'enrôlement.
-     * Les rôles choisis par le Super Administrateur sont seulement enregistrés
-     * (ParametrePlateformeService.deuxFacteursObligatoire) et ne sont pas appliqués ici.
-     */
+    /** 2FA obligatoire pour les rôles cochés par le Super Administrateur (paramètres de sécurité). */
     public boolean is2faRequiredForRole(RoleUtilisateur role) {
-        return false;
+        return parametrePlateformeService.deuxFacteursObligatoire(role);
+    }
+
+    /** Renvoie un nouveau code de connexion (au plus une fois par minute). */
+    public void renvoyerCode(String twoFactorToken) {
+        codeConnexionService.renvoyer(emailDuJeton2fa(twoFactorToken));
+    }
+
+    /** « s****@labflow.ma » : montre où chercher le code sans exposer toute l'adresse. */
+    static String masquer(String email) {
+        int arobase = email == null ? -1 : email.indexOf('@');
+        if (arobase < 1) {
+            return email;
+        }
+        return email.charAt(0) + "****" + email.substring(arobase);
+    }
+
+    private String emailDuJeton2fa(String twoFactorToken) {
+        if (twoFactorToken == null || jwtTokenProvider.validateToken(twoFactorToken, "access")
+                || !jwtTokenProvider.validateToken(twoFactorToken, "2fa")) {
+            throw new BusinessRuleException("2FA_TOKEN_INVALID", "Session de vérification expirée : reconnectez-vous.");
+        }
+        return jwtTokenProvider.getUsernameFromToken(twoFactorToken);
     }
 
     @Transactional
@@ -141,17 +138,17 @@ public class AuthService {
 
         String email = jwtTokenProvider.getUsernameFromToken(request.getTwoFactorToken());
         if (twoFactorRateLimiter.isBlocked(email)) {
-            throw new BusinessRuleException("2FA_RATE_LIMIT", "Trop de tentatives échouées. Compte temporairement bloqué 5 minutes.");
+            throw new BusinessRuleException("2FA_RATE_LIMIT", "Trop de codes incorrects. Réessayez dans 5 minutes.");
         }
 
         Utilisateur utilisateur = utilisateurRepository.findByEmailWithRoleAndLaboratoire(email)
                 .orElseThrow(() -> new BusinessRuleException("USER_NOT_FOUND", "Utilisateur introuvable"));
         if (!utilisateur.isActif() || !utilisateur.isCompteConfirme()) {
-            throw new BusinessRuleException("2FA_CODE_INVALID", "Code TOTP incorrect ou expiré");
+            throw new BusinessRuleException("2FA_CODE_INVALID", "Code incorrect ou expiré");
         }
-        if (!twoFactorService.verifierTotp(utilisateur.getSecret2fa(), request.getCode())) {
+        if (!codeConnexionService.verifier(email, request.getCode())) {
             twoFactorRateLimiter.recordFailure(email);
-            throw new BusinessRuleException("2FA_CODE_INVALID", "Code TOTP incorrect ou expiré");
+            throw new BusinessRuleException("2FA_CODE_INVALID", "Code incorrect ou expiré");
         }
         twoFactorRateLimiter.resetAttempts(email);
 

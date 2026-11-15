@@ -41,6 +41,20 @@ public class Facture {
     @Column(length = 50)
     private String statut;
 
+    /** Taux de commission de la plateforme (%) figé à l'émission ; {@code montantHt} porte le montant facturé. */
+    @Column(name = "taux_commission", precision = 5, scale = 2)
+    private BigDecimal tauxCommission;
+
+    /** Une facture n'est jamais supprimée : elle est annulée par un avoir AV-AAAAMM-NNN. */
+    @Column(name = "numero_avoir", length = 50)
+    private String numeroAvoir;
+
+    @Column(name = "date_annulation")
+    private java.time.Instant dateAnnulation;
+
+    @Column(name = "motif_annulation", length = 500)
+    private String motifAnnulation;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "demande_id", nullable = false)
     private Demande demande;

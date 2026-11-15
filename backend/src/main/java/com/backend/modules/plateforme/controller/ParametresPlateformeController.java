@@ -4,6 +4,8 @@ import com.backend.common.dto.ApiResponse;
 import com.backend.common.security.SecurityUtils;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.CreerTypeLaboratoire;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.EnregistrerTypeDocument;
+import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Commission;
+import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Identite;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.ModifierTypeLaboratoire;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.Securite;
 import com.backend.modules.plateforme.dto.ParametresPlateformeDtos.TypeLaboratoire;
@@ -36,6 +38,7 @@ import java.util.List;
 public class ParametresPlateformeController {
 
     private final ParametrePlateformeService service;
+    private final com.backend.modules.plateforme.service.CommissionFactures commissionFactures;
 
     @GetMapping("/securite")
     @Operation(summary = "Paramètres de sécurité")
@@ -48,6 +51,35 @@ public class ParametresPlateformeController {
     public ResponseEntity<ApiResponse<Securite>> modifierSecurite(@Valid @RequestBody Securite demande) {
         return ResponseEntity.ok(ApiResponse.success("Paramètres de sécurité enregistrés",
                 service.modifierSecurite(demande, acteur())));
+    }
+
+    @GetMapping("/identite")
+    @Operation(summary = "Identité de la plateforme")
+    public ResponseEntity<ApiResponse<Identite>> identite() {
+        return ResponseEntity.ok(ApiResponse.success(service.identite()));
+    }
+
+    @PutMapping("/identite")
+    @Operation(summary = "Modifier l'identité de la plateforme")
+    public ResponseEntity<ApiResponse<Identite>> modifierIdentite(@Valid @RequestBody Identite demande) {
+        return ResponseEntity.ok(ApiResponse.success("Identité de la plateforme enregistrée",
+                service.modifierIdentite(demande, acteur())));
+    }
+
+    @GetMapping("/commission")
+    @Operation(summary = "Taux de commission de la plateforme")
+    public ResponseEntity<ApiResponse<Commission>> commission() {
+        return ResponseEntity.ok(ApiResponse.success(service.commission()));
+    }
+
+    @PutMapping("/commission")
+    @Operation(summary = "Modifier le taux de commission de la plateforme")
+    public ResponseEntity<ApiResponse<Commission>> modifierCommission(@Valid @RequestBody Commission demande) {
+        Commission enregistree = service.modifierCommission(demande, acteur());
+        // Le nouveau taux vaut aussi pour les factures pas encore réglées ; payées et annulées gardent le leur.
+        int factures = commissionFactures.appliquerAuxFacturesNonPayees(enregistree.tauxCommission(), acteur());
+        return ResponseEntity.ok(ApiResponse.success("Taux de commission enregistré : appliqué à "
+                + factures + " facture(s) non réglée(s)", enregistree));
     }
 
     @GetMapping("/documents")

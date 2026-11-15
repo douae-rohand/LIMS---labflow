@@ -49,3 +49,5 @@ logs/
 .trae
 .trae/
 .claude/
+backend/seed
+.agents/tasks/

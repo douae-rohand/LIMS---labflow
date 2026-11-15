@@ -170,8 +170,15 @@ public class AuthController {
         throw new IllegalStateException("Résultat de connexion inattendu");
     }
 
+    @PostMapping("/2fa/renvoyer")
+    @Operation(summary = "Renvoyer le code de connexion par e-mail (au plus une fois par minute)")
+    public ResponseEntity<ApiResponse<Void>> renvoyerCode(@RequestBody java.util.Map<String, String> corps) {
+        authService.renvoyerCode(corps == null ? null : corps.get("twoFactorToken"));
+        return ResponseEntity.ok(ApiResponse.success("Un nouveau code a été envoyé.", null));
+    }
+
     @PostMapping("/2fa/valider")
-    @Operation(summary = "Validation du code TOTP (2FA)")
+    @Operation(summary = "Validation du code reçu par e-mail (2FA)")
     public ResponseEntity<ApiResponse<LoginResponse>> validerTwoFactor(
             @Valid @RequestBody TwoFactorRequest request,
             HttpServletRequest httpRequest) {

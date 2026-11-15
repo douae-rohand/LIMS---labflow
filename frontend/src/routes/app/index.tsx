@@ -6,6 +6,7 @@ import { getSession } from "@/api/session";
 import type { RoleUtilisateur } from "@/api/session";
 import { TableauBordClient } from "@/components/demandes/client/TableauBordClient";
 import { TableauBordTechnicien } from "@/components/technicien/dashboard/TableauBordTechnicien";
+import { TableauBordAccueil } from "@/features/accueil/TableauBordAccueil";
 
 export const Route = createFileRoute("/app/")({
   beforeLoad: () => {
@@ -17,7 +18,7 @@ export const Route = createFileRoute("/app/")({
       throw redirect({ to: "/app/employes", search: { page: 1, tri: "nom", direction: "asc" } });
     }
     if (session?.user.role === "RESPONSABLE") {
-      throw redirect({ to: "/app/demandes-clients" });
+      throw redirect({ to: "/app/suivi" });
     }
     // TECHNICIEN, ACCUEIL, CLIENT : aucun redirect — la page s'affiche.
   },
@@ -44,6 +45,10 @@ function AppHomePage() {
 
   if (user.role === "TECHNICIEN") {
     return <TableauBordTechnicien />;
+  }
+
+  if (user.role === "ACCUEIL") {
+    return <TableauBordAccueil />;
   }
 
   return (

@@ -56,6 +56,7 @@ public class FacturationAdminService {
     private final JournalAuditService journalAuditService;
     private final TenantExecutor tenantExecutor;
     private final UtilisateurRepository utilisateurRepository;
+    private final com.backend.modules.plateforme.service.ParametrePlateformeService parametrePlateformeService;
 
     private static final int RETRY_MAX = 3;
 
@@ -111,10 +112,11 @@ public class FacturationAdminService {
             throw new BusinessRuleException("SCHEMA_LABORATOIRE_REQUIS",
                     "Le schéma du laboratoire est obligatoire pour émettre une facture.");
         }
+        java.math.BigDecimal tauxCommission = parametrePlateformeService.tauxCommission();
         for (int essai = 0; essai < RETRY_MAX; essai++) {
             try {
                 return tenantExecutor.inTenant(nomSchema,
-                        () -> emettreFactureInterne(demandeId, dateEcheance, acteur, nomSchema, automatique));
+                        () -> emettreFactureInterne(demandeId, dateEcheance, acteur, nomSchema, automatique, tauxCommission));
             } catch (DataIntegrityViolationException ex) {
                 if (essai == RETRY_MAX - 1) {
                     throw ex;
@@ -131,7 +133,8 @@ public class FacturationAdminService {
             LocalDate dateEcheance,
             UtilisateurPrincipal acteur,
             String nomSchema,
-            boolean automatique) {
+            boolean automatique,
+            BigDecimal tauxCommission) {
         Demande demande = demandeRepository.findByIdForUpdate(demandeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", demandeId));
 
@@ -174,6 +177,7 @@ public class FacturationAdminService {
                 .dateFacture(dateFacture)
                 .dateEcheance(echeance)
                 .montantHt(montantTotal)
+                .tauxCommission(tauxCommission)
                 .statut(StatutFacture.IMPAYEE.name())
                 .demande(demande)
                 .build();
@@ -232,6 +236,10 @@ public class FacturationAdminService {
         BigDecimal dejaPaye = paiementRepository.sumByFactureId(id);
         if (dejaPaye == null) dejaPaye = BigDecimal.ZERO;
 
+        if (StatutFacture.ANNULEE.name().equals(facture.getStatut())) {
+            throw new BusinessRuleException("FACTURE_ANNULEE", "Cette facture est annulée par l'avoir "
+                    + facture.getNumeroAvoir() + " : aucun paiement n'est possible.");
+        }
         BigDecimal resteAPayer = facture.getMontantHt().subtract(dejaPaye);
         if (resteAPayer.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessRuleException("FACTURE_DEJA_PAYEE",
@@ -356,8 +364,23 @@ public class FacturationAdminService {
                         .build())
                 .toList();
 
+        BigDecimal taux = facture.getTauxCommission() != null
+                ? facture.getTauxCommission() : parametrePlateformeService.tauxCommission();
+        boolean annulee = StatutFacture.ANNULEE.name().equals(facture.getStatut());
+        // Une facture annulée ne rapporte rien : ni au laboratoire, ni à la plateforme.
+        BigDecimal commission = annulee ? BigDecimal.ZERO.setScale(2)
+                : com.backend.modules.plateforme.service.ParametrePlateformeService.commissionSur(facture.getMontantHt(), taux);
+        BigDecimal net = facture.getMontantHt() == null || annulee ? BigDecimal.ZERO.setScale(2)
+                : facture.getMontantHt().subtract(commission);
+
         return FactureAdminDto.builder()
                 .id(facture.getId())
+                .tauxCommission(taux)
+                .montantCommission(commission)
+                .montantNetLaboratoire(net)
+                .numeroAvoir(facture.getNumeroAvoir())
+                .dateAnnulation(facture.getDateAnnulation())
+                .motifAnnulation(facture.getMotifAnnulation())
                 .numero(facture.getNumero())
                 .type(facture.getType())
                 .dateFacture(facture.getDateFacture())

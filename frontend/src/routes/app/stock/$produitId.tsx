@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { peut } from "@/api/session";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ArrowLeft, Activity } from "lucide-react";
@@ -165,9 +166,13 @@ function StockDetail() {
                     <td className="px-4 py-2 text-sm">{lot.peremption}</td>
                     <td className="px-4 py-2 text-sm">{lot.statut}</td>
                     <td className="px-4 py-2 text-right">
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedLotId(lot.id)}>
-                        Ajuster
-                      </Button>
+                      {peut("STOCK_GERER") ? (
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedLotId(lot.id)}>
+                          Ajuster
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Consultation</span>
+                      )}
                     </td>
                   </tr>
                 ))}

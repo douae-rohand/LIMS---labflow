@@ -11,6 +11,15 @@
  * composants : toujours passer par ces tokens.
  */
 
+/*
+ * Point de rupture « xl » abaissé de 80rem (1280 px) à 66rem (1056 px) : l'interface étant
+ * réduite à 13 px sur les écrans portables (voir html plus bas), les cartes de statistiques
+ * et les barres de recherche/filtres tiennent sur une ligne dès 1056 px de large.
+ */
+@theme {
+  --breakpoint-xl: 66rem;
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 8px);
   --radius-md: calc(var(--radius) - 4px);
@@ -92,6 +101,27 @@
 }
 
 @layer base {
+  /*
+   * Échelle globale : toute l'interface est en rem. Sur les écrans d'ordinateur portable
+   * (ex. 1920×1080 avec la mise à l'échelle Windows à 150 % → ~1280 px utiles), une base
+   * de 16 px donne un rendu « zoomé » : on la réduit pour un affichage normal à 100 %.
+   */
+  html {
+    font-size: 100%;
+  }
+
+  @media (min-width: 1024px) and (max-width: 1599px) {
+    html {
+      font-size: 81.25%; /* 13 px */
+    }
+  }
+
+  @media (min-width: 1600px) and (max-width: 1919px) {
+    html {
+      font-size: 87.5%; /* 14 px */
+    }
+  }
+
   * {
     border-color: var(--color-border);
   }

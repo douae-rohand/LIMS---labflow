@@ -38,6 +38,12 @@ public class SendGridMailClient {
     }
 
     public ResultatEnvoiEmail envoyer(List<String> destinataires, String sujet, String html, String texte) {
+        return envoyer(destinataires, sujet, html, texte, null);
+    }
+
+    /** @param nomExpediteur nom affiché de l'expéditeur ; {@code null} = valeur de configuration */
+    public ResultatEnvoiEmail envoyer(List<String> destinataires, String sujet, String html, String texte,
+                                      String nomExpediteur) {
         List<String> propres = normaliserDestinataires(destinataires);
         if (propres.isEmpty()) {
             log.warn("Aucun destinataire valide pour le sujet [{}]", sujet);
@@ -58,7 +64,7 @@ public class SendGridMailClient {
             return ResultatEnvoiEmail.nonConfigure("SENDGRID_FROM_EMAIL est invalide");
         }
 
-        Map<String, Object> payload = construirePayload(propres, sujet, html, texte);
+        Map<String, Object> payload = construirePayload(propres, sujet, html, texte, nomExpediteur);
         try {
             ResponseEntity<String> reponse = sendGridRestClient.post()
                     .uri("/mail/send")
@@ -96,7 +102,7 @@ public class SendGridMailClient {
     }
 
     private Map<String, Object> construirePayload(List<String> destinataires, String sujet,
-                                                  String html, String texte) {
+                                                  String html, String texte, String nomExpediteur) {
         List<Map<String, String>> to = new ArrayList<>();
         for (String email : destinataires) {
             to.add(Map.of("email", email));
@@ -106,7 +112,9 @@ public class SendGridMailClient {
 
         Map<String, String> from = new LinkedHashMap<>();
         from.put("email", properties.getFromEmail().trim());
-        if (StringUtils.hasText(properties.getFromName())) {
+        if (StringUtils.hasText(nomExpediteur)) {
+            from.put("name", nomExpediteur.trim());
+        } else if (StringUtils.hasText(properties.getFromName())) {
             from.put("name", properties.getFromName().trim());
         }
 

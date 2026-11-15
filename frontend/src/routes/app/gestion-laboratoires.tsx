@@ -65,11 +65,8 @@ function GestionLaboratoiresPage() {
         </BoutonOnglet>
       </div>
 
-      {onglet === "laboratoires" ? (
-        <TableauLaboratoires />
-      ) : (
-        <ListeDemandes demandeInitiale={demande} />
-      )}
+      {onglet === "laboratoires" && <TableauLaboratoires />}
+      {onglet === "demandes" && <ListeDemandes demandeInitiale={demande} />}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { Outlet, createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import { TempsReelProvider } from "@/features/shell/TempsReel";
 import { logout } from "@/api/auth";
 import { clearSession, getSession, getStatus, useSession } from "@/api/session";
 import type { RoleUtilisateur } from "@/api/session";
@@ -33,8 +34,17 @@ export const Route = createFileRoute("/app")({
       }
     }
   },
-  component: AppLayout,
+  component: AppLayoutTempsReel,
 });
+
+/** Les espaces connectés reçoivent les changements en direct (WebSocket) : voir TempsReelProvider. */
+function AppLayoutTempsReel() {
+  return (
+    <TempsReelProvider>
+      <AppLayout />
+    </TempsReelProvider>
+  );
+}
 
 function AppLayout() {
   const router = useRouter();
