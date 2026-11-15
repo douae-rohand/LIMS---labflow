@@ -186,7 +186,7 @@ export function PageRapports() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-semibold text-ink-900">{rapport.demandeReference}</p>
-                  <Badge size="sm" variant={aSigner ? "lime" : aEnvoyer ? "brand" : "mint"}>
+                  <Badge size="sm" variant={aSigner ? "lime" : aEnvoyer ? "dark" : "mint"}>
                     {aSigner ? "À signer" : aEnvoyer ? "À envoyer" : "Envoyé"}
                   </Badge>
                 </div>

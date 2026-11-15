@@ -120,7 +120,7 @@ public class AuthService {
     }
 
     private String emailDuJeton2fa(String twoFactorToken) {
-        if (twoFactorToken == null || jwtTokenProvider.validateToken(twoFactorToken, "access")
+        if (twoFactorToken == null || jwtTokenProvider.hasType(twoFactorToken, "access")
                 || !jwtTokenProvider.validateToken(twoFactorToken, "2fa")) {
             throw new BusinessRuleException("2FA_TOKEN_INVALID", "Session de vérification expirée : reconnectez-vous.");
         }
@@ -129,7 +129,7 @@ public class AuthService {
 
     @Transactional
     public LoginResult validerTwoFactor(TwoFactorRequest request, HttpServletRequest httpRequest) {
-        if (jwtTokenProvider.validateToken(request.getTwoFactorToken(), "access")) {
+        if (jwtTokenProvider.hasType(request.getTwoFactorToken(), "access")) {
             throw new BusinessRuleException("2FA_TOKEN_INVALID", "Un token d'accès ne peut pas être utilisé comme twoFactorToken");
         }
         if (!jwtTokenProvider.validateToken(request.getTwoFactorToken(), "2fa")) {
@@ -192,7 +192,7 @@ public class AuthService {
 
     private Utilisateur getUtilisateurFromRequestOrPrincipal(String twoFactorToken, UtilisateurPrincipal principal) {
         if (twoFactorToken != null && !twoFactorToken.isBlank()) {
-            if (jwtTokenProvider.validateToken(twoFactorToken, "access")) {
+            if (jwtTokenProvider.hasType(twoFactorToken, "access")) {
                 throw new BusinessRuleException("2FA_TOKEN_INVALID", "Un token d'accès ne peut pas être passé dans deuxFactorToken");
             }
             if (!jwtTokenProvider.validateToken(twoFactorToken, "2fa")) {
@@ -220,7 +220,7 @@ public class AuthService {
         if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
             throw new BusinessRuleException("REFRESH_TOKEN_INVALID", "Refresh token absent des cookies");
         }
-        if (jwtTokenProvider.validateToken(rawRefreshToken, "2fa")) {
+        if (jwtTokenProvider.hasType(rawRefreshToken, "2fa")) {
             throw new BusinessRuleException("REFRESH_TOKEN_INVALID", "Un token 2FA ne peut pas être utilisé comme refresh token");
         }
 
