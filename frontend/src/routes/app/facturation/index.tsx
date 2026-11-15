@@ -58,7 +58,7 @@ export const Route = createFileRoute("/app/facturation/")({
   component: FacturationListe,
 });
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 7;
 
 function FacturationListe() {
   const navigate = useNavigate();

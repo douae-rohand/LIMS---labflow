@@ -59,12 +59,12 @@ export function ListeDemandes({ demandeInitiale }: { demandeInitiale?: number | 
 
   const demandes = useQuery({
     queryKey: ["demandes-integration", statut, rechercheDifferee, page],
-    queryFn: () => listerDemandesIntegration(statut || undefined, page, 10, rechercheDifferee || undefined),
+    queryFn: () => listerDemandesIntegration(statut || undefined, page, 7, rechercheDifferee || undefined),
   });
 
   const total = demandes.data?.totalElements ?? 0;
-  const debut = total === 0 ? 0 : page * 10 + 1;
-  const fin = Math.min(total, (page + 1) * 10);
+  const debut = total === 0 ? 0 : page * 7 + 1;
+  const fin = Math.min(total, (page + 1) * 7);
   const filtresActifs = Boolean(rechercheDifferee || statut);
   const aucune = !demandes.isLoading && !demandes.isError && total === 0;
 

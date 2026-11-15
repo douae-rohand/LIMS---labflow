@@ -5,6 +5,7 @@ import {
   AlertCircle,
   ClipboardList,
   Download,
+  Eye,
   FileText,
   FlaskConical,
   RefreshCw,
@@ -33,6 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button, Skeleton } from "@/components/lab";
 import { ApiError } from "@/api/axios";
+import apiClient from "@/api/axios";
 import { getSession } from "@/api/session";
 import {
   accepterDemande,
@@ -159,6 +161,17 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
   const [confirmationOuverte, setConfirmationOuverte] = useState(false);
   const [refusOuvert, setRefusOuvert] = useState(false);
   const [erreurAction, setErreurAction] = useState<string | null>(null);
+
+  const ouvrirDocument = async (documentId: number) => {
+    try {
+      const blob = await apiClient.getBlob(`/demandes/laboratoire/${demandeId}/pieces-jointes/${documentId}`);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      console.error("Erreur lors de l'ouverture du document:", error);
+    }
+  };
 
   const query = useQuery({
     queryKey: ["demande-laboratoire", demandeId],
@@ -365,19 +378,27 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
                               </p>
                             </div>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            icon={<Download className="size-4" aria-hidden="true" />}
-                            iconPosition="left"
-                            onClick={() => void telechargerPieceJointeDemande(
-                              demande.id,
-                              document.id,
-                              document.nomFichier || document.code,
-                            )}
-                          >
-                            Télécharger
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              icon={<Eye className="size-4" aria-hidden="true" />}
+                              onClick={() => void ouvrirDocument(document.id)}
+                            />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              icon={<Download className="size-4" aria-hidden="true" />}
+                              iconPosition="left"
+                              onClick={() => void telechargerPieceJointeDemande(
+                                demande.id,
+                                document.id,
+                                document.nomFichier || document.code,
+                              )}
+                            >
+                              Télécharger
+                            </Button>
+                          </div>
                         </li>
                       ))}
                     </ul>

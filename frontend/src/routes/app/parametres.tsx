@@ -94,90 +94,92 @@ function ParametresPage() {
         </div>
       )}
       {parametres.data && (
-        <form onSubmit={handleSubmit} className="max-w-4xl space-y-5">
-          <section className="rounded-2xl border border-brand-900/10 bg-white p-5 shadow-sm sm:p-6">
-            <div className="mb-5 flex items-center gap-3">
-              <span className="flex size-9 items-center justify-center rounded-xl bg-brand-900/10 text-brand-900">
-                <Building2 className="size-4" aria-hidden="true" />
-              </span>
-              <div>
-                <h2 className="font-semibold text-ink-900">Informations générales</h2>
-                <p className="text-sm text-muted-foreground">Identité et localisation du laboratoire.</p>
+        <form onSubmit={handleSubmit} className="max-w-6xl space-y-5">
+          <div className="grid gap-5 lg:grid-cols-2">
+            <section className="rounded-2xl border border-brand-900/10 bg-white p-5 shadow-sm sm:p-6">
+              <div className="mb-5 flex items-center gap-3">
+                <span className="flex size-9 items-center justify-center rounded-xl bg-brand-900/10 text-brand-900">
+                  <Building2 className="size-4" aria-hidden="true" />
+                </span>
+                <div>
+                  <h2 className="font-semibold text-ink-900">Informations générales</h2>
+                  <p className="text-sm text-muted-foreground">Identité et localisation du laboratoire.</p>
+                </div>
               </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className={LABEL}>Code du laboratoire</label>
-                <input disabled value={parametres.data.code} className={`${CHAMP} bg-surface-card text-muted-foreground`} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={LABEL}>Code du laboratoire</label>
+                  <input disabled value={parametres.data.code} className={`${CHAMP} bg-surface-card text-muted-foreground`} />
+                </div>
+                <div>
+                  <label className={LABEL}>Raison sociale</label>
+                  <input
+                    value={form.raisonSociale || ""}
+                    onChange={(e) => setForm({ ...form, raisonSociale: e.target.value })}
+                    className={CHAMP}
+                  />
+                </div>
+                <div>
+                  <label className={LABEL}>Adresse</label>
+                  <input
+                    value={form.adresse || ""}
+                    onChange={(e) => setForm({ ...form, adresse: e.target.value })}
+                    className={CHAMP}
+                  />
+                </div>
+                <div>
+                  <label className={LABEL}>Ville</label>
+                  <input
+                    value={form.ville || ""}
+                    onChange={(e) => setForm({ ...form, ville: e.target.value })}
+                    className={CHAMP}
+                  />
+                </div>
+                <div>
+                  <label className={LABEL}>Code postal</label>
+                  <input
+                    value={form.codePostal || ""}
+                    onChange={(e) => setForm({ ...form, codePostal: e.target.value })}
+                    className={CHAMP}
+                  />
+                </div>
+                <div>
+                  <label className={LABEL}>Région</label>
+                  <input value={form.region || ""} onChange={(e) => setForm({ ...form, region: e.target.value })} className={CHAMP} />
+                </div>
+                <div>
+                  <label className={LABEL}>Pays</label>
+                  <input value={form.pays || ""} onChange={(e) => setForm({ ...form, pays: e.target.value })} className={CHAMP} />
+                </div>
               </div>
-              <div>
-                <label className={LABEL}>Raison sociale</label>
-                <input
-                  value={form.raisonSociale || ""}
-                  onChange={(e) => setForm({ ...form, raisonSociale: e.target.value })}
-                  className={CHAMP}
-                />
-              </div>
-              <div>
-                <label className={LABEL}>Adresse</label>
-                <input
-                  value={form.adresse || ""}
-                  onChange={(e) => setForm({ ...form, adresse: e.target.value })}
-                  className={CHAMP}
-                />
-              </div>
-              <div>
-                <label className={LABEL}>Ville</label>
-                <input
-                  value={form.ville || ""}
-                  onChange={(e) => setForm({ ...form, ville: e.target.value })}
-                  className={CHAMP}
-                />
-              </div>
-              <div>
-                <label className={LABEL}>Code postal</label>
-                <input
-                  value={form.codePostal || ""}
-                  onChange={(e) => setForm({ ...form, codePostal: e.target.value })}
-                  className={CHAMP}
-                />
-              </div>
-              <div>
-                <label className={LABEL}>Région</label>
-                <input value={form.region || ""} onChange={(e) => setForm({ ...form, region: e.target.value })} className={CHAMP} />
-              </div>
-              <div>
-                <label className={LABEL}>Pays</label>
-                <input value={form.pays || ""} onChange={(e) => setForm({ ...form, pays: e.target.value })} className={CHAMP} />
-              </div>
-            </div>
-          </section>
+            </section>
 
-          <section className="rounded-2xl border border-brand-900/10 bg-white p-5 shadow-sm sm:p-6">
-            <div className="mb-5 flex items-center gap-3">
-              <span className="flex size-9 items-center justify-center rounded-xl bg-brand-900/10 text-brand-900">
-                <ContactRound className="size-4" aria-hidden="true" />
-              </span>
-              <div>
-                <h2 className="font-semibold text-ink-900">Coordonnées</h2>
-                <p className="text-sm text-muted-foreground">Moyens de contact de votre laboratoire.</p>
+            <section className="rounded-2xl border border-brand-900/10 bg-white p-5 shadow-sm sm:p-6">
+              <div className="mb-5 flex items-center gap-3">
+                <span className="flex size-9 items-center justify-center rounded-xl bg-brand-900/10 text-brand-900">
+                  <ContactRound className="size-4" aria-hidden="true" />
+                </span>
+                <div>
+                  <h2 className="font-semibold text-ink-900">Coordonnées</h2>
+                  <p className="text-sm text-muted-foreground">Moyens de contact de votre laboratoire.</p>
+                </div>
               </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className={LABEL}>Téléphone</label>
-                <input value={form.telephone || ""} onChange={(e) => setForm({ ...form, telephone: e.target.value })} className={CHAMP} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={LABEL}>Téléphone</label>
+                  <input value={form.telephone || ""} onChange={(e) => setForm({ ...form, telephone: e.target.value })} className={CHAMP} />
+                </div>
+                <div>
+                  <label className={LABEL}>E-mail</label>
+                  <input type="email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} className={CHAMP} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={LABEL}>Site web</label>
+                  <input type="url" value={form.siteWeb || ""} onChange={(e) => setForm({ ...form, siteWeb: e.target.value })} className={CHAMP} />
+                </div>
               </div>
-              <div>
-                <label className={LABEL}>E-mail</label>
-                <input type="email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} className={CHAMP} />
-              </div>
-              <div className="sm:col-span-2">
-                <label className={LABEL}>Site web</label>
-                <input type="url" value={form.siteWeb || ""} onChange={(e) => setForm({ ...form, siteWeb: e.target.value })} className={CHAMP} />
-              </div>
-            </div>
-          </section>
+            </section>
+          </div>
 
           <TypeLaboratoireField
             value={form.typeLaboratoire ?? ""}

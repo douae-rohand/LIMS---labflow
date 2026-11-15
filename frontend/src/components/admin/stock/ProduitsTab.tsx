@@ -17,7 +17,7 @@ import {
 import { ProduitForm } from "./ProduitForm";
 import { ProduitCard } from "./ProduitCard";
 
-const PAGE_SIZE = 2;
+const PAGE_SIZE = 7;
 
 export function ProduitsTab() {
   const navigate = useNavigate();

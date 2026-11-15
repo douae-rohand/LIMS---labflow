@@ -60,7 +60,7 @@ export function TableauLaboratoires() {
   const [statut, setStatut] = useState<"" | "ACTIF" | "SUSPENDU" | "DESACTIVE">("");
   const [ville, setVille] = useState("");
   const [page, setPage] = useState(0);
-  const [taille, setTaille] = useState<TaillePage>(10);
+  const [taille, setTaille] = useState<TaillePage>(7);
   const [tri, setTri] = useState<Tri>("dateCreation");
   const [ordre, setOrdre] = useState<"asc" | "desc">("desc");
   const [portee, setPortee] = useState<"filtres" | "tous">("filtres");
@@ -365,9 +365,9 @@ export function TableauLaboratoires() {
             value={String(taille)}
             onChange={(event) => setTaille(Number(event.target.value) as TaillePage)}
           >
+            <option value="7">7</option>
             <option value="10">10</option>
             <option value="20">20</option>
-            <option value="50">50</option>
           </Select>
           <Button variant="secondary" size="sm" disabled={page === 0} onClick={() => setPage((actuel) => Math.max(0, actuel - 1))}>
             Précédent

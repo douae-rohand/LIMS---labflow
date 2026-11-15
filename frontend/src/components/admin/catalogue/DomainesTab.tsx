@@ -8,7 +8,7 @@ import { DomaineForm } from "./DomaineForm";
 import { ConfirmDialog } from "./ConfirmDialog";
 
 export function DomainesTab() {
-  const PAGE_SIZE = 5;
+  const PAGE_SIZE = 7;
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState<number | null>(null);

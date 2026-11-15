@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/lab";
 import { messageErreurFacturesAdmin, type FactureAdminDto } from "@/api/facturesAdmin";
 
@@ -141,10 +141,10 @@ export function FacturesAdminTable({
       <div className="mt-4 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Page {page} sur {totalPages}</p>
         <div className="flex gap-2">
-          <Button variant="outlineLight" size="sm" disabled={page <= 1} onClick={onPrevious}>
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={onPrevious} icon={<ChevronLeft className="size-4" aria-hidden="true" />} iconPosition="left">
             Précédent
           </Button>
-          <Button variant="outlineLight" size="sm" disabled={page >= totalPages} onClick={onNext}>
+          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={onNext} icon={<ChevronRight className="size-4" aria-hidden="true" />} iconPosition="right">
             Suivant
           </Button>
         </div>
