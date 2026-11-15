@@ -1,15 +1,11 @@
 package com.backend.modules.planification.service;
 
-import com.backend.common.audit.JournalAuditService;
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.common.security.ProprieteClient;
 import com.backend.common.security.SecurityUtils;
 import com.backend.common.tenant.TenantExecutor;
-import com.backend.modules.auth.security.UtilisateurPrincipal;
-import com.backend.modules.demande.entity.Demande;
 import com.backend.modules.demande.entity.StatutDemande;
-import com.backend.modules.demande.repository.DemandeRepository;
 import com.backend.modules.essai.entity.LigneEssai;
 import com.backend.modules.essai.entity.StatutEssai;
 import com.backend.modules.essai.repository.LigneEssaiRepository;
@@ -20,9 +16,8 @@ import com.backend.modules.planification.dto.TechnicienChargeDto;
 import com.backend.modules.planification.entity.StatutPlanification;
 import com.backend.modules.utilisateur.entity.RoleUtilisateur;
 import com.backend.modules.utilisateur.entity.Utilisateur;
-import com.backend.modules.utilisateur.entity.UtilisateurDomaine;
-import com.backend.modules.utilisateur.repository.UtilisateurDomaineRepository;
 import com.backend.modules.utilisateur.repository.UtilisateurRepository;
+import com.backend.modules.utilisateur.service.TechnicienDomaineService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -48,20 +42,18 @@ public class PlanificationService {
             .toList();
 
     private final LigneEssaiRepository ligneEssaiRepository;
-    private final DemandeRepository demandeRepository;
     private final ProprieteClient proprieteClient;
     private final UtilisateurRepository utilisateurRepository;
-    private final UtilisateurDomaineRepository utilisateurDomaineRepository;
     private final TenantExecutor tenantExecutor;
     private final LigneTravailAssembleur assembleur;
-    private final JournalAuditService journalAuditService;
-    @jakarta.persistence.PersistenceContext
-    private jakarta.persistence.EntityManager entityManager;
+    private final TechnicienDomaineService technicienDomaineService;
+    private final EtatPaiementService etatPaiementService;
+    private final AffectationAnalysesService affectationAnalysesService;
 
-    public static final String PAIEMENT_AUCUNE_FACTURE = "AUCUNE_FACTURE";
-    public static final String PAIEMENT_NON_PAYEE = "NON_PAYEE";
-    public static final String PAIEMENT_PARTIELLE = "PARTIELLE";
-    public static final String PAIEMENT_PAYEE = "PAYEE";
+    public static final String PAIEMENT_AUCUNE_FACTURE = EtatPaiementService.AUCUNE_FACTURE;
+    public static final String PAIEMENT_NON_PAYEE = EtatPaiementService.NON_PAYEE;
+    public static final String PAIEMENT_PARTIELLE = EtatPaiementService.PARTIELLE;
+    public static final String PAIEMENT_PAYEE = EtatPaiementService.PAYEE;
 
     @Transactional(readOnly = true)
     public PlanificationDto trouverParId(Long id) {
@@ -97,7 +89,8 @@ public class PlanificationService {
                     default -> true;
                 })
                 .toList();
-        Map<Long, String> paiements = etatsPaiement(analyses.stream().map(LigneTravailDto::getDemandeId).toList());
+        Map<Long, String> paiements = etatPaiementService.etatsPaiement(
+                analyses.stream().map(LigneTravailDto::getDemandeId).toList());
         analyses.forEach(a -> a.setEtatPaiement(paiements.getOrDefault(a.getDemandeId(), PAIEMENT_AUCUNE_FACTURE)));
         return analyses;
     }
@@ -109,25 +102,7 @@ public class PlanificationService {
 
     /** État de paiement de la facture de chaque demande (une requête pour toutes). */
     public Map<Long, String> etatsPaiement(java.util.Collection<Long> demandeIds) {
-        Map<Long, String> etats = new java.util.HashMap<>();
-        if (demandeIds.isEmpty()) {
-            return etats;
-        }
-        List<Object[]> lignes = entityManager.createQuery("""
-                SELECT f.demande.id, f.montantHt, f.statut,
-                       (SELECT COALESCE(SUM(p.montant), 0) FROM Paiement p WHERE p.facture = f)
-                FROM Facture f WHERE f.demande.id IN :ids
-                """, Object[].class)
-                .setParameter("ids", new HashSet<>(demandeIds))
-                .getResultList();
-        for (Object[] ligne : lignes) {
-            java.math.BigDecimal total = (java.math.BigDecimal) ligne[1];
-            java.math.BigDecimal paye = ligne[3] instanceof java.math.BigDecimal b ? b : java.math.BigDecimal.ZERO;
-            String etat = "PAYEE".equals(ligne[2]) || (total != null && paye.compareTo(total) >= 0 && paye.signum() > 0)
-                    ? PAIEMENT_PAYEE : paye.signum() > 0 ? PAIEMENT_PARTIELLE : PAIEMENT_NON_PAYEE;
-            etats.put((Long) ligne[0], etat);
-        }
-        return etats;
+        return etatPaiementService.etatsPaiement(demandeIds);
     }
 
     /** Techniciens actifs du laboratoire avec leur charge actuelle. */
@@ -169,94 +144,7 @@ public class PlanificationService {
      */
     @Transactional
     public List<LigneTravailDto> affecter(AffecterAnalysesRequest request) {
-        UtilisateurPrincipal acteur = SecurityUtils.principalCourant();
-        Long laboratoireId = laboratoireCourant();
-        // Le rôle et le laboratoire sont chargés paresseusement : on vérifie dans la session centrale.
-        Utilisateur technicien = tenantExecutor.inCentral(() -> utilisateurRepository
-                .findById(request.technicienId())
-                .filter(u -> u.getRole() != null
-                        && RoleUtilisateur.TECHNICIEN.name().equals(u.getRole().getCode())
-                        && u.isActif()
-                        && u.getLaboratoire() != null
-                        && laboratoireId.equals(u.getLaboratoire().getId()))
-                .orElse(null));
-        if (technicien == null) {
-            throw new BusinessRuleException("TECHNICIEN_INVALIDE",
-                    "Choisissez un technicien actif de votre laboratoire.");
-        }
-        List<String> domaines = domainesDes(List.of(technicien.getId())).getOrDefault(technicien.getId(), List.of());
-        // Chaque technicien n'est affecté qu'à son domaine : sans domaine, il ne peut rien recevoir.
-        if (domaines.isEmpty()) {
-            throw new BusinessRuleException("TECHNICIEN_SANS_DOMAINE",
-                    nomComplet(technicien) + " n'a aucun domaine d'analyse : demandez à l'administrateur de lui en attribuer.");
-        }
-        String motif = request.motif() == null || request.motif().isBlank() ? null : request.motif().trim();
-
-        List<LigneEssai> lignes = ligneEssaiRepository.findAvecDetails(new HashSet<>(request.ligneIds()));
-        if (lignes.size() != new HashSet<>(request.ligneIds()).size()) {
-            throw new ResourceNotFoundException("Analyse introuvable");
-        }
-        Instant maintenant = Instant.now();
-        Instant datePrevue = request.datePrevue() == null ? null
-                : request.datePrevue().atStartOfDay(java.time.ZoneId.of("Africa/Casablanca")).toInstant();
-        if (request.datePrevue() != null && request.datePrevue().isBefore(LocalDate.now(java.time.ZoneId.of("Africa/Casablanca")))) {
-            throw new BusinessRuleException("DATE_PREVUE_PASSEE", "La date prévue ne peut pas être dans le passé.");
-        }
-        Set<Demande> demandes = new HashSet<>();
-        Map<Long, String> paiements = etatsPaiement(lignes.stream().map(l -> l.getDemande().getId()).toList());
-        for (LigneEssai ligne : lignes) {
-            Demande demande = ligne.getDemande();
-            if (!STATUTS_DEMANDES_ACTIVES.contains(demande.getStatut())) {
-                throw new BusinessRuleException("DEMANDE_NON_PLANIFIABLE",
-                        "La demande " + demande.getNumero() + " n'est pas acceptée ou en cours.");
-            }
-            if (LigneTravailAssembleur.terminee(ligne)) {
-                throw new BusinessRuleException("ANALYSE_TERMINEE",
-                        "L'analyse " + libelle(ligne) + " est déjà terminée.");
-            }
-            String domaine = ligne.getEssai() == null || ligne.getEssai().getDomaine() == null
-                    ? null : ligne.getEssai().getDomaine().getCode();
-            if (domaine == null || !domaines.contains(domaine)) {
-                throw new BusinessRuleException("DOMAINE_NON_COUVERT",
-                        nomComplet(technicien) + " ne couvre pas le domaine de l'analyse " + libelle(ligne) + ".");
-            }
-            // Une analyse ne s'affecte que si elle peut réellement avancer : échantillon conforme reçu
-            // et facture au moins partiellement payée.
-            if (ligne.getEchantillon() == null || !Boolean.TRUE.equals(ligne.getEchantillon().getConformite())) {
-                throw new BusinessRuleException("ECHANTILLON_ABSENT",
-                        "L'analyse " + libelle(ligne) + " n'a pas d'échantillon conforme reçu : affectation impossible.");
-            }
-            String paiement = paiements.getOrDefault(demande.getId(), PAIEMENT_AUCUNE_FACTURE);
-            if (!PAIEMENT_PARTIELLE.equals(paiement) && !PAIEMENT_PAYEE.equals(paiement)) {
-                throw new BusinessRuleException("PAIEMENT_ABSENT",
-                        "La demande " + demande.getNumero() + " n'a reçu aucun paiement : affectation impossible "
-                                + "(un paiement partiel suffit).");
-            }
-            Long avant = ligne.getTechnicienId();
-            boolean reaffectation = avant != null && !avant.equals(technicien.getId());
-            if (reaffectation && motif == null) {
-                throw new BusinessRuleException("MOTIF_REAFFECTATION_OBLIGATOIRE",
-                        "L'analyse " + libelle(ligne) + " est déjà affectée : indiquez le motif de la réaffectation.");
-            }
-            ligne.setTechnicienId(technicien.getId());
-            ligne.setDateAttribution(maintenant);
-            if (datePrevue != null) {
-                ligne.setDateDebut(datePrevue);
-            }
-            ligneEssaiRepository.save(ligne);
-            demandes.add(demande);
-            journalAuditService.enregistrer(reaffectation ? "REAFFECTER_ANALYSE" : "AFFECTER_ANALYSE", "LigneEssai",
-                    ligne.getId(), acteur.getEmail(),
-                    avant == null ? null : "{\"technicienId\":" + avant + "}",
-                    "{\"technicienId\":" + technicien.getId() + "}", reaffectation ? motif : null, laboratoireId);
-        }
-        for (Demande demande : demandes) {
-            if (StatutDemande.depuis(demande.getStatut()) == StatutDemande.ACCEPTEE) {
-                demande.setStatut(StatutDemande.EN_COURS.name());
-                demandeRepository.save(demande);
-            }
-        }
-        return assembleur.assembler(ligneEssaiRepository.findAvecDetails(new HashSet<>(request.ligneIds())));
+        return affectationAnalysesService.affecter(request);
     }
 
     @Transactional
@@ -278,12 +166,7 @@ public class PlanificationService {
     }
 
     Map<Long, List<String>> domainesDes(Collection<Long> utilisateurs) {
-        if (utilisateurs.isEmpty()) {
-            return Map.of();
-        }
-        return tenantExecutor.inCentral(() -> utilisateurDomaineRepository.findByUtilisateurIdIn(utilisateurs).stream()
-                .collect(Collectors.groupingBy(UtilisateurDomaine::getUtilisateurId,
-                        Collectors.mapping(UtilisateurDomaine::getCodeDomaine, Collectors.toList()))));
+        return technicienDomaineService.domainesDes(utilisateurs);
     }
 
     private static Long laboratoireCourant() {
@@ -299,11 +182,11 @@ public class PlanificationService {
                 .orElseThrow(() -> new ResourceNotFoundException("LigneEssai", "id", id));
     }
 
-    private static String libelle(LigneEssai ligne) {
+    static String libelle(LigneEssai ligne) {
         return ligne.getEssai() == null ? ligne.getCode() : ligne.getEssai().getDesignation();
     }
 
-    private static String nomComplet(Utilisateur u) {
+    static String nomComplet(Utilisateur u) {
         String prenom = u.getPrenom() == null ? "" : u.getPrenom().trim();
         return (prenom + " " + (u.getNom() == null ? "" : u.getNom().trim())).trim();
     }

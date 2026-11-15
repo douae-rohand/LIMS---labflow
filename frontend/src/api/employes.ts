@@ -33,6 +33,13 @@ export interface EmployeDetailDto extends EmployeDto {
   compteConfirme: boolean;
   invitationExpiree: boolean | null;
   invitationExpireLe: string | null;
+  domaines: DomaineDto[];
+}
+
+export interface DomaineDto {
+  id: number;
+  code: string;
+  libelle: string;
 }
 
 export interface ImpactDesactivationEmploye {
@@ -97,6 +104,13 @@ export function messageErreurApi(error: unknown): string {
     ) {
       return error.message.replace(/^\[[A-Z0-9_]+\]\s*/, "").trim();
     }
+    if (
+      error.status === 422 &&
+      typeof error.message === "string" &&
+      error.message.trim().length > 0
+    ) {
+      return error.message.replace(/^\[[A-Z0-9_]+\]\s*/, "").trim();
+    }
     if (typeof error.message === "string" && error.message.trim().length > 0) {
       return error.message.replace(/^\[[A-Z0-9_]+\]\s*/, "").trim();
     }
@@ -152,6 +166,21 @@ export async function listerEmployes(
  */
 export async function trouverEmploye(id: number): Promise<EmployeDetailDto> {
   const res = await apiClient.get<ApiResponse<EmployeDetailDto>>(`/employes/${id}`);
+  return res.data;
+}
+
+export async function listerDomainesLaboratoire(): Promise<DomaineDto[]> {
+  const res = await apiClient.get<ApiResponse<DomaineDto[]>>("/catalogue-admin/domaines");
+  return res.data;
+}
+
+export async function modifierDomainesEmploye(
+  id: number,
+  domaineIds: number[],
+): Promise<EmployeDetailDto> {
+  const res = await apiClient.put<ApiResponse<EmployeDetailDto>>(`/employes/${id}/domaines`, {
+    domaineIds,
+  });
   return res.data;
 }
 

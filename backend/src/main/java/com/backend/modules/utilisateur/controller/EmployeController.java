@@ -4,8 +4,10 @@ import com.backend.common.dto.ApiResponse;
 import com.backend.common.dto.PageResponse;
 import com.backend.modules.utilisateur.dto.EmployeDto;
 import com.backend.modules.utilisateur.dto.ImpactDesactivationEmployeDto;
+import com.backend.modules.utilisateur.dto.ModifierDomainesEmployeRequest;
 import com.backend.modules.plateforme.dto.PermissionsCompteDto;
 import com.backend.modules.plateforme.dto.RemplacerEcartsRequest;
+import com.backend.modules.utilisateur.service.EmployeDomainesService;
 import com.backend.modules.utilisateur.service.UtilisateurService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
 
 /**
  * Endpoints dédiés à la gestion des employés de laboratoire.
@@ -32,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class EmployeController {
 
     private final UtilisateurService utilisateurService;
+    private final EmployeDomainesService employeDomainesService;
 
     @GetMapping
     @PreAuthorize("hasAuthority('PERM_EMPLOYES_CONSULTER')")
@@ -56,7 +60,17 @@ public class EmployeController {
     @Operation(summary = "Obtenir le détail d'un employé du laboratoire courant")
     public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> trouverEmployeParId(
             @org.springframework.web.bind.annotation.PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(utilisateurService.trouverEmployeParId(id)));
+        return ResponseEntity.ok(ApiResponse.success(employeDomainesService.trouverEmployeParId(id)));
+    }
+
+    @PutMapping("/{id}/domaines")
+    @PreAuthorize("hasRole('ADMINISTRATEUR') and hasAuthority('PERM_EMPLOYES_GERER')")
+    @Operation(summary = "Remplacer les domaines de compétence d'un technicien")
+    public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> modifierDomaines(
+            @PathVariable Long id,
+            @Valid @RequestBody ModifierDomainesEmployeRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                employeDomainesService.remplacerDomaines(id, request)));
     }
 
     @GetMapping("/{id}/permissions")
@@ -92,7 +106,8 @@ public class EmployeController {
     public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> modifierEmploye(
             @org.springframework.web.bind.annotation.PathVariable Long id,
             @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody com.backend.modules.utilisateur.dto.ModifierEmployeRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Employé modifié avec succès", utilisateurService.modifierEmploye(id, request)));
+        return ResponseEntity.ok(ApiResponse.success("Employé modifié avec succès",
+                employeDomainesService.modifierEmploye(id, request)));
     }
 
     @org.springframework.web.bind.annotation.PatchMapping("/{id}/desactiver")
@@ -101,7 +116,7 @@ public class EmployeController {
     public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> desactiverEmploye(
             @org.springframework.web.bind.annotation.PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Employé désactivé avec succès",
-                utilisateurService.desactiverEmploye(id)));
+                employeDomainesService.desactiverEmploye(id)));
     }
 
     @GetMapping("/{id}/impact-desactivation")
@@ -125,7 +140,8 @@ public class EmployeController {
     @Operation(summary = "Réactiver un employé du laboratoire courant")
     public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> reactiverEmploye(
             @org.springframework.web.bind.annotation.PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success("Employé réactivé avec succès", utilisateurService.reactiverEmploye(id)));
+        return ResponseEntity.ok(ApiResponse.success("Employé réactivé avec succès",
+                employeDomainesService.reactiverEmploye(id)));
     }
 
     @org.springframework.web.bind.annotation.PostMapping("/{id}/renvoyer-invitation")
@@ -133,7 +149,8 @@ public class EmployeController {
     @Operation(summary = "Renvoyer l'email d'invitation à un employé en attente d'activation")
     public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> renvoyerInvitationEmploye(
             @org.springframework.web.bind.annotation.PathVariable Long id) {
-        com.backend.modules.utilisateur.dto.EmployeDetailDto employe = utilisateurService.renvoyerInvitationEmploye(id);
+        com.backend.modules.utilisateur.dto.EmployeDetailDto employe =
+                employeDomainesService.renvoyerInvitationEmploye(id);
         return ResponseEntity.ok(ApiResponse.success("Invitation renvoyée par email.", employe));
     }
 }

@@ -1,5 +1,6 @@
 package com.backend.modules.utilisateur.dto;
 
+import com.backend.modules.catalogue.dto.DomaineDto;
 import com.backend.modules.utilisateur.entity.StatutEmploye;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * DTO de détail pour un employé d'un laboratoire.
@@ -34,4 +36,7 @@ public class EmployeDetailDto {
     private Instant dateCreation;
     private Boolean invitationExpiree;
     private Instant invitationExpireLe;
+
+    @Builder.Default
+    private List<DomaineDto> domaines = List.of();
 }

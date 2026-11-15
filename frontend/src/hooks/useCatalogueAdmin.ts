@@ -73,6 +73,7 @@ export function useCatalogueAdmin() {
     mutationFn: catalogueAdmin.creerDomaine,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["catalogue-admin-domaines"] });
+      queryClient.invalidateQueries({ queryKey: ["domaines-laboratoire"] });
     },
   });
 
@@ -81,6 +82,7 @@ export function useCatalogueAdmin() {
       catalogueAdmin.modifierDomaine(id, request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["catalogue-admin-domaines"] });
+      queryClient.invalidateQueries({ queryKey: ["domaines-laboratoire"] });
     },
   });
 
@@ -88,6 +90,7 @@ export function useCatalogueAdmin() {
     mutationFn: catalogueAdmin.supprimerDomaine,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["catalogue-admin-domaines"] });
+      queryClient.invalidateQueries({ queryKey: ["domaines-laboratoire"] });
     },
   });
 

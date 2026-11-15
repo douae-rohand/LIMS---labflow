@@ -5,6 +5,7 @@ import {
   desactiverEmploye,
   reactiverEmploye,
   renvoyerInvitationEmploye,
+  modifierDomainesEmploye,
   messageErreurApi,
 } from "@/api/employes";
 import { ApiError } from "@/api/axios";
@@ -99,17 +100,36 @@ export function useEmployeMutations({
     },
   });
 
+  const mutationDomaines = useMutation({
+    mutationFn: (domaineIds: number[]) => {
+      if (employeId === undefined) throw new Error("Identifiant manquant");
+      return modifierDomainesEmploye(employeId, domaineIds);
+    },
+    onSuccess: (data) => {
+      if (employeId !== undefined) {
+        queryClient.setQueryData(["employe", employeId], data);
+      }
+      void queryClient.invalidateQueries({ queryKey: ["employes"] });
+      toast.success("Domaines de compétence enregistrés.");
+    },
+    onError: (err) => {
+      handleErreurCommune(err);
+    },
+  });
+
   const isMutating =
     mutationModifier.isPending ||
     mutationDesactiver.isPending ||
     mutationReactiver.isPending ||
-    mutationRenvoyerInvitation.isPending;
+    mutationRenvoyerInvitation.isPending ||
+    mutationDomaines.isPending;
 
   return {
     mutationModifier,
     mutationDesactiver,
     mutationReactiver,
     mutationRenvoyerInvitation,
+    mutationDomaines,
     isMutating,
   };
 }
