@@ -42,7 +42,7 @@ import java.util.stream.Stream;
 public class PlanificationService {
 
     /** Demandes dont les analyses peuvent être planifiées ou suivies. */
-    static final List<String> STATUTS_DEMANDES_ACTIVES = Stream.of(
+    public static final List<String> STATUTS_DEMANDES_ACTIVES = Stream.of(
                     StatutDemande.ACCEPTEE, StatutDemande.EN_COURS, StatutDemande.EN_VALIDATION)
             .flatMap(statut -> statut.aliasesPersistés().stream())
             .toList();
@@ -87,18 +87,24 @@ public class PlanificationService {
     @Transactional(readOnly = true)
     public List<LigneTravailDto> listerAnalyses(String filtre) {
         Instant maintenant = Instant.now();
-        List<LigneEssai> lignes = ligneEssaiRepository.findLignesDesDemandes(STATUTS_DEMANDES_ACTIVES).stream()
-                .filter(ligne -> switch (filtre == null ? "" : filtre) {
-                    case "A_AFFECTER" -> ligne.getTechnicienId() == null && !LigneTravailAssembleur.terminee(ligne);
-                    case "AFFECTEES" -> ligne.getTechnicienId() != null && !LigneTravailAssembleur.terminee(ligne);
-                    case "EN_RETARD" -> LigneTravailAssembleur.enRetard(ligne, maintenant);
+        List<LigneTravailDto> analyses = assembleur.assembler(
+                        ligneEssaiRepository.findLignesDesDemandes(STATUTS_DEMANDES_ACTIVES)).stream()
+                .filter(analyse -> switch (filtre == null ? "" : filtre) {
+                    case "A_AFFECTER" -> (analyse.getTechnicienId() == null || analyse.isTechnicienDesactive())
+                            && !terminee(analyse.getStatut());
+                    case "AFFECTEES" -> analyse.getTechnicienId() != null && !terminee(analyse.getStatut());
+                    case "EN_RETARD" -> analyse.isEnRetard();
                     default -> true;
                 })
                 .toList();
-        List<LigneTravailDto> analyses = assembleur.assembler(lignes);
         Map<Long, String> paiements = etatsPaiement(analyses.stream().map(LigneTravailDto::getDemandeId).toList());
         analyses.forEach(a -> a.setEtatPaiement(paiements.getOrDefault(a.getDemandeId(), PAIEMENT_AUCUNE_FACTURE)));
         return analyses;
+    }
+
+    private static boolean terminee(com.backend.modules.essai.entity.StatutEssai statut) {
+        return statut == com.backend.modules.essai.entity.StatutEssai.TERMINE
+                || statut == com.backend.modules.essai.entity.StatutEssai.NON_REALISABLE;
     }
 
     /** État de paiement de la facture de chaque demande (une requête pour toutes). */

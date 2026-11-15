@@ -40,9 +40,6 @@ public class Rapport {
     @Column(name = "cle_pdf", length = 500)
     private String clePdf;
 
-    @Builder.Default
-    private Boolean diffuse = false;
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "demande_id", nullable = false)
     private Demande demande;

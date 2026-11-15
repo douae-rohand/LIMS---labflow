@@ -51,10 +51,10 @@ public class LigneTravailAssembleur {
             if (l.getTechnicienId() != null) utilisateurs.add(l.getTechnicienId());
         });
         historiques.values().forEach(h -> h.forEach(v -> utilisateurs.add(v.getValidateurId())));
-        Map<Long, String> noms = nomsUtilisateurs(utilisateurs);
+        Map<Long, Utilisateur> utilisateursParId = chargerUtilisateurs(utilisateurs);
         Instant maintenant = Instant.now();
         return lignes.stream()
-                .map(l -> versDto(l, historiques.getOrDefault(l.getId(), List.of()), noms, maintenant))
+                .map(l -> versDto(l, historiques.getOrDefault(l.getId(), List.of()), utilisateursParId, maintenant))
                 .toList();
     }
 
@@ -86,12 +86,18 @@ public class LigneTravailAssembleur {
         if (ids == null || ids.isEmpty()) {
             return Map.of();
         }
+        Map<Long, String> noms = new HashMap<>();
+        chargerUtilisateurs(ids).forEach((id, utilisateur) -> noms.put(id, nomComplet(utilisateur)));
+        return noms;
+    }
+
+    private Map<Long, Utilisateur> chargerUtilisateurs(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Map.of();
+        }
         return tenantExecutor.inCentral(() -> {
-            Map<Long, String> noms = new HashMap<>();
-            for (Utilisateur u : utilisateurRepository.findAllById(ids)) {
-                noms.put(u.getId(), nomComplet(u));
-            }
-            return noms;
+            return utilisateurRepository.findAllById(ids).stream()
+                    .collect(Collectors.toMap(Utilisateur::getId, utilisateur -> utilisateur));
         });
     }
 
@@ -132,13 +138,18 @@ public class LigneTravailAssembleur {
         return echeance != null && !terminee(ligne) && maintenant.isAfter(echeance);
     }
 
-    private LigneTravailDto versDto(LigneEssai ligne, List<Validation> historique, Map<Long, String> noms,
+    private LigneTravailDto versDto(LigneEssai ligne, List<Validation> historique,
+                                    Map<Long, Utilisateur> utilisateurs,
                                     Instant maintenant) {
         Demande demande = ligne.getDemande();
         Essai essai = ligne.getEssai();
         Instant echeance = echeance(ligne);
         boolean retard = enRetard(ligne, maintenant);
         Validation derniere = historique.isEmpty() ? null : historique.get(historique.size() - 1);
+        Utilisateur technicien = ligne.getTechnicienId() == null
+                ? null : utilisateurs.get(ligne.getTechnicienId());
+        Utilisateur validateur = derniere == null || derniere.getValidateurId() == null
+                ? null : utilisateurs.get(derniere.getValidateurId());
         return LigneTravailDto.builder()
                 .id(ligne.getId())
                 .code(ligne.getCode())
@@ -157,7 +168,8 @@ public class LigneTravailAssembleur {
                 .domaineCode(essai == null || essai.getDomaine() == null ? null : essai.getDomaine().getCode())
                 .domaineLibelle(essai == null || essai.getDomaine() == null ? null : essai.getDomaine().getLibelle())
                 .technicienId(ligne.getTechnicienId())
-                .technicienNom(ligne.getTechnicienId() == null ? null : noms.get(ligne.getTechnicienId()))
+                .technicienNom(technicien == null ? null : nomComplet(technicien))
+                .technicienDesactive(technicien != null && !technicien.isActif())
                 .statut(ligne.getStatut())
                 .dateAttribution(ligne.getDateAttribution())
                 .datePrevue(ligne.getDateDebut() == null ? null : LocalDate.ofInstant(ligne.getDateDebut(), java.time.ZoneId.of("Africa/Casablanca")))
@@ -174,7 +186,7 @@ public class LigneTravailAssembleur {
                 .etatValidation(etatValidation(historique))
                 .derniereDecisionMotif(derniere == null ? null : derniere.getMotif())
                 .derniereDecisionDate(derniere == null ? null : derniere.getDateValidation())
-                .derniereDecisionPar(derniere == null ? null : noms.get(derniere.getValidateurId()))
+                .derniereDecisionPar(validateur == null ? null : nomComplet(validateur))
                 .build();
     }
 

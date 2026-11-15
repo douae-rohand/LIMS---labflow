@@ -408,10 +408,12 @@ export async function listerCatalogueAccueil(): Promise<EssaiCatalogueAccueil[]>
 }
 
 export async function creerDemandeAccueil(demande: NouvelleDemandeAccueil): Promise<DemandeCreee> {
-  const body = { ...demande };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const body: any = { ...demande };
   if (demande.piecesJointes && demande.piecesJointes.length > 0) {
     body.piecesJointes = demande.piecesJointes.map((pj) => ({
-      ...pj,
+      nomFichier: pj.nomFichier,
+      typeMime: pj.typeMime,
       contenu: arrayBufferToBase64(pj.contenu),
     }));
   }
@@ -423,7 +425,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
   for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+    binary += String.fromCharCode(bytes[i]!);
   }
   return btoa(binary);
 }

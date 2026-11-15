@@ -46,6 +46,17 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
                                                      @Param("laboratoireId") Long laboratoireId);
 
     @Query("""
+            SELECT COUNT(u) FROM Utilisateur u
+            WHERE u.role.code = :role
+              AND u.actif = true
+              AND u.compteConfirme = true
+              AND u.laboratoire.id = :laboratoireId
+            """)
+    long compterActifsConfirmesParRoleEtLaboratoire(
+            @Param("role") String role,
+            @Param("laboratoireId") Long laboratoireId);
+
+    @Query("""
             SELECT u FROM Utilisateur u
             WHERE u.role.code = :#{#role.name()}
             """)

@@ -11,7 +11,7 @@ export interface DemandesStatsDto {
 
 export interface SerieMensuelleDemandeDto {
   mois: string;
-  valeur: number;
+  nombre: number;
 }
 
 export function messageErreurStatsDemandes(error: unknown): string {

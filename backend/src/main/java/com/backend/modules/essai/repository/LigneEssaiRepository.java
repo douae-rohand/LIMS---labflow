@@ -46,6 +46,17 @@ public interface LigneEssaiRepository extends JpaRepository<LigneEssai, Long> {
     List<LigneEssai> findLignesDesDemandes(@Param("statuts") Collection<String> statuts);
 
     @Query("""
+            SELECT COUNT(le) FROM LigneEssai le
+            WHERE le.technicienId = :technicienId
+              AND le.demande.statut IN :statutsDemandes
+              AND (le.statut IS NULL OR le.statut NOT IN :statutsTermines)
+            """)
+    long compterEssaisOuvertsParTechnicien(
+            @Param("technicienId") Long technicienId,
+            @Param("statutsDemandes") Collection<String> statutsDemandes,
+            @Param("statutsTermines") Collection<StatutEssai> statutsTermines);
+
+    @Query("""
             SELECT le FROM LigneEssai le
             JOIN FETCH le.demande d
             LEFT JOIN FETCH le.essai e

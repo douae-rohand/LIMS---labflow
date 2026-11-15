@@ -248,7 +248,6 @@ public class RapportService {
                     .demande(demande)
                     .statut(StatutRapport.GENERE.name())
                     .dateEmission(Instant.now())
-                    .diffuse(false)
                     .build());
             for (LigneEssai ligne : lignes) {
                 rapportLigneRepository.save(RapportLigne.builder().rapport(rapport).ligneEssai(ligne).build());
@@ -273,7 +272,6 @@ public class RapportService {
         rapport.setSignataireId(acteur.getId());
         rapport.setDateSignature(maintenant);
         rapport.setStatut(StatutRapport.SIGNE.name());
-        rapport.setDiffuse(false);
         rapportRepository.save(rapport);
         journalAuditService.enregistrer("SIGNER_RAPPORT", "Rapport", rapport.getId(), acteur.getEmail(),
                 null, "{\"numero\":\"" + rapport.getNumero() + "\",\"statut\":\"SIGNE\"}",
@@ -299,7 +297,6 @@ public class RapportService {
 
         Instant maintenant = Instant.now();
         rapport.setStatut(StatutRapport.ENVOYE.name());
-        rapport.setDiffuse(true);
         rapportRepository.save(rapport);
 
         // Le rapport diffusé clôt la demande (CDC, table 2.3 : TERMINÉE).
@@ -581,7 +578,7 @@ public class RapportService {
                 .fichierUrl(rapport.getClePdf())
                 .signataireId(rapport.getSignataireId())
                 .dateGeneration(rapport.getDateEmission())
-                .dateEnvoi(Boolean.TRUE.equals(rapport.getDiffuse()) ? rapport.getDateSignature() : null)
+                .dateEnvoi("ENVOYE".equals(rapport.getStatut()) || "ARCHIVE".equals(rapport.getStatut()) ? rapport.getDateSignature() : null)
                 .build();
     }
 }

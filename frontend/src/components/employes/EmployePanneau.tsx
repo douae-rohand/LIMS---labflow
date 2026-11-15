@@ -193,10 +193,7 @@ export function EmployePanneau({ employeId, onClose }: EmployePanneauProps) {
       </Sheet>
 
       {/* Modale d'abandon des modifications non enregistrées */}
-      <AlertDialog
-        open={modalAbandonOuverte}
-        onOpenChange={setModalAbandonOuverte}
-      >
+      <AlertDialog open={modalAbandonOuverte} onOpenChange={setModalAbandonOuverte}>
         <AlertDialogContent className="w-[90vw] max-w-md rounded-2xl">
           <AlertDialogHeader>
             <div className="mb-2 flex size-10 items-center justify-center rounded-full bg-amber-100 text-amber-600">
@@ -206,13 +203,12 @@ export function EmployePanneau({ employeId, onClose }: EmployePanneauProps) {
               Abandonner les modifications ?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground">
-              Des informations ou permissions ont été modifiées. Si vous fermez le panneau maintenant, vos modifications non enregistrées seront perdues.
+              Des informations ou permissions ont été modifiées. Si vous fermez le panneau
+              maintenant, vos modifications non enregistrées seront perdues.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-full">
-              Continuer à modifier
-            </AlertDialogCancel>
+            <AlertDialogCancel className="rounded-full">Continuer à modifier</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmerAbandon}
               className="rounded-full bg-brand-900 text-primary-foreground hover:bg-brand-900/90"

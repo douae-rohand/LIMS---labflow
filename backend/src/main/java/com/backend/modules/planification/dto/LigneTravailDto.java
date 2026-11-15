@@ -30,6 +30,7 @@ public class LigneTravailDto {
     private String domaineLibelle;
     private Long technicienId;
     private String technicienNom;
+    private boolean technicienDesactive;
     private StatutEssai statut;
     private Instant dateAttribution;
     private LocalDate datePrevue;

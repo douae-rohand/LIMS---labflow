@@ -120,8 +120,10 @@ export async function creerDemandeDepuisPanier(
     body.objectif = payload.objectif.trim();
   }
   if (payload.piecesJointes && payload.piecesJointes.length > 0) {
-    body.piecesJointes = payload.piecesJointes.map((pj) => ({
-      ...pj,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (body as any).piecesJointes = payload.piecesJointes.map((pj) => ({
+      nomFichier: pj.nomFichier,
+      typeMime: pj.typeMime,
       contenu: arrayBufferToBase64(pj.contenu),
     }));
   }
@@ -136,7 +138,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
   for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+    binary += String.fromCharCode(bytes[i]!);
   }
   return btoa(binary);
 }

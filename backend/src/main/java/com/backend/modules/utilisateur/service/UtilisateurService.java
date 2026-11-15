@@ -16,6 +16,11 @@ import com.backend.modules.plateforme.repository.LaboratoireRepository;
 import com.backend.modules.plateforme.dto.PermissionsCompteDto;
 import com.backend.modules.plateforme.dto.RemplacerEcartsRequest;
 import com.backend.modules.plateforme.service.PermissionCompteService;
+import com.backend.modules.planification.service.PlanificationService;
+import com.backend.modules.essai.entity.StatutEssai;
+import com.backend.modules.essai.repository.LigneEssaiRepository;
+import com.backend.modules.notification.service.NotificationsLaboratoire;
+import com.backend.modules.utilisateur.dto.ImpactDesactivationEmployeDto;
 import com.backend.modules.utilisateur.dto.CreerUtilisateurRequest;
 import com.backend.modules.utilisateur.dto.ModifierUtilisateurRequest;
 import com.backend.modules.utilisateur.dto.UtilisateurDto;
@@ -63,6 +68,8 @@ public class UtilisateurService {
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final com.backend.modules.utilisateur.repository.UtilisateurPermissionRepository utilisateurPermissionRepository;
     private final PermissionCompteService permissionCompteService;
+    private final LigneEssaiRepository ligneEssaiRepository;
+    private final NotificationsLaboratoire notificationsLaboratoire;
 
     /** Rôles que peut créer un ADMINISTRATEUR (les siens exclus). */
     private static final Set<RoleUtilisateur> ROLES_CREABLES_PAR_ADMIN = Set.of(
@@ -442,6 +449,56 @@ public class UtilisateurService {
     }
 
     @Transactional
+    public void prevenirResponsableAvantDesactivation(Long id) {
+        tenantExecutor.inCentral(() -> {
+            Utilisateur utilisateur = chargerPourAppelant(id, false);
+            verifierPorteeGerer(principalConnecte(), utilisateur);
+            if (utilisateur.getRole() == null
+                    || !RoleUtilisateur.TECHNICIEN.name().equals(utilisateur.getRole().getCode())
+                    || !utilisateur.isActif()) {
+                throw new BusinessRuleException("CIBLE_NON_TECHNICIEN_ACTIF",
+                        "Seul un technicien actif peut faire l'objet de cette notification.");
+            }
+            long essaisOuverts = compterEssaisOuverts(utilisateur);
+            if (essaisOuverts == 0) {
+                throw new BusinessRuleException("AUCUN_ESSAI_A_REAFFECTER",
+                        "Ce technicien n'a aucun essai ouvert à réaffecter.");
+            }
+            Long laboratoireId = utilisateur.getLaboratoire() == null
+                    ? null : utilisateur.getLaboratoire().getId();
+            if (laboratoireId == null
+                    || utilisateurRepository.compterActifsConfirmesParRoleEtLaboratoire(
+                            RoleUtilisateur.RESPONSABLE.name(), laboratoireId) == 0) {
+                throw new BusinessRuleException("AUCUN_RESPONSABLE_ACTIF",
+                        "Aucun Responsable actif ne peut recevoir cette notification.");
+            }
+            notifierResponsableEssais(utilisateur, essaisOuverts);
+            return null;
+        });
+    }
+
+    @Transactional(readOnly = true)
+    public ImpactDesactivationEmployeDto impactDesactivationEmploye(Long id) {
+        return tenantExecutor.inCentral(() -> {
+            Utilisateur utilisateur = chargerPourAppelant(id, false);
+            verifierPorteeGerer(principalConnecte(), utilisateur);
+            long comptesActifsRole = utilisateur.getRole() == null || utilisateur.getLaboratoire() == null
+                    ? 0 : utilisateurRepository.compterActifsConfirmesParRoleEtLaboratoire(
+                            utilisateur.getRole().getCode(), utilisateur.getLaboratoire().getId());
+            long responsablesActifs = utilisateur.getRole() != null
+                    && RoleUtilisateur.TECHNICIEN.name().equals(utilisateur.getRole().getCode())
+                    && utilisateur.getLaboratoire() != null
+                    ? utilisateurRepository.compterActifsConfirmesParRoleEtLaboratoire(
+                            RoleUtilisateur.RESPONSABLE.name(), utilisateur.getLaboratoire().getId())
+                    : 0;
+            return new ImpactDesactivationEmployeDto(
+                    compterEssaisOuverts(utilisateur),
+                    responsablesActifs,
+                    utilisateur.isActif() && comptesActifsRole <= 1);
+        });
+    }
+
+    @Transactional
     public com.backend.modules.utilisateur.dto.EmployeDetailDto reactiverEmploye(Long id) {
         return tenantExecutor.inCentral(() -> {
             Utilisateur utilisateur = chargerPourAppelant(id, false);
@@ -508,6 +565,34 @@ public class UtilisateurService {
                     }
                 }
         );
+    }
+
+    private long compterEssaisOuverts(Utilisateur utilisateur) {
+        if (utilisateur.getRole() == null
+                || !RoleUtilisateur.TECHNICIEN.name().equals(utilisateur.getRole().getCode())) {
+            return 0;
+        }
+        if (utilisateur.getLaboratoire() == null
+                || !StringUtils.hasText(utilisateur.getLaboratoire().getNomSchema())) {
+            throw new BusinessRuleException("LABORATOIRE_EMPLOYE_INVALIDE",
+                    "Impossible de calculer les essais ouverts de ce technicien.");
+        }
+        return tenantExecutor.inTenant(utilisateur.getLaboratoire().getNomSchema(), () ->
+                ligneEssaiRepository.compterEssaisOuvertsParTechnicien(
+                        utilisateur.getId(),
+                        PlanificationService.STATUTS_DEMANDES_ACTIVES,
+                        java.util.List.of(StatutEssai.TERMINE, StatutEssai.NON_REALISABLE)));
+    }
+
+    private void notifierResponsableEssais(Utilisateur technicien, long essaisOuverts) {
+        notificationsLaboratoire.notifierApresCommit(
+                RoleUtilisateur.RESPONSABLE,
+                technicien.getLaboratoire().getId(),
+                "ESSAIS_A_REAFFECTER",
+                essaisOuverts + " essai(s) à réaffecter",
+                technicien.getNomComplet() + " va être désactivé. " + essaisOuverts
+                        + " essai(s) ouvert(s) sont à réaffecter.",
+                "/app/planification");
     }
 
     private void reactiverUtilisateurInterne(Utilisateur utilisateur) {

@@ -29,7 +29,7 @@ export function TableauDeBordGraphiques(props: {
 function DemandesGraphique({ demandesStats }: { demandesStats: DemandesStatsDto | undefined }) {
   const chartData = demandesStats?.serieMensuelle.map((item) => ({
     mois: item.mois,
-    demandes: item.valeur || 0,
+    demandes: item.nombre || 0,
   })) || [];
 
   return (
@@ -91,7 +91,7 @@ function DemandesGraphique({ demandesStats }: { demandesStats: DemandesStatsDto 
 function FacturesGraphique({ facturesStats }: { facturesStats: FactureStatsDto | undefined }) {
   const chartData = facturesStats?.serieMensuelle.map((item) => ({
     mois: item.mois,
-    facture: item.valeur || 0,
+    facture: item.facture || 0,
   })) || [];
 
   return (

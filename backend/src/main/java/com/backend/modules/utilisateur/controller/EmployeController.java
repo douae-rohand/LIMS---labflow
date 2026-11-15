@@ -3,6 +3,7 @@ package com.backend.modules.utilisateur.controller;
 import com.backend.common.dto.ApiResponse;
 import com.backend.common.dto.PageResponse;
 import com.backend.modules.utilisateur.dto.EmployeDto;
+import com.backend.modules.utilisateur.dto.ImpactDesactivationEmployeDto;
 import com.backend.modules.plateforme.dto.PermissionsCompteDto;
 import com.backend.modules.plateforme.dto.RemplacerEcartsRequest;
 import com.backend.modules.utilisateur.service.UtilisateurService;
@@ -99,7 +100,24 @@ public class EmployeController {
     @Operation(summary = "Désactiver un employé du laboratoire courant")
     public ResponseEntity<ApiResponse<com.backend.modules.utilisateur.dto.EmployeDetailDto>> desactiverEmploye(
             @org.springframework.web.bind.annotation.PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success("Employé désactivé avec succès", utilisateurService.desactiverEmploye(id)));
+        return ResponseEntity.ok(ApiResponse.success("Employé désactivé avec succès",
+                utilisateurService.desactiverEmploye(id)));
+    }
+
+    @GetMapping("/{id}/impact-desactivation")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYES_GERER')")
+    @Operation(summary = "Consulter les conséquences de la désactivation d'un employé")
+    public ResponseEntity<ApiResponse<ImpactDesactivationEmployeDto>> impactDesactivationEmploye(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(utilisateurService.impactDesactivationEmploye(id)));
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/{id}/prevenir-responsable")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYES_GERER')")
+    @Operation(summary = "Prévenir les Responsables des essais ouverts d'un technicien")
+    public ResponseEntity<ApiResponse<Void>> prevenirResponsableAvantDesactivation(@PathVariable Long id) {
+        utilisateurService.prevenirResponsableAvantDesactivation(id);
+        return ResponseEntity.ok(ApiResponse.success("Responsables prévenus", null));
     }
 
     @org.springframework.web.bind.annotation.PatchMapping("/{id}/reactiver")
