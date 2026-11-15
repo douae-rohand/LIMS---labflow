@@ -169,7 +169,7 @@ export function DetailDemandeEntete({ demande, onDemanderAnnulation }: DetailDem
             {isImage(demande.documents.find(d => d.id === previewDoc.id)?.typeMime || null) ? (
               <img src={previewDoc.url} alt={previewDoc.nomFichier} className="max-h-[80vh] max-w-full" />
             ) : (
-              <iframe src={previewDoc.url} className="h-[80vh] w-full" title={previewDoc.nomFichier} sandbox="allow-same-origin" />
+              <iframe src={previewDoc.url} className="h-[80vh] w-full" title={previewDoc.nomFichier} sandbox="allow-same-origin allow-scripts" />
             )}
           </div>
         </div>
