@@ -5,8 +5,7 @@ import { formatMontant } from "@/components/panier/format";
 import type { DemandeDetailClient } from "@/api/demandesClient";
 import { formatDate } from "./libelles";
 import apiClient from "@/api/axios";
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 
 interface DetailDemandeEnteteProps {
   demande: DemandeDetailClient;
@@ -18,15 +17,6 @@ export function DetailDemandeEntete({ demande, onDemanderAnnulation }: DetailDem
   const annulable = demande.statut === "NOUVEAU";
   const [previewDoc, setPreviewDoc] = useState<{ id: number; nomFichier: string; url: string } | null>(null);
 
-  // Revoke the blob URL when the preview changes or the component unmounts.
-  useEffect(() => {
-    return () => {
-      if (previewDoc) {
-        URL.revokeObjectURL(previewDoc.url);
-      }
-    };
-  }, [previewDoc]);
-
   const handlePreview = async (documentId: number, nomFichier: string) => {
     try {
       const blob = await apiClient.getBlob(
@@ -36,7 +26,6 @@ export function DetailDemandeEntete({ demande, onDemanderAnnulation }: DetailDem
       setPreviewDoc({ id: documentId, nomFichier, url });
     } catch (error) {
       console.error("Erreur preview:", error);
-      toast.error("Impossible de charger l'aperçu. Veuillez réessayer.");
     }
   };
 
@@ -169,7 +158,7 @@ export function DetailDemandeEntete({ demande, onDemanderAnnulation }: DetailDem
             {isImage(demande.documents.find(d => d.id === previewDoc.id)?.typeMime || null) ? (
               <img src={previewDoc.url} alt={previewDoc.nomFichier} className="max-h-[80vh] max-w-full" />
             ) : (
-              <iframe src={previewDoc.url} className="h-[80vh] w-full" title={previewDoc.nomFichier} sandbox="allow-same-origin" />
+              <iframe src={previewDoc.url} className="h-[80vh] w-full" title={previewDoc.nomFichier} />
             )}
           </div>
         </div>
