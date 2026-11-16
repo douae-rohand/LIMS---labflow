@@ -89,6 +89,23 @@ public class JwtTokenProvider {
         return true;
     }
 
+    /**
+     * Retourne true ssi le jeton est cryptographiquement valide (même parseur que
+     * {@link #validateToken(String)}) ET que son claim {@code type} égale {@code expectedType}.
+     * <p>
+     * Contrairement à {@link #validateToken(String, String)}, cette méthode ne logue rien
+     * et n'est jamais lancée depuis une exception. Elle est destinée aux gardes qui testent
+     * intentionnellement qu'un jeton n'est PAS d'un certain type (résultat false attendu).
+     */
+    public boolean hasType(String token, String expectedType) {
+        try {
+            Claims claims = parseClaims(token);
+            return expectedType.equals(claims.get("type", String.class));
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
     public String getTypeFromToken(String token) {
         return extractClaim(token, claims -> claims.get("type", String.class));
     }

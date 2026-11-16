@@ -15,6 +15,7 @@ public record SuiviResponsableDto(
             long analysesEnRetard,
             long resultatsAValider,
             long rapportsAPreparer,
+            long analysesAReaffecter,
             /** Demandes ayant au moins une analyse sans technicien. */
             long demandesAAffecter) {
     }

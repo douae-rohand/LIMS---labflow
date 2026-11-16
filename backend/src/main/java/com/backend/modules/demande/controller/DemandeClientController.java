@@ -8,6 +8,7 @@ import com.backend.modules.demande.dto.DemandeDetailClientDto;
 import com.backend.modules.demande.service.DemandeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,7 +37,7 @@ public class DemandeClientController {
             @Valid @RequestBody CreerDemandeRequest request) {
         Long utilisateurId = SecurityUtils.principalCourant().getId();
         return ApiResponse.success(demandeService.creerDepuisPanier(
-                utilisateurId, laboratoireId, request.getTitre(), request.getObjectif()));
+                utilisateurId, laboratoireId, request.getTitre(), request.getObjectif(), request.getPiecesJointes()));
     }
 
     /**
@@ -62,5 +63,22 @@ public class DemandeClientController {
         Long utilisateurId = SecurityUtils.principalCourant().getId();
         return ApiResponse.success(demandeService.obtenirDetailClient(
                 utilisateurId, laboratoireId, demandeId));
+    }
+
+    /**
+     * Télécharge une pièce jointe d'une demande du client.
+     */
+    @GetMapping("/{laboratoireId}/{demandeId}/pieces-jointes/{pieceJointeId}")
+    public ResponseEntity<byte[]> telechargerPieceJointe(
+            @PathVariable Long laboratoireId,
+            @PathVariable Long demandeId,
+            @PathVariable Long pieceJointeId) {
+        Long utilisateurId = SecurityUtils.principalCourant().getId();
+        DemandeService.FichierPieceJointe fichier = demandeService.telechargerPieceJointeClient(
+                utilisateurId, laboratoireId, demandeId, pieceJointeId);
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.parseMediaType(fichier.typeMime()))
+                .header("Content-Disposition", "attachment; filename=\"" + fichier.nomFichier() + "\"")
+                .body(fichier.contenu());
     }
 }

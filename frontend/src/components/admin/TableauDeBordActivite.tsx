@@ -26,7 +26,7 @@ export function TableauDeBordActivite({ auditRecent }: TableauDeBordActiviteProp
         </p>
       ) : (
         <div className="space-y-3">
-          {auditRecent.slice(0, 5).map((entry) => (
+          {auditRecent.slice(0, 3).map((entry) => (
             <div
               key={entry.code}
               className="flex items-start gap-3 p-3 rounded-xl bg-brand-900/5"

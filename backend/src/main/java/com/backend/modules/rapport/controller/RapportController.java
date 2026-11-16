@@ -68,6 +68,14 @@ public class RapportController {
         return ResponseEntity.ok(ApiResponse.success("Rapport renvoyé au client", null));
     }
 
+    @PostMapping("/{id}/envoyer")
+    @PreAuthorize("hasRole('RESPONSABLE') and hasAuthority('PERM_RAPPORTS_GERER')")
+    @Operation(summary = "Envoyer un rapport signé au client (statut SIGNE → ENVOYE)")
+    public ResponseEntity<ApiResponse<RapportTravailDto>> envoyer(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success("Rapport envoyé au client",
+                rapportService.envoyerRapport(id)));
+    }
+
     @GetMapping("/{id}/pdf")
     @PreAuthorize("hasAuthority('PERM_RAPPORTS_GERER')")
     @Operation(summary = "Télécharger le PDF signé")

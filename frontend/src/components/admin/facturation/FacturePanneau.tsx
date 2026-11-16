@@ -136,10 +136,30 @@ export function FacturePanneau({
                   <div><dt className="text-muted-foreground">Échéance</dt><dd className="mt-1">{facture.dateEcheance ?? "—"}</dd></div>
                   <div><dt className="text-muted-foreground">Client</dt><dd className="mt-1">{facture.clientNom ?? "—"}</dd></div>
                   <div><dt className="text-muted-foreground">ICE client</dt><dd className="mt-1">{facture.clientIce ?? "—"}</dd></div>
-                  <div><dt className="text-muted-foreground">Montant facturé</dt><dd className="mt-1 font-semibold">{formatMontant(facture.montantHt)}</dd></div>
-                  <div><dt className="text-muted-foreground">Commission plateforme ({facture.tauxCommission} %)</dt><dd className="mt-1 font-semibold">−{formatMontant(facture.montantCommission)}</dd></div>
-                  <div><dt className="text-muted-foreground">Net pour le laboratoire</dt><dd className="mt-1 font-semibold">{formatMontant(facture.montantNetLaboratoire)}</dd></div>
                 </dl>
+              </section>
+
+              <section className="rounded-2xl border border-violet-200 bg-violet-50/70 p-4">
+                <h2 className="mb-4 flex items-center gap-2 font-semibold text-violet-900">
+                  <Wallet className="size-4" aria-hidden="true" />
+                  Calcul financier
+                </h2>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Montant facturé</span>
+                    <span className="font-semibold text-ink-900">{formatMontant(facture.montantHt)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Commission plateforme ({facture.tauxCommission} %)</span>
+                    <span className="font-semibold text-rose-700">−{formatMontant(facture.montantCommission)}</span>
+                  </div>
+                  <div className="border-t border-violet-900/10 pt-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-semibold text-violet-900">Net pour le laboratoire</span>
+                      <span className="font-bold text-violet-900">{formatMontant(facture.montantNetLaboratoire)}</span>
+                    </div>
+                  </div>
+                </div>
               </section>
 
               <section className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">

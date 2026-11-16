@@ -3,11 +3,19 @@ package com.backend.modules.rapport.controller;
 import com.backend.common.dto.ApiResponse;
 import com.backend.common.dto.ListeAgregeeDto;
 import com.backend.common.security.SecurityUtils;
+import com.backend.common.tenant.TenantExecutor;
+import com.backend.modules.plateforme.entity.Laboratoire;
+import com.backend.modules.plateforme.repository.LaboratoireRepository;
 import com.backend.modules.rapport.dto.RapportClientDetailDto;
 import com.backend.modules.rapport.dto.RapportClientResumeDto;
 import com.backend.modules.rapport.service.RapportClientService;
+import com.backend.modules.rapport.service.RapportService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,6 +34,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class RapportClientController {
 
     private final RapportClientService rapportClientService;
+    private final RapportService rapportService;
+    private final LaboratoireRepository laboratoireRepository;
+    private final TenantExecutor tenantExecutor;
 
     @GetMapping
     public ApiResponse<ListeAgregeeDto<RapportClientResumeDto>> lister() {
@@ -38,5 +49,18 @@ public class RapportClientController {
                                                       @PathVariable Long rapportId) {
         return ApiResponse.success(rapportClientService.obtenirDetailClient(
                 SecurityUtils.principalCourant().getId(), laboratoireId, rapportId));
+    }
+
+    @GetMapping("/{laboratoireId}/{rapportId}/pdf")
+    @Operation(summary = "Télécharger le PDF signé du rapport (client)")
+    public ResponseEntity<byte[]> telecharger(@PathVariable Long laboratoireId,
+                                               @PathVariable Long rapportId) {
+        RapportService.FichierRapport fichier = rapportClientService.telechargerPdfClient(
+                SecurityUtils.principalCourant().getId(), laboratoireId, rapportId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + fichier.nom().replace("\"", "") + "\"")
+                .body(fichier.contenu());
     }
 }

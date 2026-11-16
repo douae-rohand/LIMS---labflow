@@ -25,9 +25,6 @@ public class Rapport {
     @Column(nullable = false, length = 50)
     private String numero;
 
-    @Column(name = "type", length = 50)
-    private String type;
-
     @Builder.Default
     private Short version = 1;
 
@@ -42,9 +39,6 @@ public class Rapport {
 
     @Column(name = "cle_pdf", length = 500)
     private String clePdf;
-
-    @Builder.Default
-    private Boolean diffuse = false;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "demande_id", nullable = false)

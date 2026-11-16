@@ -19,6 +19,12 @@ export interface DomaineRefDto {
   libelle: string;
 }
 
+export interface DomaineTechnicienDto {
+  id: number;
+  code: string;
+  libelle: string;
+}
+
 export interface EssaiRefDto {
   code: string;
   designation: string;
@@ -121,6 +127,21 @@ export interface SyntheseTechnicienDto {
   enAttenteEchantillonCount: number;
   terminesSemaineCount: number;
   validationsTechniquesAttenteCount: number;
+  terminesCount: number;
+  retournesCorrectionCount: number;
+  resultatsASaisirCount: number;
+  echeancesProchesCount: number;
+  realisesMoisCount: number;
+  validesTechniquementMoisCount: number;
+  realisesMoisPrecedentCount: number;
+  validesTechniquementMoisPrecedentCount: number;
+  essaisAvecEcheanceCount: number;
+  realisesDansLesDelaisMoisCount: number;
+  essaisEnRetardIds: number[];
+  essaisEcheanceProcheIds: number[];
+  essaisResultatASaisirIds: number[];
+  essaisRetournesCorrectionIds: number[];
+  prioritesUniquesCount: number;
   chargeSemaine: ChargeSemaineDto[];
 }
 
@@ -195,5 +216,9 @@ export interface ListerEssaisParams {
   debut?: string | undefined;
   fin?: string | undefined;
   enRetard?: boolean | undefined;
+  resultatASaisir?: boolean | undefined;
+  echeanceProche?: boolean | undefined;
+  validationTechniqueEnAttente?: boolean | undefined;
+  retourneCorrection?: boolean | undefined;
   q?: string | undefined;
 }

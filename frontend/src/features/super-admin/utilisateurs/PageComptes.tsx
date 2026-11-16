@@ -59,7 +59,7 @@ export function PageComptes() {
 
   const filtre: FiltreUtilisateurs = {
     page,
-    size: 20,
+    size: 7,
     tri: "nom",
     ordre: "asc",
     role: "ADMINISTRATEUR",
@@ -71,7 +71,7 @@ export function PageComptes() {
   const exportMutation = useMutation({
     mutationFn: (format: "csv" | "xlsx" | "pdf") => exporterComptes(
       format,
-      portee === "tous" ? { page: 0, size: 20, role: "ADMINISTRATEUR" } : filtre,
+      portee === "tous" ? { page: 0, size: 7, role: "ADMINISTRATEUR" } : filtre,
     ),
     onSuccess: () => toast.success("Le fichier a été téléchargé."),
     onError: (erreur) => toast.error(messageErreur(erreur, "L'exportation a échoué.")),

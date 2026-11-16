@@ -1,31 +1,52 @@
-import { Badge, Card } from "@/components/lab";
+import { Badge, Button, Card } from "@/components/lab";
+import { Download } from "lucide-react";
 import { formatDateFr } from "@/lib/dates";
 import type { RapportDetailClient, RapportLigneClient } from "@/api/rapportsClient";
-import { libelleConformiteRapport, libelleTypeRapport } from "./libelles";
+import { libelleConformiteRapport } from "./libelles";
+import { telechargerRapportClient } from "@/api/rapportsClient";
 
 /** Assemblage du détail d'un rapport : en-tête, résultats, synthèse. */
 export function RapportDetail({ rapport }: { rapport: RapportDetailClient }) {
   const synthese = rapport.syntheseIa;
 
+  const handleTelecharger = () => {
+    void telechargerRapportClient(
+      rapport.laboratoireId,
+      rapport.rapportId,
+      rapport.demandeReference ?? "rapport",
+    );
+  };
+
   return (
     <div className="flex flex-col gap-8">
       <Card variant="glossy" padding="lg">
         <div className="min-w-0">
-          <p className="font-mono text-xs text-muted-foreground">
-            {rapport.demandeReference ?? "Rapport"}
-          </p>
-          <h1 className="mt-1 text-2xl font-extrabold text-ink-900">
-            {rapport.demandeTitre ?? "Rapport d'analyses"}
-          </h1>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Badge variant="soft" size="sm">
-              {libelleTypeRapport(rapport.type)}
-            </Badge>
-            {rapport.version != null ? (
-              <Badge variant="outline" size="sm">
-                {`Version ${rapport.version}`}
-              </Badge>
-            ) : null}
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-xs text-muted-foreground">
+                {rapport.demandeReference ?? "Rapport"}
+              </p>
+              <h1 className="mt-1 text-2xl font-extrabold text-ink-900">
+                {rapport.demandeTitre ?? "Rapport d'analyses"}
+              </h1>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {rapport.version != null ? (
+                  <Badge variant="outline" size="sm">
+                    {`Version ${rapport.version}`}
+                  </Badge>
+                ) : null}
+              </div>
+            </div>
+            {rapport.telechargeable && (
+              <Button
+                variant="brand"
+                size="sm"
+                icon={<Download className="size-4" aria-hidden="true" />}
+                onClick={handleTelecharger}
+              >
+                Télécharger
+              </Button>
+            )}
           </div>
         </div>
 

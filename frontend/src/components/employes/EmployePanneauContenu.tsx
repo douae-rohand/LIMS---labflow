@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
-import { AlertCircle, ArrowLeft, RefreshCw, SlidersHorizontal, X } from "lucide-react";
-import { Skeleton } from "@/components/lab";
+import { ArrowLeft, SlidersHorizontal } from "lucide-react";
 import { SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   AlertDialog,
@@ -14,7 +13,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  messageErreurApi,
   type EmployeDetailDto,
   type ModifierEmployePayload,
 } from "@/api/employes";
@@ -26,6 +24,8 @@ import type { EmployeFormValues } from "./employeSchemas";
 import { EmployeActions } from "./EmployeActions";
 import type { useEmployeMutations } from "./useEmployeMutations";
 import { EmployePermissionsSection } from "./permissions/EmployePermissionsSection";
+import { EmployePanneauEtat } from "./EmployePanneauEtat";
+import { EmployeDomaines } from "./EmployeDomaines";
 
 type MutationsEmploye = ReturnType<typeof useEmployeMutations>;
 
@@ -89,72 +89,14 @@ export function EmployePanneauContenu({
 
   return (
     <>
-      {chargement && (
-        <div aria-live="polite" className="space-y-6">
-          <SheetHeader className="text-left space-y-2">
-            <SheetTitle className="sr-only">Chargement des données de l'employé</SheetTitle>
-            <SheetDescription className="sr-only">Veuillez patienter...</SheetDescription>
-            <Skeleton className="h-7 w-3/4" />
-            <Skeleton className="h-4 w-1/3" />
-          </SheetHeader>
-          <div className="space-y-4 pt-4">
-            <Skeleton className="h-6 w-24" />
-            <div className="grid grid-cols-2 gap-4">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-            <Skeleton className="h-20 w-full rounded-xl" />
-          </div>
-        </div>
-      )}
-
-      {estEnErreur && (
-        <div aria-live="assertive" className="flex flex-col items-center py-12 text-center">
-          <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-100 text-red-600">
-            <AlertCircle className="size-6" aria-hidden="true" />
-          </div>
-          <SheetHeader className="text-center">
-            <SheetTitle className="text-lg font-bold text-ink-900">
-              {est404 ? "Employé introuvable" : "Erreur de chargement"}
-            </SheetTitle>
-            <SheetDescription className="text-sm text-muted-foreground mt-1">
-              {messageErreurApi(erreur)}
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-6 flex items-center gap-3">
-            {est404 ? (
-              <button
-                type="button"
-                onClick={onFermer}
-                className="inline-flex items-center gap-2 rounded-full border border-brand-900/20 px-5 py-2 text-sm font-semibold text-brand-900 hover:bg-surface-card"
-              >
-                <X className="size-4" aria-hidden="true" />
-                Fermer
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={onReessayer}
-                  className="inline-flex items-center gap-2 rounded-full bg-brand-900 px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-brand-900/90"
-                >
-                  <RefreshCw className="size-4" aria-hidden="true" />
-                  Réessayer
-                </button>
-                <button
-                  type="button"
-                  onClick={onFermer}
-                  className="inline-flex items-center gap-2 rounded-full border border-brand-900/20 px-5 py-2 text-sm font-semibold text-brand-900 hover:bg-surface-card"
-                >
-                  Fermer
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      <EmployePanneauEtat
+        chargement={chargement}
+        erreur={erreur}
+        estEnErreur={estEnErreur}
+        est404={est404}
+        onFermer={onFermer}
+        onReessayer={onReessayer}
+      />
 
       {!chargement && !estEnErreur && employe && (
         <div className="space-y-6">
@@ -242,6 +184,15 @@ export function EmployePanneauContenu({
                   isMutatingGlobale={mutations.isMutating}
                 />
               </div>
+
+              {employe.role === "TECHNICIEN" && (
+                <EmployeDomaines
+                  key={employe.id}
+                  employe={employe}
+                  isSaving={mutations.mutationDomaines.isPending}
+                  onSave={(domaines) => mutations.mutationDomaines.mutate(domaines)}
+                />
+              )}
 
               <EmployeActions
                 employe={employe}

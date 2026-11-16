@@ -61,6 +61,9 @@ public class SuiviAccueilService {
     }
 
     public record RapportResumeDto(String numero, String statut, Instant dateSignature, boolean diffuse) {
+        public static boolean estDiffuse(String statut) {
+            return "ENVOYE".equals(statut) || "ARCHIVE".equals(statut);
+        }
     }
 
     public record SuiviDemandeDto(DemandeLaboratoireDto demande, AvancementDto avancement, List<EtapeDto> historique,
@@ -83,7 +86,7 @@ public class SuiviAccueilService {
                 .map(this::resumeFacture).orElse(null);
         RapportResumeDto rapport = rapportRepository.findByDemande_IdInOrderByIdDesc(List.of(demandeId)).stream()
                 .findFirst()
-                .map(r -> new RapportResumeDto(r.getNumero(), r.getStatut(), r.getDateSignature(), Boolean.TRUE.equals(r.getDiffuse())))
+                .map(r -> new RapportResumeDto(r.getNumero(), r.getStatut(), r.getDateSignature(), RapportResumeDto.estDiffuse(r.getStatut())))
                 .orElse(null);
 
         String objet = TenantContext.getCurrentTenant() + "/Demande#" + demandeId;

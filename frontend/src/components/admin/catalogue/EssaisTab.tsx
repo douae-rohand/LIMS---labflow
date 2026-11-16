@@ -9,7 +9,7 @@ import { EssaiForm, type ExigenceEssaiFormValue } from "./EssaiForm";
 import { EssaiPanneau } from "./EssaiPanneau";
 import { ConfirmDialog } from "./ConfirmDialog";
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 7;
 
 interface EnregistrerEssaiPayload {
   id: number | null;

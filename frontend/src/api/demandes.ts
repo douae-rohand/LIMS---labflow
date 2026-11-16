@@ -116,6 +116,13 @@ export interface DemandeLaboratoire {
   documents: DocumentDemande[];
 }
 
+export async function telechargerPieceJointeDemande(demandeId: number, pieceJointeId: number, nomFichier: string): Promise<void> {
+  await apiClient.download(
+    `/demandes/laboratoire/${demandeId}/pieces-jointes/${pieceJointeId}`,
+    nomFichier,
+  );
+}
+
 export interface ListerDemandesParams {
   q?: string | undefined;
   statut?: StatutDemande | undefined;

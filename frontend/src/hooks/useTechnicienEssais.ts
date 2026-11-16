@@ -137,7 +137,6 @@ export function useDemarrerEssai(opts?: MutationOpts<LigneEssaiTechnicienDto, nu
   return useMutation({
     mutationFn: (id: number) => demarrerEssai(id),
     onSuccess: (data, id) => {
-      queryClient.setQueryData(["technicien", "essai", id], data);
       invaliderApresMutation(queryClient, id);
       toast.success("Essai démarré.");
     },
@@ -154,7 +153,6 @@ export function useSaisirResultat(
   return useMutation({
     mutationFn: ({ id, payload }) => saisirResultat(id, payload),
     onSuccess: (data, { id }) => {
-      queryClient.setQueryData(["technicien", "essai", id], data);
       invaliderApresMutation(queryClient, id);
       toast.success("Résultat enregistré.");
     },
@@ -171,7 +169,6 @@ export function useDeclareNonRealisable(
   return useMutation({
     mutationFn: ({ id, payload }) => declareNonRealisable(id, payload),
     onSuccess: (data, { id }) => {
-      queryClient.setQueryData(["technicien", "essai", id], data);
       invaliderApresMutation(queryClient, id);
       toast.success("Essai déclaré non réalisable.");
     },
@@ -188,7 +185,6 @@ export function useDeclarerTemps(
   return useMutation({
     mutationFn: ({ id, payload }) => declarerTemps(id, payload),
     onSuccess: (data, { id }) => {
-      queryClient.setQueryData(["technicien", "essai", id], data);
       invaliderApresMutation(queryClient, id);
       toast.success("Temps enregistré.");
     },
@@ -205,7 +201,6 @@ export function useValiderTechniquement(
   return useMutation({
     mutationFn: ({ id, payload }) => validerTechniquement(id, payload),
     onSuccess: (data, { id }) => {
-      queryClient.setQueryData(["technicien", "essai", id], data);
       invaliderApresMutation(queryClient, id);
       toast.success("Validation technique enregistrée.");
     },

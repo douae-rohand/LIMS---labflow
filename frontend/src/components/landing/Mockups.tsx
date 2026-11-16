@@ -45,7 +45,6 @@ type DashboardMockupProps = {
   nombreLaboratoires?: number | undefined;
   nombreRoles?: number | undefined;
   laboratoires?: LaboratoirePublic[] | undefined;
-  statutsDemande?: string[] | undefined;
 };
 
 export function DashboardMockup({
@@ -54,7 +53,6 @@ export function DashboardMockup({
   nombreLaboratoires,
   nombreRoles,
   laboratoires = [],
-  statutsDemande = [],
 }: DashboardMockupProps) {
   return (
     <Frame title="Données plateforme" className={className}>
@@ -106,15 +104,6 @@ export function DashboardMockup({
               </ul>
             )}
           </div>
-          {statutsDemande.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {statutsDemande.map((statut) => (
-                <Badge key={statut} size="sm" variant="soft">
-                  {statut}
-                </Badge>
-              ))}
-            </div>
-          ) : null}
         </>
       )}
     </Frame>

@@ -3,6 +3,7 @@ package com.backend.modules.rapport.service;
 import com.backend.common.dto.ListeAgregeeDto;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.common.tenant.TenantExecutor;
+import com.backend.integration.minio.StockageFichierService;
 import com.backend.modules.client.entity.ClientLaboratoire;
 import com.backend.modules.client.repository.ClientLaboratoireRepository;
 import com.backend.modules.demande.entity.Demande;
@@ -15,12 +16,15 @@ import com.backend.modules.rapport.dto.RapportClientResumeDto;
 import com.backend.modules.rapport.dto.RapportLigneClientDto;
 import com.backend.modules.rapport.entity.Rapport;
 import com.backend.modules.rapport.entity.RapportLigne;
+import com.backend.modules.rapport.entity.StatutRapport;
 import com.backend.modules.rapport.repository.RapportLigneRepository;
 import com.backend.modules.rapport.repository.RapportRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -44,6 +48,7 @@ public class RapportClientService {
     private final LaboratoireRepository laboratoireRepository;
     private final ClientLaboratoireRepository clientLaboratoireRepository;
     private final TenantExecutor tenantExecutor;
+    private final StockageFichierService stockageFichierService;
 
     public ListeAgregeeDto<RapportClientResumeDto> listerRapportsClient(Long utilisateurId) {
         List<ClientLaboratoire> liaisons = tenantExecutor.inCentral(
@@ -101,10 +106,10 @@ public class RapportClientService {
                 .demandeId(demande.getId())
                 .demandeReference(demande.getNumero())
                 .demandeTitre(demande.getTitre())
-                .type(rapport.getType())
                 .version(rapport.getVersion())
                 .dateEmission(rapport.getDateEmission())
-                .telechargeable(false)
+                .telechargeable(StatutRapport.ENVOYE.name().equals(rapport.getStatut())
+                        && rapport.getClePdf() != null)
                 .build();
     }
 
@@ -118,11 +123,11 @@ public class RapportClientService {
                 .demandeId(demande.getId())
                 .demandeReference(demande.getNumero())
                 .demandeTitre(demande.getTitre())
-                .type(rapport.getType())
                 .version(rapport.getVersion())
                 .dateEmission(rapport.getDateEmission())
                 .dateSignature(rapport.getDateSignature())
-                .telechargeable(false)
+                .telechargeable(StatutRapport.ENVOYE.name().equals(rapport.getStatut())
+                        && rapport.getClePdf() != null)
                 .lignes(lignes)
                 .syntheseIa(synthese)
                 .mentionSyntheseIa(synthese == null ? null : MENTION_SYNTHESE_IA)
@@ -137,5 +142,26 @@ public class RapportClientService {
                 .unite(ligne.getLigneEssai().getEssai().getUnite())
                 .conformite(ligne.getLigneEssai().getConformite())
                 .build();
+    }
+
+    public RapportService.FichierRapport telechargerPdfClient(Long utilisateurId, Long laboratoireId, Long rapportId) {
+        Laboratoire laboratoire = exigerLaboratoire(laboratoireId);
+        return tenantExecutor.inTenant(laboratoire.getNomSchema(), () -> {
+            Rapport rapport = rapportRepository.findVisiblesClient(utilisateurId).stream()
+                    .filter(r -> r.getId().equals(rapportId))
+                    .findFirst()
+                    .orElseThrow(() -> new ResourceNotFoundException("Rapport", "id", rapportId));
+            if (!StatutRapport.ENVOYE.name().equals(rapport.getStatut()) || rapport.getClePdf() == null) {
+                throw new com.backend.common.exception.BusinessRuleException("RAPPORT_NON_TELECHARGEABLE",
+                        "Ce rapport n'est pas disponible au téléchargement.");
+            }
+            String nom = rapport.getNumero() + ".pdf";
+            try (InputStream contenu = stockageFichierService.telecharger(rapport.getClePdf())) {
+                return new RapportService.FichierRapport(nom, contenu.readAllBytes());
+            } catch (IOException ex) {
+                throw new com.backend.common.exception.BusinessRuleException("LECTURE_FICHIER_ECHOUEE",
+                        "Impossible de lire le fichier PDF : " + ex.getMessage());
+            }
+        });
     }
 }

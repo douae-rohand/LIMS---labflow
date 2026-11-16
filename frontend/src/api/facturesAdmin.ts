@@ -77,7 +77,8 @@ export interface FactureStatsDto {
 
 export interface SerieMensuelleDto {
   mois: string;
-  valeur: number;
+  facture: number;
+  encaisse: number;
 }
 
 export interface ListerFacturesParams {

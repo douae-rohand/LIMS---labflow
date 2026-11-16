@@ -2,7 +2,8 @@ import apiClient from "./axios";
 import type { ApiResponse } from "./auth";
 
 export type StatutAnalyse = "ATTENTE_ECHANTILLON" | "EN_COURS" | "TERMINE" | "NON_REALISABLE";
-export type EtatValidation = "NON_SOUMIS" | "TECHNIQUE_VALIDEE" | "VALIDEE" | "RETOURNEE" | "REJETEE";
+export type EtatValidation =
+  "NON_SOUMIS" | "TECHNIQUE_VALIDEE" | "VALIDEE" | "RETOURNEE" | "REJETEE";
 export type FiltreAnalyses = "A_AFFECTER" | "AFFECTEES" | "EN_RETARD";
 
 /** Analyse (ligne d'essai) vue par le responsable. */
@@ -25,6 +26,7 @@ export interface AnalyseTravail {
   domaineLibelle?: string | null;
   technicienId?: number | null;
   technicienNom?: string | null;
+  technicienDesactive: boolean;
   statut: StatutAnalyse;
   dateAttribution?: string | null;
   datePrevue?: string | null;
@@ -65,6 +67,7 @@ export interface SuiviResponsable {
     analysesEnRetard: number;
     resultatsAValider: number;
     rapportsAPreparer: number;
+    analysesAReaffecter: number;
     /** Demandes ayant au moins une analyse sans technicien. */
     demandesAAffecter: number;
   };
@@ -140,7 +143,9 @@ export async function listerResultatsAValider(): Promise<AnalyseTravail[]> {
 }
 
 export async function historiqueValidations(ligneId: number): Promise<ValidationHistorique[]> {
-  const res = await apiClient.get<ApiResponse<ValidationHistorique[]>>(`/validations/essai/${ligneId}`);
+  const res = await apiClient.get<ApiResponse<ValidationHistorique[]>>(
+    `/validations/essai/${ligneId}`,
+  );
   return res.data;
 }
 
@@ -149,10 +154,13 @@ export async function deciderResultat(
   decision: DecisionResultat,
   motif?: string,
 ): Promise<AnalyseTravail> {
-  const res = await apiClient.post<ApiResponse<AnalyseTravail>>(`/validations/essai/${ligneId}/decision`, {
-    decision,
-    ...(motif?.trim() ? { motif: motif.trim() } : {}),
-  });
+  const res = await apiClient.post<ApiResponse<AnalyseTravail>>(
+    `/validations/essai/${ligneId}/decision`,
+    {
+      decision,
+      ...(motif?.trim() ? { motif: motif.trim() } : {}),
+    },
+  );
   return res.data;
 }
 
@@ -163,8 +171,14 @@ export async function listerRapportsTravail(): Promise<RapportTravail[]> {
 }
 
 /** Signe le rapport de la demande ; le mot de passe confirme l'identité du signataire. */
-export async function signerRapportDemande(demandeId: number, motDePasse: string): Promise<RapportTravail> {
-  const res = await apiClient.post<ApiResponse<RapportTravail>>(`/rapports/demande/${demandeId}/signer`, { motDePasse });
+export async function signerRapportDemande(
+  demandeId: number,
+  motDePasse: string,
+): Promise<RapportTravail> {
+  const res = await apiClient.post<ApiResponse<RapportTravail>>(
+    `/rapports/demande/${demandeId}/signer`,
+    { motDePasse },
+  );
   return res.data;
 }
 
@@ -189,6 +203,12 @@ export async function renvoyerRapport(rapportId: number): Promise<void> {
   await apiClient.post<ApiResponse<null>>(`/rapports/${rapportId}/renvoyer`);
 }
 
+/** Envoie un rapport signé au client (statut SIGNE → ENVOYE). */
+export async function envoyerRapport(rapportId: number): Promise<RapportTravail> {
+  const res = await apiClient.post<ApiResponse<RapportTravail>>(`/rapports/${rapportId}/envoyer`);
+  return res.data;
+}
+
 export async function telechargerRapport(rapportId: number, numero: string): Promise<void> {
   await apiClient.download(`/rapports/${rapportId}/pdf`, `${numero}.pdf`);
 }
@@ -211,7 +231,10 @@ export async function lireImageSignature(): Promise<Blob> {
 export async function importerSignature(fichier: File): Promise<StatutSignature> {
   const formulaire = new FormData();
   formulaire.append("fichier", fichier);
-  const res = await apiClient.upload<ApiResponse<StatutSignature>>("/responsable/signature", formulaire);
+  const res = await apiClient.upload<ApiResponse<StatutSignature>>(
+    "/responsable/signature",
+    formulaire,
+  );
   return res.data;
 }
 

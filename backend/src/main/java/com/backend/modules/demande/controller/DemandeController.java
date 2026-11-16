@@ -9,6 +9,7 @@ import com.backend.modules.demande.dto.IndicateursDemandesDto;
 import com.backend.modules.demande.dto.RefuserDemandeRequest;
 import com.backend.modules.demande.entity.StatutDemande;
 import com.backend.modules.demande.service.DemandeService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +55,18 @@ public class DemandeController {
     @PreAuthorize("hasAuthority('PERM_DEMANDES_CONSULTER')")
     public ResponseEntity<ApiResponse<DemandeLaboratoireDto>> detailLaboratoire(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(demandeService.detailLaboratoire(id)));
+    }
+
+    @GetMapping("/laboratoire/{demandeId}/pieces-jointes/{pieceJointeId}")
+    @PreAuthorize("hasAuthority('PERM_DEMANDES_CONSULTER')")
+    @Operation(summary = "Télécharger une pièce jointe d'une demande")
+    public ResponseEntity<byte[]> telechargerPieceJointe(@PathVariable Long demandeId, @PathVariable Long pieceJointeId) {
+        DemandeService.FichierPieceJointe fichier = demandeService.telechargerPieceJointe(demandeId, pieceJointeId);
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.parseMediaType(fichier.typeMime()))
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        org.springframework.http.ContentDisposition.attachment().filename(fichier.nomFichier()).build().toString())
+                .body(fichier.contenu());
     }
 
     @PostMapping("/laboratoire/{id}/accepter")

@@ -31,8 +31,7 @@ public interface RapportRepository extends JpaRepository<Rapport, Long> {
      * <ul>
      *     <li>la demande appartient au client ({@code demande.client.utilisateur_id}) ;</li>
      *     <li>la demande est {@code TERMINEE} ;</li>
-     *     <li>le rapport est libéré : {@code statut IN ('SIGNE','ENVOYE','ARCHIVE')}
-     *         ou {@code diffuse = true} (aucune colonne « libéré » n'existe en base).</li>
+     *     <li>le rapport est diffusé : {@code statut IN ('ENVOYE','ARCHIVE')}.</li>
      * </ul>
      * Trié par date d'émission décroissante.
      */
@@ -41,7 +40,7 @@ public interface RapportRepository extends JpaRepository<Rapport, Long> {
             JOIN FETCH r.demande d
             WHERE d.client.utilisateurId = :utilisateurId
               AND d.statut = 'TERMINEE'
-              AND (r.statut IN ('SIGNE', 'ENVOYE', 'ARCHIVE') OR r.diffuse = true)
+              AND r.statut IN ('ENVOYE', 'ARCHIVE')
             ORDER BY r.dateEmission DESC
             """)
     List<Rapport> findVisiblesClient(@Param("utilisateurId") Long utilisateurId);

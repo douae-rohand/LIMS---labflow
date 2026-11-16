@@ -10,12 +10,7 @@ export type StatutEmploye = "ACTIF" | "EN_ATTENTE" | "DESACTIVE";
 
 export type RoleEmploye = "RESPONSABLE" | "TECHNICIEN" | "ACCUEIL";
 
-export type TriEmploye =
-  | "nom"
-  | "prenom"
-  | "matricule"
-  | "dateCreation"
-  | "derniereConnexion";
+export type TriEmploye = "nom" | "prenom" | "matricule" | "dateCreation" | "derniereConnexion";
 
 export type DirectionTri = "asc" | "desc";
 
@@ -38,6 +33,19 @@ export interface EmployeDetailDto extends EmployeDto {
   compteConfirme: boolean;
   invitationExpiree: boolean | null;
   invitationExpireLe: string | null;
+  domaines: DomaineDto[];
+}
+
+export interface DomaineDto {
+  id: number;
+  code: string;
+  libelle: string;
+}
+
+export interface ImpactDesactivationEmploye {
+  essaisOuverts: number;
+  responsablesActifs: number;
+  dernierCompteActifDuRole: boolean;
 }
 
 export interface ListerEmployesParams {
@@ -89,7 +97,18 @@ export function messageErreurApi(error: unknown): string {
     if (error.status === 0 || error.message === "Network Error") {
       return "Serveur indisponible.";
     }
-    if (error.status === 400 && typeof error.message === "string" && error.message.trim().length > 0) {
+    if (
+      error.status === 400 &&
+      typeof error.message === "string" &&
+      error.message.trim().length > 0
+    ) {
+      return error.message.replace(/^\[[A-Z0-9_]+\]\s*/, "").trim();
+    }
+    if (
+      error.status === 422 &&
+      typeof error.message === "string" &&
+      error.message.trim().length > 0
+    ) {
       return error.message.replace(/^\[[A-Z0-9_]+\]\s*/, "").trim();
     }
     if (typeof error.message === "string" && error.message.trim().length > 0) {
@@ -136,10 +155,9 @@ export async function listerEmployes(
     }
   }
 
-  const res = await apiClient.get<ApiResponse<PageResponse<EmployeDto>>>(
-    "/employes",
-    { params: queryParams },
-  );
+  const res = await apiClient.get<ApiResponse<PageResponse<EmployeDto>>>("/employes", {
+    params: queryParams,
+  });
   return res.data;
 }
 
@@ -151,6 +169,21 @@ export async function trouverEmploye(id: number): Promise<EmployeDetailDto> {
   return res.data;
 }
 
+export async function listerDomainesLaboratoire(): Promise<DomaineDto[]> {
+  const res = await apiClient.get<ApiResponse<DomaineDto[]>>("/catalogue-admin/domaines");
+  return res.data;
+}
+
+export async function modifierDomainesEmploye(
+  id: number,
+  domaineIds: number[],
+): Promise<EmployeDetailDto> {
+  const res = await apiClient.put<ApiResponse<EmployeDetailDto>>(`/employes/${id}/domaines`, {
+    domaineIds,
+  });
+  return res.data;
+}
+
 /**
  * Modifie les données d'un employé.
  */
@@ -158,30 +191,36 @@ export async function modifierEmploye(
   id: number,
   payload: ModifierEmployePayload,
 ): Promise<EmployeDetailDto> {
-  const res = await apiClient.patch<ApiResponse<EmployeDetailDto>>(
-    `/employes/${id}`,
-    payload,
-  );
+  const res = await apiClient.patch<ApiResponse<EmployeDetailDto>>(`/employes/${id}`, payload);
   return res.data;
 }
 
 /**
  * Désactive un employé actif.
  */
-export async function desactiverEmploye(id: number): Promise<EmployeDetailDto> {
-  const res = await apiClient.patch<ApiResponse<EmployeDetailDto>>(
-    `/employes/${id}/desactiver`,
+export async function lireImpactDesactivationEmploye(
+  id: number,
+): Promise<ImpactDesactivationEmploye> {
+  const res = await apiClient.get<ApiResponse<ImpactDesactivationEmploye>>(
+    `/employes/${id}/impact-desactivation`,
   );
   return res.data;
+}
+
+export async function desactiverEmploye(id: number): Promise<EmployeDetailDto> {
+  const res = await apiClient.patch<ApiResponse<EmployeDetailDto>>(`/employes/${id}/desactiver`);
+  return res.data;
+}
+
+export async function prevenirResponsableAvantDesactivation(id: number): Promise<void> {
+  await apiClient.post<ApiResponse<null>>(`/employes/${id}/prevenir-responsable`);
 }
 
 /**
  * Réactive un employé désactivé.
  */
 export async function reactiverEmploye(id: number): Promise<EmployeDetailDto> {
-  const res = await apiClient.patch<ApiResponse<EmployeDetailDto>>(
-    `/employes/${id}/reactiver`,
-  );
+  const res = await apiClient.patch<ApiResponse<EmployeDetailDto>>(`/employes/${id}/reactiver`);
   return res.data;
 }
 
@@ -199,12 +238,7 @@ export async function renvoyerInvitationEmploye(id: number): Promise<EmployeDeta
  * Crée un nouvel employé via le flux d'invitation (POST /api/utilisateurs).
  * Renvoie l'objet utilisateur créé avec son identifiant { id }.
  */
-export async function creerEmploye(
-  payload: CreerEmployePayload,
-): Promise<{ id: number }> {
-  const res = await apiClient.post<ApiResponse<{ id: number }>>(
-    "/utilisateurs",
-    payload,
-  );
+export async function creerEmploye(payload: CreerEmployePayload): Promise<{ id: number }> {
+  const res = await apiClient.post<ApiResponse<{ id: number }>>("/utilisateurs", payload);
   return res.data;
 }

@@ -116,11 +116,11 @@ function EtatErreur() {
 }
 
 /**
- * Liste des 5 prochains essais du technicien (triés par date d'attribution).
+ * Liste des 2 prochains essais du technicien (triés par date d'attribution).
  * Bouton d'action contextuel selon le statut.
  */
 export function ProchainsEssais() {
-  const query = useTechnicienEssais({ page: 1, size: 5, tri: "dateAttribution", direction: "asc" });
+  const query = useTechnicienEssais({ page: 1, size: 2, tri: "dateAttribution", direction: "asc" });
   const { data, isLoading, isError, error } = query;
 
   if (isLoading) {

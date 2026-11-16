@@ -36,6 +36,10 @@ public class SuiviResponsableService {
         long aAffecter = analyses.stream()
                 .filter(a -> a.getTechnicienId() == null && !termineeOuNonRealisable(a))
                 .count();
+        long aReaffecter = analyses.stream()
+                .filter(a -> a.getTechnicienId() != null && a.isTechnicienDesactive()
+                        && !termineeOuNonRealisable(a))
+                .count();
         // Demandes dont au moins une analyse est prête à affecter : échantillon conforme et paiement reçu.
         Map<Long, String> paiements = planificationService.etatsPaiement(
                 analyses.stream().map(LigneTravailDto::getDemandeId).distinct().toList());
@@ -65,7 +69,7 @@ public class SuiviResponsableService {
                 .toList();
         return new SuiviResponsableDto(
                 new SuiviResponsableDto.Indicateurs(aDecider, aAffecter, enCours, enRetard.size(), aValider, aPreparer,
-                        demandesAAffecter),
+                        aReaffecter, demandesAAffecter),
                 planificationService.techniciens(lignes),
                 retards);
     }

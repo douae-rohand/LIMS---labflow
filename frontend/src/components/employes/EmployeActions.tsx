@@ -1,6 +1,13 @@
 import { useState } from "react";
-import { UserCheck, UserX, Send, AlertTriangle } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { UserCheck, UserX, Send, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/lab";
+import { toast } from "sonner";
+import {
+  lireImpactDesactivationEmploye,
+  messageErreurApi,
+  prevenirResponsableAvantDesactivation,
+} from "@/api/employes";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -33,10 +40,25 @@ export function EmployeActions({
   onRenvoyerInvitation,
 }: EmployeActionsProps) {
   const [modalDesactivationOuverte, setModalDesactivationOuverte] = useState(false);
+  const [responsablePrevenu, setResponsablePrevenu] = useState(false);
 
   const estActif = employe.statut === "ACTIF";
   const estDesactive = employe.statut === "DESACTIVE";
   const estEnAttente = employe.statut === "EN_ATTENTE";
+  const impact = useQuery({
+    queryKey: ["employe-impact-desactivation", employe.id],
+    queryFn: () => lireImpactDesactivationEmploye(employe.id),
+    enabled: modalDesactivationOuverte,
+    retry: false,
+  });
+  const notification = useMutation({
+    mutationFn: () => prevenirResponsableAvantDesactivation(employe.id),
+    onSuccess: () => {
+      setResponsablePrevenu(true);
+      toast.success("Les Responsables actifs ont été prévenus.");
+    },
+    onError: (erreur) => toast.error(messageErreurApi(erreur)),
+  });
 
   const handleConfirmerDesactivation = () => {
     setModalDesactivationOuverte(false);
@@ -116,7 +138,10 @@ export function EmployeActions({
       {/* Confirmation de désactivation */}
       <AlertDialog
         open={modalDesactivationOuverte}
-        onOpenChange={setModalDesactivationOuverte}
+        onOpenChange={(open) => {
+          setModalDesactivationOuverte(open);
+          if (open) setResponsablePrevenu(false);
+        }}
       >
         <AlertDialogContent className="w-[90vw] max-w-md rounded-2xl">
           <AlertDialogHeader>
@@ -127,18 +152,77 @@ export function EmployeActions({
               Désactiver le compte employé ?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground">
-              L'employé {employe.nomComplet} perdra immédiatement l'accès, ses sessions seront coupées et ses tâches ne sont pas réaffectées automatiquement.
+              Le compte de {employe.nomComplet} sera désactivé et ses sessions coupées.
             </AlertDialogDescription>
+            {impact.isLoading && (
+              <p className="text-sm text-muted-foreground">Calcul de l’impact…</p>
+            )}
+            {impact.isError && (
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-800">
+                <span>Impossible de calculer les conséquences de la désactivation.</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void impact.refetch()}
+                >
+                  <RefreshCw className="size-4" aria-hidden="true" /> Réessayer
+                </Button>
+              </div>
+            )}
+            {impact.data && employe.role === "TECHNICIEN" && (
+              <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                <p>
+                  {impact.data.essaisOuverts} essai(s) ouvert(s) resteront visibles pour le
+                  Responsable et devront être réaffectés.
+                </p>
+                {impact.data.essaisOuverts > 0 && impact.data.responsablesActifs > 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={responsablePrevenu || notification.isPending}
+                    loading={notification.isPending}
+                    onClick={() => notification.mutate()}
+                  >
+                    {responsablePrevenu
+                      ? "Responsables prévenus"
+                      : "Prévenir les Responsables maintenant"}
+                  </Button>
+                )}
+                {impact.data.essaisOuverts > 0 && impact.data.responsablesActifs === 0 && (
+                  <p className="font-semibold">
+                    Aucun Responsable actif ne peut recevoir de notification.
+                  </p>
+                )}
+              </div>
+            )}
+            {impact.data?.dernierCompteActifDuRole && employe.role === "RESPONSABLE" && (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                C’est le dernier Responsable actif du laboratoire. Après désactivation, personne ne
+                pourra accepter ou refuser les demandes ni valider les résultats jusqu’à la
+                réactivation ou la création d’un Responsable.
+              </p>
+            )}
+            {impact.data?.dernierCompteActifDuRole && employe.role === "ACCUEIL" && (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                C’est le dernier compte Accueil actif. La réception des échantillons ne pourra plus
+                être assurée jusqu’à la réactivation ou la création d’un compte Accueil.
+              </p>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel
-              disabled={isMutatingGlobale}
-              className="rounded-full"
-            >
+            <AlertDialogCancel disabled={isMutatingGlobale} className="rounded-full">
               Annuler
             </AlertDialogCancel>
             <AlertDialogAction
-              disabled={isMutatingGlobale}
+              disabled={
+                isMutatingGlobale ||
+                notification.isPending ||
+                impact.isLoading ||
+                impact.isError ||
+                !impact.data
+              }
               onClick={handleConfirmerDesactivation}
               className="rounded-full bg-red-600 text-white hover:bg-red-700"
             >

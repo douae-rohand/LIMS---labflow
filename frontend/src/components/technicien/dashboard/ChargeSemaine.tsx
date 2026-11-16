@@ -1,117 +1,43 @@
+import { Link } from "@tanstack/react-router";
 import { Card, Skeleton } from "@/components/lab";
 import { formatDateLocale } from "@/components/technicien/libelles";
 import type { ChargeSemaineDto } from "@/api/technicien/types";
 import { ApiError } from "@/api/axios";
 
-/** Valeur maximale pour normaliser les hauteurs de barre. */
-function maxCharge(charge: ChargeSemaineDto[]): number {
-  const max = charge.reduce((acc, c) => Math.max(acc, c.count), 0);
-  return max > 0 ? max : 1;
+function debutJour(date: string): string {
+  return `${date}T00:00:00Z`;
 }
 
-/**
- * Charge de la semaine en barres CSS accessibles.
- * Chaque barre porte un `role="img"` et un `aria-label` décrivant le jour et le count.
- * Un tableau alternatif (caché visuellement mais accessible) est fourni en repli.
- */
-function BarresCharge({ charge }: { charge: ChargeSemaineDto[] }) {
-  const max = maxCharge(charge);
-  return (
-    <div>
-      {/* Tableau alternatif accessible (visuellement masqué) */}
-      <table className="sr-only">
-        <caption>Charge de la semaine (7 prochains jours)</caption>
-        <thead>
-          <tr>
-            <th scope="col">Date</th>
-            <th scope="col">Nombre d'essais</th>
-          </tr>
-        </thead>
-        <tbody>
-          {charge.map((c) => (
-            <tr key={c.date}>
-              <th scope="row">{formatDateLocale(c.date)}</th>
-              <td>{c.count}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* Barres visuelles */}
-      <div
-        className="flex items-end gap-2 h-32"
-        role="img"
-        aria-label="Charge de la semaine en barres"
-      >
-        {charge.map((c) => {
-          const hauteur = Math.max((c.count / max) * 100, 4);
-          return (
-            <div
-              key={c.date}
-              className="flex-1 flex flex-col items-center justify-end gap-1"
-            >
-              <span className="text-xs font-bold text-ink-900">{c.count}</span>
-              <div
-                className="w-full rounded-t-lg bg-brand-900/80 transition-all duration-300"
-                style={{ height: `${hauteur}%` }}
-                role="img"
-                aria-label={`${formatDateLocale(c.date)} : ${c.count} essai(s) attribué(s)`}
-              />
-              <span className="text-[10px] text-muted-foreground truncate w-full text-center">
-                {formatDateLocale(c.date).split(" ").slice(1, 3).join(" ")}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+function finJour(date: string): string {
+  return `${date}T23:59:59Z`;
 }
 
-/** Composant wrapper : charge les données de synthèse et affiche les barres. */
-export function ChargeSemaine({
-  charge,
-  isLoading,
-  isError,
-  error,
-}: {
+export function ChargeSemaine({ charge, isLoading, isError, error }: {
   charge: ChargeSemaineDto[] | undefined;
   isLoading: boolean;
   isError: boolean;
   error: unknown;
 }) {
-  if (isLoading) {
-    return <Skeleton className="h-32 w-full rounded-3xl" />;
-  }
-
-  if (isError) {
-    if (error instanceof ApiError && error.status === 403) {
-      return (
-        <Card variant="flat" padding="md" className="text-center">
-          <p className="text-sm text-muted-foreground">Charge indisponible.</p>
-        </Card>
-      );
-    }
-    return (
-      <Card variant="flat" padding="md" className="text-center">
-        <p className="text-sm text-red-700" role="alert">
-          Impossible de charger la charge de la semaine.
-        </p>
-      </Card>
-    );
-  }
-
-  if (!charge || charge.length === 0) {
-    return (
-      <Card variant="flat" padding="md" className="text-center">
-        <p className="text-sm text-muted-foreground">Aucune charge prévue sur la semaine.</p>
-      </Card>
-    );
-  }
-
-  return (
-    <Card variant="surface" padding="md">
-      <BarresCharge charge={charge} />
-    </Card>
-  );
+  if (isLoading) return <Skeleton className="h-44 w-full rounded-3xl" />;
+  if (isError) return <Card variant="flat" padding="md"><p role="alert" className="text-sm text-red-700">{error instanceof ApiError && error.status === 403 ? "Planning indisponible." : "Impossible de charger le planning."}</p></Card>;
+  if (!charge?.length) return <Card variant="flat" padding="md"><p className="text-sm text-muted-foreground">Aucune affectation prévue sur la période.</p></Card>;
+  const max = Math.max(1, ...charge.map((jour) => jour.count));
+  const peak = Math.max(...charge.map((jour) => jour.count));
+  return <Card variant="surface" padding="md">
+    <p className="mb-3 text-xs text-muted-foreground">Essais regroupés selon leur date prévue, ou leur date d’attribution lorsqu’aucune date prévue n’est renseignée.</p>
+    <div className="grid grid-cols-7 gap-2" aria-label="Essais attribués dans les sept prochains jours">
+      {charge.map((jour) => {
+        const href = { to: "/app/essais" as const, search: { page: 1, debut: debutJour(jour.date), fin: finJour(jour.date) } };
+        return <Link key={jour.date} {...href} className="group rounded-xl p-1 text-center hover:bg-brand-900/5 focus-visible:outline-2 focus-visible:outline-brand-900" aria-label={`${formatDateLocale(jour.date)} : ${jour.count} essai(s)`}>
+          <span className="block text-[10px] text-muted-foreground">{formatDateLocale(jour.date).split(" ")[0]}</span>
+          <span className={`mx-auto mt-2 flex h-20 items-end justify-center rounded-lg bg-brand-900/5 ${jour.count === peak && peak > 0 ? "ring-2 ring-brand-900/30" : ""}`}>
+            <span className="w-3/5 rounded-t-md bg-brand-900" style={{ height: `${Math.max(5, jour.count / max * 100)}%` }} aria-hidden="true" />
+          </span>
+          <span className="mt-1 block text-sm font-bold text-ink-900">{jour.count}</span>
+          <span className="block truncate text-[10px] text-muted-foreground">{formatDateLocale(jour.date).split(" ").slice(1).join(" ")}</span>
+        </Link>;
+      })}
+    </div>
+    <p className="mt-3 text-xs text-muted-foreground">Jour le plus chargé : {peak} essai(s)</p>
+  </Card>;
 }

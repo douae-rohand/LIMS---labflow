@@ -2,7 +2,6 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Skeleton } from "@/components/lab";
 import { formatDateFr } from "@/lib/dates";
 import { messageErreurRapports, type RapportResumeClient } from "@/api/rapportsClient";
-import { libelleTypeRapport } from "./libelles";
 
 interface RapportsClientListeProps {
   rapports: RapportResumeClient[] | undefined;
@@ -12,7 +11,7 @@ interface RapportsClientListeProps {
   onReessayer: () => void;
 }
 
-const COLONNES = 6;
+const COLONNES = 5;
 
 /** Liste « Mes rapports » : lecture seule, une ligne par rapport visible. */
 export function RapportsClientListe({
@@ -47,9 +46,6 @@ export function RapportsClientListe({
             </th>
             <th scope="col" className="w-56 px-4 py-3 font-semibold">
               Laboratoire
-            </th>
-            <th scope="col" className="w-32 px-4 py-3 font-semibold">
-              Type
             </th>
             <th scope="col" className="w-24 px-4 py-3 font-semibold">
               Version
@@ -124,9 +120,6 @@ export function RapportsClientListe({
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
                   {rapport.laboratoireNom ?? "—"}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {libelleTypeRapport(rapport.type)}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
                   {rapport.version != null ? `v${rapport.version}` : "—"}

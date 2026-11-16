@@ -116,7 +116,7 @@ export function Stats() {
         skeleton={<StatsSkeleton />}
       >
         {statistiques && (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-2">
             <StatCard
               value={statistiques.nombreLaboratoiresActifs}
               label="laboratoires actifs"
@@ -126,11 +126,6 @@ export function Stats() {
               value={statistiques.nombreRoles}
               label="rôles utilisateurs"
               icon={Users}
-            />
-            <StatCard
-              value={statistiques.nombreStatutsDemande}
-              label="statuts de demande"
-              icon={Workflow}
             />
           </div>
         )}

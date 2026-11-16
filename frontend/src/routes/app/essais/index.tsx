@@ -9,6 +9,10 @@ export interface EssaisSearch {
   statut?: string | undefined;
   domaineId?: number | undefined;
   enRetard?: boolean | undefined;
+  resultatASaisir?: boolean | undefined;
+  echeanceProche?: boolean | undefined;
+  validationTechniqueEnAttente?: boolean | undefined;
+  retourneCorrection?: boolean | undefined;
   tri?: string | undefined;
   direction?: "asc" | "desc" | undefined;
   debut?: string | undefined;
@@ -49,12 +53,16 @@ export const Route = createFileRoute("/app/essais/")({
       : undefined;
     const domaineId = parsePositiveInt(search["domaineId"], 1, Number.MAX_SAFE_INTEGER);
     const enRetard = search["enRetard"] === true || search["enRetard"] === "true";
+    const resultatASaisir = search["resultatASaisir"] === true || search["resultatASaisir"] === "true";
+    const echeanceProche = search["echeanceProche"] === true || search["echeanceProche"] === "true";
+    const validationTechniqueEnAttente = search["validationTechniqueEnAttente"] === true || search["validationTechniqueEnAttente"] === "true";
+    const retourneCorrection = search["retourneCorrection"] === true || search["retourneCorrection"] === "true";
     const tri = typeof search["tri"] === "string" ? search["tri"] : undefined;
     const direction =
       search["direction"] === "desc" ? ("desc" as const) : search["direction"] === "asc" ? ("asc" as const) : undefined;
     const debut = typeof search["debut"] === "string" ? search["debut"] : undefined;
     const fin = typeof search["fin"] === "string" ? search["fin"] : undefined;
-    return { page, q, statut, domaineId, enRetard, tri, direction, debut, fin };
+    return { page, q, statut, domaineId, enRetard, resultatASaisir, echeanceProche, validationTechniqueEnAttente, retourneCorrection, tri, direction, debut, fin };
   },
   component: EssaisPage,
 });

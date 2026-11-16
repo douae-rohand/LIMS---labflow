@@ -26,7 +26,6 @@ public class RapportClientResumeDto {
     private Long demandeId;
     private String demandeReference;
     private String demandeTitre;
-    private String type;
     private Short version;
     private Instant dateEmission;
 

@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import {
   AlertCircle,
   ClipboardList,
+  Download,
+  Eye,
   FileText,
   FlaskConical,
   RefreshCw,
@@ -32,12 +34,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button, Skeleton } from "@/components/lab";
 import { ApiError } from "@/api/axios";
+import apiClient from "@/api/axios";
 import { getSession } from "@/api/session";
 import {
   accepterDemande,
   detailDemandeLaboratoire,
   messageErreurDemande,
   refuserDemande,
+  telechargerPieceJointeDemande,
   type DemandeLaboratoire,
   type StatutDemande,
 } from "@/api/demandes";
@@ -157,6 +161,17 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
   const [confirmationOuverte, setConfirmationOuverte] = useState(false);
   const [refusOuvert, setRefusOuvert] = useState(false);
   const [erreurAction, setErreurAction] = useState<string | null>(null);
+
+  const ouvrirDocument = async (documentId: number) => {
+    try {
+      const blob = await apiClient.getBlob(`/demandes/laboratoire/${demandeId}/pieces-jointes/${documentId}`);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      console.error("Erreur lors de l'ouverture du document:", error);
+    }
+  };
 
   const query = useQuery({
     queryKey: ["demande-laboratoire", demandeId],
@@ -349,17 +364,40 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
                   ) : (
                     <ul className="space-y-2">
                       {demande.documents.map((document) => (
-                        <li key={document.id} className="flex items-start gap-3 rounded-2xl border border-brand-900/10 px-4 py-3">
-                          <FileText className="mt-0.5 size-4 shrink-0 text-brand-900" aria-hidden="true" />
-                          <div>
-                            <p className="text-sm font-semibold text-ink-900">
-                              {document.nomFichier || document.code}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {[document.typeMime, formatTaille(document.taille), document.dateAjout ? formatDate(document.dateAjout) : null]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </p>
+                        <li key={document.id} className="flex items-start justify-between gap-3 rounded-2xl border border-brand-900/10 px-4 py-3">
+                          <div className="flex items-start gap-3">
+                            <FileText className="mt-0.5 size-4 shrink-0 text-brand-900" aria-hidden="true" />
+                            <div>
+                              <p className="text-sm font-semibold text-ink-900">
+                                {document.nomFichier || document.code}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {[document.typeMime, formatTaille(document.taille), document.dateAjout ? formatDate(document.dateAjout) : null]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              icon={<Eye className="size-4" aria-hidden="true" />}
+                              onClick={() => void ouvrirDocument(document.id)}
+                            />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              icon={<Download className="size-4" aria-hidden="true" />}
+                              iconPosition="left"
+                              onClick={() => void telechargerPieceJointeDemande(
+                                demande.id,
+                                document.id,
+                                document.nomFichier || document.code,
+                              )}
+                            >
+                              Télécharger
+                            </Button>
                           </div>
                         </li>
                       ))}

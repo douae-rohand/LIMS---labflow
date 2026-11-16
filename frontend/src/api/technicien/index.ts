@@ -13,6 +13,7 @@ import type { PageResponse } from "../utilisateurs";
 import type {
   ImportApercuResponse,
   ImportConfirmerResponse,
+  DomaineTechnicienDto,
   LigneEssaiDetailTechnicienDto,
   LigneEssaiTechnicienDto,
   ListerEssaisParams,
@@ -122,6 +123,10 @@ export async function listerMesEssais(
     if (params.debut !== undefined) queryParams["debut"] = params.debut;
     if (params.fin !== undefined) queryParams["fin"] = params.fin;
     if (params.enRetard !== undefined) queryParams["enRetard"] = params.enRetard;
+    if (params.resultatASaisir !== undefined) queryParams["resultatASaisir"] = params.resultatASaisir;
+    if (params.echeanceProche !== undefined) queryParams["echeanceProche"] = params.echeanceProche;
+    if (params.validationTechniqueEnAttente !== undefined) queryParams["validationTechniqueEnAttente"] = params.validationTechniqueEnAttente;
+    if (params.retourneCorrection !== undefined) queryParams["retourneCorrection"] = params.retourneCorrection;
     if (params.q !== undefined && params.q.trim().length > 0) queryParams["q"] = params.q.trim();
   }
   const res = await apiClient.get<ApiResponse<PageResponse<LigneEssaiTechnicienDto>>>(
@@ -150,6 +155,12 @@ export async function planning(debut: string, fin: string): Promise<PlanningJour
 /** GET /api/technicien/synthese — tableau de bord agrégé. */
 export async function synthese(): Promise<SyntheseTechnicienDto> {
   const res = await apiClient.get<ApiResponse<SyntheseTechnicienDto>>("/technicien/synthese");
+  return res.data;
+}
+
+/** GET /api/technicien/mes-domaines — domaines du technicien connecté. */
+export async function mesDomaines(): Promise<DomaineTechnicienDto[]> {
+  const res = await apiClient.get<ApiResponse<DomaineTechnicienDto[]>>("/technicien/mes-domaines");
   return res.data;
 }
 
