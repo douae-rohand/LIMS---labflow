@@ -33,7 +33,6 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
-    private final TwoFactorService twoFactorService;
     private final RefreshTokenService refreshTokenService;
     private final JwtConfig jwtConfig;
     private final UtilisateurRepository utilisateurRepository;
@@ -157,56 +156,6 @@ public class AuthService {
                 principal, null, principal.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(authentication);
         return buildLoginResult(principal, httpRequest);
-    }
-
-    @Transactional
-    public SetupTwoFactorResponse setupTwoFactor(SetupTwoFactorRequest request, UtilisateurPrincipal principal) {
-        Utilisateur utilisateur = getUtilisateurFromRequestOrPrincipal(request != null ? request.twoFactorToken() : null, principal);
-        return new SetupTwoFactorResponse(twoFactorService.setupTotp(utilisateur));
-    }
-
-    @Transactional
-    public LoginResult activerTwoFactor(ActivateTwoFactorRequest request, UtilisateurPrincipal principal, HttpServletRequest httpRequest) {
-        Utilisateur utilisateur = getUtilisateurFromRequestOrPrincipal(request != null ? request.twoFactorToken() : null, principal);
-        twoFactorService.activerTotp(utilisateur, request.code());
-        if (request != null && request.twoFactorToken() != null && !request.twoFactorToken().isBlank()) {
-            UtilisateurPrincipal userPrincipal = (UtilisateurPrincipal) userDetailsService.loadUserByUsername(utilisateur.getEmail());
-            Authentication authentication = new UsernamePasswordAuthenticationToken(
-                    userPrincipal, null, userPrincipal.getAuthorities());
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            return buildLoginResult(userPrincipal, httpRequest);
-        }
-        return null;
-    }
-
-    @Transactional
-    public void desactiverTwoFactor(DisableTwoFactorRequest request, UtilisateurPrincipal principal) {
-        if (principal == null || principal.getId() == null) {
-            throw new BusinessRuleException("AUTH_REQUIRED",
-                    "Authentification d'accès requise pour désactiver la double authentification.");
-        }
-        Utilisateur utilisateur = utilisateurRepository.findById(principal.getId())
-                .orElseThrow(() -> new BusinessRuleException("USER_NOT_FOUND", "Utilisateur introuvable"));
-        twoFactorService.desactiverTotp(utilisateur, request.motDePasse(), request.code());
-    }
-
-    private Utilisateur getUtilisateurFromRequestOrPrincipal(String twoFactorToken, UtilisateurPrincipal principal) {
-        if (twoFactorToken != null && !twoFactorToken.isBlank()) {
-            if (jwtTokenProvider.hasType(twoFactorToken, "access")) {
-                throw new BusinessRuleException("2FA_TOKEN_INVALID", "Un token d'accès ne peut pas être passé dans deuxFactorToken");
-            }
-            if (!jwtTokenProvider.validateToken(twoFactorToken, "2fa")) {
-                throw new BusinessRuleException("2FA_TOKEN_INVALID", "Token 2FA invalide ou expiré");
-            }
-            String email = jwtTokenProvider.getUsernameFromToken(twoFactorToken);
-            return utilisateurRepository.findByEmailWithRoleAndLaboratoire(email)
-                    .orElseThrow(() -> new BusinessRuleException("USER_NOT_FOUND", "Utilisateur introuvable"));
-        }
-        if (principal != null) {
-            return utilisateurRepository.findById(principal.getId())
-                    .orElseThrow(() -> new BusinessRuleException("USER_NOT_FOUND", "Utilisateur introuvable"));
-        }
-        throw new BusinessRuleException("AUTH_REQUIRED", "Authentification d'accès ou token 2FA requis");
     }
 
     public record LoginResult(LoginResponse response, String rawRefreshToken) {}

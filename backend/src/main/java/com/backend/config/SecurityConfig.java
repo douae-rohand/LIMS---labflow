@@ -82,8 +82,6 @@ public class SecurityConfig {
                     "/api/auth/activation/renvoyer",
                     "/api/auth/2fa/valider",
                     "/api/auth/2fa/renvoyer",
-                    "/api/auth/2fa/setup",
-                    "/api/auth/2fa/activer",
                     "/api/auth/compte/activer",
                     "/api/auth/compte/activer/verifier",
                     "/api/auth/mot-de-passe/oublie",
