@@ -6,6 +6,7 @@ import com.backend.modules.essai.entity.StatutEssai;
 import com.backend.modules.technicien.dto.*;
 import com.backend.modules.technicien.service.TechnicienImportService;
 import com.backend.modules.technicien.service.TechnicienService;
+import com.backend.modules.utilisateur.service.TechnicienDomaineService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -45,10 +46,18 @@ public class TechnicienController {
 
     private final TechnicienService technicienService;
     private final TechnicienImportService importService;
+    private final TechnicienDomaineService technicienDomaineService;
 
     // =========================================================================
     // LOT A — Lecture
     // =========================================================================
+
+    @GetMapping("/mes-domaines")
+    @PreAuthorize("hasRole('TECHNICIEN') and hasAuthority('PERM_PLANIFICATION_STATUT')")
+    @Operation(summary = "Lister les domaines du technicien connecté")
+    public ApiResponse<List<com.backend.modules.catalogue.dto.DomaineDto>> mesDomaines() {
+        return ApiResponse.success(technicienDomaineService.domainesTechnicienConnecte());
+    }
 
     /**
      * GET /api/technicien/essais
@@ -74,13 +83,17 @@ public class TechnicienController {
             @RequestParam(required = false) Instant debut,
             @RequestParam(required = false) Instant fin,
             @RequestParam(defaultValue = "false") boolean enRetard,
+            @RequestParam(defaultValue = "false") boolean resultatASaisir,
+            @RequestParam(defaultValue = "false") boolean echeanceProche,
+            @RequestParam(defaultValue = "false") boolean validationTechniqueEnAttente,
+            @RequestParam(defaultValue = "false") boolean retourneCorrection,
             @RequestParam(defaultValue = "") String q) {
 
         return ApiResponse.success(
                 technicienService.listerMesEssais(
                         page, size, tri, direction,
                         statut, domaineId, demandeId,
-                        debut, fin, enRetard, q));
+                        debut, fin, enRetard, resultatASaisir, echeanceProche, validationTechniqueEnAttente, retourneCorrection, q));
     }
 
     /**
@@ -167,7 +180,7 @@ public class TechnicienController {
     /**
      * POST /api/technicien/essais/{id}/temps
      * Déclare le temps passé (début/fin ou durée en minutes).
-     * Une seule valeur stockée — la dernière remplace la précédente.
+     * Une seule valeur stockée ; une durée enregistrée ne peut pas être modifiée.
      */
     @PostMapping("/essais/{id}/temps")
     @PreAuthorize("hasAuthority('PERM_ESSAIS_GERER')")

@@ -44,6 +44,17 @@ public class TechnicienDomaineService {
         return resultat.domaines();
     }
 
+    public List<DomaineDto> domainesTechnicienConnecte() {
+        UtilisateurPrincipal principal = SecurityUtils.principalCourant();
+        if (!ROLE_TECHNICIEN.equals(principal.getRole().name())) {
+            throw new BusinessRuleException("ROLE_TECHNICIEN_REQUIS",
+                    "Cette ressource est réservée au technicien connecté.");
+        }
+        String schema = schemaCourant(principal);
+        return tenantExecutor.inTenant(schema,
+                () -> dtoAffectations(technicienDomaineRepository.findByTechnicienId(principal.getId())));
+    }
+
     public Map<Long, List<String>> domainesDes(Collection<Long> technicienIds) {
         if (technicienIds.isEmpty()) {
             return Map.of();

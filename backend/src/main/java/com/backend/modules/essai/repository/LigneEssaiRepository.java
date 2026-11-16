@@ -178,6 +178,17 @@ public interface LigneEssaiRepository extends JpaRepository<LigneEssai, Long> {
             @Param("debut") java.time.Instant debut,
             @Param("fin") java.time.Instant fin);
 
+    @Query("""
+            SELECT le FROM LigneEssai le
+            JOIN FETCH le.essai e LEFT JOIN FETCH e.domaine
+            LEFT JOIN FETCH le.echantillon JOIN FETCH le.demande
+            WHERE le.technicienId = :technicienId
+              AND COALESCE(le.dateDebut, le.dateAttribution) >= :debut
+              AND COALESCE(le.dateDebut, le.dateAttribution) < :fin
+            ORDER BY COALESCE(le.dateDebut, le.dateAttribution) ASC, le.id ASC
+            """)
+    List<LigneEssai> findPlanningParDatePrevue(@Param("technicienId") Long technicienId, @Param("debut") java.time.Instant debut, @Param("fin") java.time.Instant fin);
+
     /**
      * Lignes de la même demande (pour tester la transition EN_VALIDATION).
      * Charge uniquement id + statut, pas les associations.
@@ -193,6 +204,9 @@ public interface LigneEssaiRepository extends JpaRepository<LigneEssai, Long> {
               AND FUNCTION('DATE', le.dateAttribution) = FUNCTION('DATE', CURRENT_TIMESTAMP)
             """)
     long countEssaisAujourdhuiPourTechnicien(@Param("technicienId") Long technicienId);
+
+    @Query("SELECT COUNT(le) FROM LigneEssai le WHERE le.technicienId = :technicienId AND le.dateAttribution >= :debut AND le.dateAttribution < :fin")
+    long countEssaisAttribuesDansPeriode(@Param("technicienId") Long technicienId, @Param("debut") java.time.Instant debut, @Param("fin") java.time.Instant fin);
 
     @Query("SELECT COUNT(le) FROM LigneEssai le WHERE le.technicienId = :technicienId AND le.statut = 'EN_COURS'")
     long countEnCoursPourTechnicien(@Param("technicienId") Long technicienId);
@@ -228,6 +242,15 @@ public interface LigneEssaiRepository extends JpaRepository<LigneEssai, Long> {
             """)
     long countEnRetardPourTechnicien(@Param("technicienId") Long technicienId);
 
+    @Query(value = "SELECT le.id_ligne_essai FROM ligne_essai le JOIN essai e ON e.id_essai = le.essai_id WHERE le.technicien_id = :technicienId AND le.statut NOT IN ('TERMINE', 'NON_REALISABLE') AND le.date_attribution IS NOT NULL AND TIMESTAMPADD(MINUTE, e.duree_estimee, le.date_attribution) < CURRENT_TIMESTAMP", nativeQuery = true)
+    List<Long> findIdsEnRetardPourTechnicien(@Param("technicienId") Long technicienId);
+
+    @Query(value = "SELECT le.id_ligne_essai FROM ligne_essai le JOIN essai e ON e.id_essai = le.essai_id WHERE le.technicien_id = :technicienId AND le.statut NOT IN ('TERMINE', 'NON_REALISABLE') AND le.date_attribution IS NOT NULL AND TIMESTAMPADD(MINUTE, e.duree_estimee, le.date_attribution) >= CURRENT_TIMESTAMP AND TIMESTAMPADD(MINUTE, e.duree_estimee, le.date_attribution) < :limite AND NOT (le.statut = 'EN_COURS' AND (le.valeur IS NULL OR TRIM(le.valeur) = ''))", nativeQuery = true)
+    List<Long> findIdsEcheanceAvant(@Param("technicienId") Long technicienId, @Param("limite") java.time.Instant limite);
+
+    @Query("SELECT le.id FROM LigneEssai le WHERE le.technicienId = :technicienId AND le.statut = 'EN_COURS' AND (le.valeur IS NULL OR TRIM(le.valeur) = '')")
+    List<Long> findIdsResultatASaisir(@Param("technicienId") Long technicienId);
+
     /**
      * Charge des 7 prochains jours : nombre d'essais par date d'attribution.
      * Retourne List<Object[]> { dateAttribution (Date), count (Long) }.
@@ -245,6 +268,54 @@ public interface LigneEssaiRepository extends JpaRepository<LigneEssai, Long> {
             @Param("technicienId") Long technicienId,
             @Param("debut") java.time.Instant debut,
             @Param("fin") java.time.Instant fin);
+
+    @Query("SELECT COUNT(le) FROM LigneEssai le WHERE le.technicienId = :technicienId AND le.statut = 'TERMINE'")
+    long countTerminesPourTechnicien(@Param("technicienId") Long technicienId);
+
+    @Query("SELECT COUNT(le) FROM LigneEssai le WHERE le.technicienId = :technicienId AND le.statut = 'EN_COURS' AND (le.valeur IS NULL OR TRIM(le.valeur) = '')")
+    long countResultatsASaisir(@Param("technicienId") Long technicienId);
+
+    @Query(value = """
+            SELECT COUNT(DISTINCT le.id_ligne_essai)
+            FROM ligne_essai le
+            JOIN validation v ON v.ligne_essai_id = le.id_ligne_essai
+            WHERE le.technicien_id = :technicienId
+              AND v.niveau = 2 AND v.decision = 'REVISION_DEMANDEE'
+              AND NOT EXISTS (
+                  SELECT 1 FROM validation v2
+                  WHERE v2.ligne_essai_id = le.id_ligne_essai AND v2.niveau = 2
+                    AND (v2.date_validation > v.date_validation OR (v2.date_validation = v.date_validation AND v2.id_validation > v.id_validation))
+              )
+            """, nativeQuery = true)
+    long countRetournesCorrection(@Param("technicienId") Long technicienId);
+
+    @Query(value = "SELECT le.id_ligne_essai FROM ligne_essai le JOIN validation v ON v.ligne_essai_id = le.id_ligne_essai WHERE le.technicien_id = :technicienId AND v.niveau = 2 AND v.decision = 'REVISION_DEMANDEE' AND NOT EXISTS (SELECT 1 FROM validation v2 WHERE v2.ligne_essai_id = le.id_ligne_essai AND v2.niveau = 2 AND (v2.date_validation > v.date_validation OR (v2.date_validation = v.date_validation AND v2.id_validation > v.id_validation)))", nativeQuery = true)
+    List<Long> findIdsRetournesCorrection(@Param("technicienId") Long technicienId);
+
+    @Query(value = """
+            SELECT COUNT(le.id_ligne_essai)
+            FROM ligne_essai le JOIN essai e ON e.id_essai = le.essai_id
+            WHERE le.technicien_id = :technicienId
+              AND le.statut NOT IN ('TERMINE', 'NON_REALISABLE') AND le.date_attribution IS NOT NULL
+              AND TIMESTAMPADD(MINUTE, e.duree_estimee, le.date_attribution) >= CURRENT_TIMESTAMP
+              AND TIMESTAMPADD(MINUTE, e.duree_estimee, le.date_attribution) < :limite
+            """, nativeQuery = true)
+    long countEcheancesAvant(@Param("technicienId") Long technicienId, @Param("limite") java.time.Instant limite);
+
+    @Query("SELECT le FROM LigneEssai le JOIN FETCH le.essai e LEFT JOIN FETCH e.domaine LEFT JOIN FETCH le.echantillon JOIN FETCH le.demande WHERE le.technicienId = :technicienId AND le.statut NOT IN ('TERMINE', 'NON_REALISABLE') AND le.dateAttribution IS NOT NULL AND FUNCTION('TIMESTAMPADD', MINUTE, e.dureeEstimee, le.dateAttribution) >= :debut AND FUNCTION('TIMESTAMPADD', MINUTE, e.dureeEstimee, le.dateAttribution) < :fin ORDER BY le.dateAttribution ASC, le.id ASC")
+    List<LigneEssai> findEcheancesDansPeriode(@Param("technicienId") Long technicienId, @Param("debut") java.time.Instant debut, @Param("fin") java.time.Instant fin);
+
+    @Query(value = "SELECT le.id_ligne_essai FROM ligne_essai le WHERE le.technicien_id = :technicienId AND le.statut = 'EN_COURS' AND le.valeur IS NOT NULL AND TRIM(le.valeur) <> '' AND le.date_saisie IS NOT NULL AND NOT EXISTS (SELECT 1 FROM validation v WHERE v.ligne_essai_id = le.id_ligne_essai AND v.niveau = 1 AND v.date_validation >= le.date_saisie)", nativeQuery = true)
+    List<Long> findIdsValidationTechniqueEnAttente(@Param("technicienId") Long technicienId);
+
+    @Query("SELECT COUNT(le) FROM LigneEssai le WHERE le.technicienId = :technicienId AND le.statut = 'TERMINE' AND le.dateFin >= :debut AND le.dateFin < :fin")
+    long countTerminesPeriode(@Param("technicienId") Long technicienId, @Param("debut") java.time.Instant debut, @Param("fin") java.time.Instant fin);
+
+    @Query("SELECT COUNT(le) FROM LigneEssai le JOIN le.essai e WHERE le.technicienId = :technicienId AND le.statut = 'TERMINE' AND le.dateFin >= :debut AND le.dateFin < :fin AND le.dateAttribution IS NOT NULL AND e.dureeEstimee IS NOT NULL AND le.dateFin <= FUNCTION('TIMESTAMPADD', MINUTE, e.dureeEstimee, le.dateAttribution)")
+    long countTerminesDansLesDelais(@Param("technicienId") Long technicienId, @Param("debut") java.time.Instant debut, @Param("fin") java.time.Instant fin);
+
+    @Query("SELECT COUNT(le) FROM LigneEssai le JOIN le.essai e WHERE le.technicienId = :technicienId AND le.statut = 'TERMINE' AND le.dateFin >= :debut AND le.dateFin < :fin AND le.dateAttribution IS NOT NULL AND e.dureeEstimee IS NOT NULL")
+    long countAvecEcheancePeriode(@Param("technicienId") Long technicienId, @Param("debut") java.time.Instant debut, @Param("fin") java.time.Instant fin);
 
     /**
      * Toutes les lignes d'un technicien (sans pagination), avec essai JOIN FETCH.
@@ -320,13 +391,13 @@ public interface LigneEssaiRepository extends JpaRepository<LigneEssai, Long> {
             @Param("maintenant") java.time.Instant maintenant);
 
     /**
-     * Met à jour la durée déclarée (remplacement, pas accumulation).
+     * Enregistre la durée déclarée uniquement si aucune durée n'est déjà définie.
      */
     @Modifying(clearAutomatically = true)
     @Query("""
             UPDATE LigneEssai le
             SET le.dureeMinutes = :duree
-            WHERE le.id = :id AND le.technicienId = :technicienId
+            WHERE le.id = :id AND le.technicienId = :technicienId AND le.dureeMinutes IS NULL
             """)
     int mettreAJourDuree(
             @Param("id") Long id,

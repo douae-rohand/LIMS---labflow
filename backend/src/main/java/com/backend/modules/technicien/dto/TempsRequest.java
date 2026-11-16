@@ -14,7 +14,7 @@ import java.time.Instant;
  * </ul>
  *
  * <p>Une seule valeur {@code duree_minutes} est stockée par ligne d'essai.
- * La dernière déclaration remplace la précédente (avec audit de la valeur précédente).</p>
+ * Une durée déjà enregistrée ne peut pas être remplacée.</p>
  *
  * <p>Le plafond est configurable via {@code lims.technicien.duree-max-minutes}
  * (défaut : 480 minutes = 8 heures).</p>

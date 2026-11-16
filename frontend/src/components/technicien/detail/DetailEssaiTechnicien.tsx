@@ -1,10 +1,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, Ban, Play, TriangleAlert } from "lucide-react";
-import { Button, Card, Skeleton } from "@/components/lab";
+import { ArrowLeft, Ban, Calendar, Clock, FileText, Play, Tag, TriangleAlert } from "lucide-react";
+import { Button, Card, Label, Skeleton, Textarea } from "@/components/lab";
 import { ApiError } from "@/api/axios";
 import { peut } from "@/api/session";
-import { useDemarrerEssai, useTechnicienEssai } from "@/hooks/useTechnicienEssais";
+import { useDeclareNonRealisable, useDemarrerEssai, useTechnicienEssai } from "@/hooks/useTechnicienEssais";
 import { messageErreurTechnicien } from "@/api/technicien";
 import { classeStatutEssai, formatDateHeure, libelleStatutEssai } from "@/components/technicien/libelles";
 import { FriseEtapesEssai } from "@/components/technicien/detail/FriseEtapesEssai";
@@ -12,29 +12,32 @@ import { BlocEchantillon } from "@/components/technicien/detail/BlocEchantillon"
 import { FormResultat } from "@/components/technicien/detail/FormResultat";
 import { BlocTemps } from "@/components/technicien/detail/BlocTemps";
 import { BlocValidationTechnique } from "@/components/technicien/detail/BlocValidationTechnique";
-import { DialogueNonRealisable } from "@/components/technicien/detail/DialogueNonRealisable";
 import { HistoriqueEssai } from "@/components/technicien/detail/HistoriqueValidations";
 import { cn } from "@/lib/utils";
 
 type DetailDto = NonNullable<ReturnType<typeof useTechnicienEssai>["data"]>;
 
-/** En-tête : retour, statut, retard, désignation, demande, dates. */
+function MetaItem({ icone: Icone, texte }: { icone: React.ElementType; texte: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+      <Icone className="size-3.5 shrink-0" aria-hidden="true" />
+      {texte}
+    </span>
+  );
+}
+
 function Entete({ ligne }: { ligne: DetailDto }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <Link
         to="/app/essais"
         className="inline-flex items-center gap-1 text-sm font-medium text-brand-900 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900 rounded-lg"
       >
         <ArrowLeft className="size-4" aria-hidden="true" /> Retour aux essais
       </Link>
+
       <div className="flex flex-wrap items-center gap-2">
-        <span
-          className={cn(
-            "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold",
-            classeStatutEssai(ligne.statut),
-          )}
-        >
+        <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", classeStatutEssai(ligne.statut))}>
           {libelleStatutEssai(ligne.statut)}
         </span>
         {ligne.enRetard && (
@@ -43,84 +46,119 @@ function Entete({ ligne }: { ligne: DetailDto }) {
           </span>
         )}
       </div>
-      <h1 className="text-2xl font-bold text-ink-900">
-        {ligne.essai.code} — {ligne.essai.designation}
-      </h1>
-      <p className="text-sm text-muted-foreground">
-        Demande {ligne.demandeNumero} · Ligne {ligne.code}
-      </p>
-      <p className="text-xs text-muted-foreground">
-        Attribuée le {formatDateHeure(ligne.dateAttribution)}
-        {ligne.echeanceEstimee && <> · Échéance estimée {formatDateHeure(ligne.echeanceEstimee)}</>}
-      </p>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1">Essai</p>
+        <h1 className="text-2xl font-bold text-ink-900">
+          {ligne.essai.code} — {ligne.essai.designation}
+        </h1>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-2xl border border-brand-900/8 bg-surface-alt px-4 py-3">
+        <MetaItem icone={FileText} texte={`Demande ${ligne.demandeNumero}`} />
+        {ligne.demandeTitre && <MetaItem icone={FileText} texte={ligne.demandeTitre} />}
+        <MetaItem icone={Tag} texte={`Ligne ${ligne.code}`} />
+        <MetaItem icone={Calendar} texte={`Attribuée le ${formatDateHeure(ligne.dateAttribution)}`} />
+        {ligne.echeanceEstimee && (
+          <MetaItem icone={Clock} texte={`Échéance ${formatDateHeure(ligne.echeanceEstimee)}`} />
+        )}
+      </div>
     </div>
   );
 }
 
-/** Carte actions secondaires : Démarrer, Non réalisable. */
-function CarteActions({ ligne, onNonRealisable }: { ligne: DetailDto; onNonRealisable: () => void }) {
-  const demarrerMutation = useDemarrerEssai();
-  const peutDemarrer = peut("ESSAIS_GERER");
-  const statut = ligne.statut;
+/** Encart "Marquer non réalisable" inline — même style que BlocValidationTechnique. */
+function BlocNonRealisable({ id }: { id: number }) {
+  const [ouvert, setOuvert] = useState(false);
+  const [motif, setMotif] = useState("");
+  const [erreur, setErreur] = useState("");
+  const mutation = useDeclareNonRealisable();
+  const enCours = mutation.isPending;
+
+  const confirmer = () => {
+    if (motif.trim().length < 5) {
+      setErreur("Le motif doit contenir au moins 5 caractères.");
+      return;
+    }
+    setErreur("");
+    mutation.mutate({ id, payload: { motif: motif.trim() } }, {
+      onSuccess: () => { setOuvert(false); setMotif(""); },
+    });
+  };
 
   return (
-    <Card variant="flat" padding="md" className="space-y-3">
-      <h2 className="text-lg font-bold text-ink-900">Actions</h2>
+    <Card variant="flat" padding="md" className="space-y-4 border-red-200 bg-red-50/40">
+      <div className="flex items-center gap-2">
+        <Ban className="size-5 text-red-600" aria-hidden="true" />
+        <h2 className="text-base font-bold text-red-900">Marquer non réalisable</h2>
+      </div>
 
-      {statut === "ATTENTE_ECHANTILLON" &&
-        (peutDemarrer ? (
-          <Button
-            variant="primary"
-            icon={<Play className="size-4" aria-hidden="true" />}
-            iconPosition="left"
-            loading={demarrerMutation.isPending}
-            disabled={demarrerMutation.isPending}
-            onClick={() => demarrerMutation.mutate(ligne.ligneEssaiId)}
-            className="w-full sm:w-auto"
-          >
-            Démarrer l'essai
-          </Button>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Vous n'avez pas la permission de démarrer un essai.
+      {!ouvert ? (
+        <>
+          <p className="text-sm text-red-800">
+            L'essai ne peut pas être réalisé (échantillon insuffisant, problème technique, etc.).
+            Cette action est irréversible.
           </p>
-        ))}
-
-      {(statut === "ATTENTE_ECHANTILLON" || statut === "EN_COURS") &&
-        (peutDemarrer ? (
           <Button
             variant="secondary"
             icon={<Ban className="size-4" aria-hidden="true" />}
             iconPosition="left"
-            onClick={onNonRealisable}
-            disabled={demarrerMutation.isPending}
+            onClick={() => setOuvert(true)}
+            className="border-red-200 text-red-700 hover:bg-red-100"
           >
-            Marquer non réalisable
+            Déclarer non réalisable
           </Button>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Vous n'avez pas la permission de marquer un essai non réalisable.
-          </p>
-        ))}
-
-      {statut === "TERMINE" && (
-        <p className="text-sm text-muted-foreground">Essai terminé. Aucune action disponible.</p>
-      )}
-      {statut === "NON_REALISABLE" && (
-        <p className="text-sm text-muted-foreground">Essai déclaré non réalisable.</p>
+        </>
+      ) : (
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="motif-non-realisable">
+              Motif <span className="text-red-500 text-xs">*</span>
+            </Label>
+            <Textarea
+              id="motif-non-realisable"
+              rows={3}
+              maxLength={1000}
+              placeholder="Ex. : échantillon insuffisant pour réaliser l'analyse."
+              disabled={enCours}
+              value={motif}
+              onChange={(e) => { setMotif(e.target.value); setErreur(""); }}
+            />
+            {erreur && <p role="alert" className="text-sm text-red-600">{erreur}</p>}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              loading={enCours}
+              disabled={enCours}
+              onClick={confirmer}
+              className="bg-red-600 text-white hover:bg-red-700 border-red-600"
+            >
+              Confirmer
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={enCours}
+              onClick={() => { setOuvert(false); setMotif(""); setErreur(""); }}
+            >
+              Annuler
+            </Button>
+          </div>
+        </div>
       )}
     </Card>
   );
 }
 
-/** Page de travail : détail d'un essai + saisie + temps + validation. */
 export function DetailEssaiTechnicien({ id }: { id: number }) {
   const navigate = useNavigate();
   const query = useTechnicienEssai(id);
-  const [dialogueNonRealisable, setDialogueNonRealisable] = useState(false);
+  const demarrerMutation = useDemarrerEssai();
 
   const peutSaisir = peut("ESSAIS_GERER");
   const peutValiderTech = peut("VALIDATION_TECHNIQUE_GERER");
+  const peutDemarrer = peut("ESSAIS_GERER");
 
   if (query.isLoading) {
     return (
@@ -168,57 +206,73 @@ export function DetailEssaiTechnicien({ id }: { id: number }) {
 
   return (
     <div className="space-y-6">
+
+      {/* En-tête */}
       <Entete ligne={ligne} />
 
+      {/* Bouton démarrer (hors grille, pleine largeur sur mobile) */}
+      {peutDemarrer && statut === "ATTENTE_ECHANTILLON" && (
+        <Button
+          variant="primary"
+          icon={<Play className="size-4" aria-hidden="true" />}
+          iconPosition="left"
+          loading={demarrerMutation.isPending}
+          disabled={demarrerMutation.isPending}
+          onClick={() => demarrerMutation.mutate(ligne.ligneEssaiId)}
+          className="w-full sm:w-auto"
+        >
+          Démarrer l'essai
+        </Button>
+      )}
+
+      {/* Frise de progression */}
       <Card variant="surface" padding="md">
         <FriseEtapesEssai demarre={demarre} resultatSaisi={resultatSaisi} valideTechniquement={valideTech} />
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
+      {/* Corps principal — layout 7/5 */}
+      <div className="grid items-start gap-6 lg:grid-cols-12">
+
+        {/* Colonne gauche : Échantillon + Saisie résultat */}
+        <div className="space-y-6 lg:col-span-7">
+
+          {/* 1. Échantillon — toujours affiché en premier */}
           <BlocEchantillon echantillon={ligne.echantillon} exigences={ligne.exigencesEchantillon} />
-          <CarteActions ligne={ligne} onNonRealisable={() => setDialogueNonRealisable(true)} />
+
+          {/* 2. Saisie du résultat */}
+          {statut === "EN_COURS" && peutSaisir && (
+            <Card variant="surface" padding="md" className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1">
+                  Action requise
+                </p>
+                <h2 className="text-base font-bold text-ink-900">Saisie du résultat</h2>
+              </div>
+              <FormResultat detail={ligne} />
+            </Card>
+          )}
+        </div>
+
+        {/* Colonne droite : Temps + Historique + Validation technique + Non réalisable */}
+        <aside aria-label="Informations complémentaires" className="space-y-5 lg:col-span-5">
+
+          {/* 3. Temps passé */}
           <BlocTemps id={id} dureeMinutes={ligne.dureeMinutes} />
-        </div>
 
-        <div className="space-y-6">
-          <Card variant="flat" padding="md" className="space-y-4">
-            <h2 className="text-lg font-bold text-ink-900">Saisie du résultat</h2>
-            {statut === "EN_COURS" ? (
-              peutSaisir ? (
-                <FormResultat detail={ligne} />
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Vous n'avez pas la permission de saisir un résultat.
-                </p>
-              )
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {statut === "ATTENTE_ECHANTILLON"
-                  ? "Démarrez l'essai pour saisir un résultat."
-                  : statut === "TERMINE"
-                    ? "Le résultat a été saisi et l'essai validé."
-                    : "Cet essai est non réalisable."}
-              </p>
-            )}
-          </Card>
-
-          {statut === "EN_COURS" && resultatSaisi &&
-            (peutValiderTech ? (
-              <BlocValidationTechnique detail={ligne} />
-            ) : (
-              <Card variant="flat" padding="md">
-                <p className="text-sm text-muted-foreground">
-                  Vous n'avez pas la permission de valider techniquement cet essai.
-                </p>
-              </Card>
-            ))}
-
+          {/* 4. Historique */}
           <HistoriqueEssai ligne={ligne} />
-        </div>
-      </div>
 
-      <DialogueNonRealisable id={id} open={dialogueNonRealisable} onOpenChange={setDialogueNonRealisable} />
+          {/* 5. Validation technique */}
+          {statut === "EN_COURS" && resultatSaisi && peutValiderTech && (
+            <BlocValidationTechnique detail={ligne} />
+          )}
+
+          {/* 6. Non réalisable */}
+          {peutDemarrer && (statut === "ATTENTE_ECHANTILLON" || statut === "EN_COURS") && (
+            <BlocNonRealisable id={id} />
+          )}
+        </aside>
+      </div>
     </div>
   );
 }

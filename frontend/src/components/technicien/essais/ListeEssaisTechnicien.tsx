@@ -12,7 +12,7 @@ import { TableauEssais } from "@/components/technicien/essais/TableauEssais";
 import { PaginationEssais } from "@/components/technicien/essais/PaginationEssais";
 import { ApiError } from "@/api/axios";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 8;
 const DEBOUNCE_MS = 400;
 const Q_MIN_LEN = 2;
 
@@ -68,6 +68,10 @@ export function ListeEssaisTechnicien({ search }: { search: EssaisSearch }) {
     debut: search.debut,
     fin: search.fin,
     enRetard: search.enRetard,
+    resultatASaisir: search.resultatASaisir,
+    echeanceProche: search.echeanceProche,
+    validationTechniqueEnAttente: search.validationTechniqueEnAttente,
+    retourneCorrection: search.retourneCorrection,
     q: search.q,
   };
 

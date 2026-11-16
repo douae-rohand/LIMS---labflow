@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button, Card, Skeleton } from "@/components/lab";
@@ -6,17 +7,15 @@ import type { PlanningSearch } from "@/routes/app/planning";
 import { useTechnicienPlanning } from "@/hooks/useTechnicienEssais";
 import {
   classeStatutEssai,
-  formatDateLocale,
   libelleStatutEssai,
 } from "@/components/technicien/libelles";
-import type { PlanningJourDto, LigneEssaiTechnicienDto } from "@/api/technicien/types";
+import type { LigneEssaiTechnicienDto } from "@/api/technicien/types";
 import { LigneEssaiCard } from "@/components/technicien/essais/LigneEssaiCard";
 import { cn } from "@/lib/utils";
 
 const PLAGE_DEFAUT = 7;
 const PLAGE_MAX = 62;
 
-/** Construit une date YYYY-MM-DD à partir d'un objet Date local. */
 function versLocalDate(d: Date): string {
   const a = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -24,7 +23,6 @@ function versLocalDate(d: Date): string {
   return `${a}-${m}-${j}`;
 }
 
-/** Parse une date YYYY-MM-DD en objet Date local (sans décalage UTC). */
 function depuisLocalDate(s: string): Date {
   const parts = s.split("-").map(Number);
   const a = parts[0] ?? 1970;
@@ -33,24 +31,44 @@ function depuisLocalDate(s: string): Date {
   return new Date(a, m - 1, j);
 }
 
-/** Ajoute des jours à une date locale (retourne YYYY-MM-DD). */
 function ajouterJours(localDate: string, jours: number): string {
   const d = depuisLocalDate(localDate);
   d.setDate(d.getDate() + jours);
   return versLocalDate(d);
 }
 
-/** Vérifie qu'une chaîne est une date YYYY-MM-DD valide. */
 function estDateValide(s: string | undefined): s is string {
   if (!s) return false;
   return /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(depuisLocalDate(s).getTime());
 }
 
-/** Nombre de jours entre deux dates locales. */
 function nbJours(debut: string, fin: string): number {
   const d = depuisLocalDate(debut).getTime();
   const f = depuisLocalDate(fin).getTime();
   return Math.round((f - d) / 86_400_000);
+}
+
+/** Formate une date YYYY-MM-DD en "lun. 09 nov." */
+function formatJourCourt(dateStr: string): { jour: string; numero: string; mois: string } {
+  const d = depuisLocalDate(dateStr);
+  const jour = d.toLocaleDateString("fr-FR", { weekday: "short" });
+  const numero = String(d.getDate());
+  const mois = d.toLocaleDateString("fr-FR", { month: "short" });
+  return { jour, numero, mois };
+}
+
+/** Formate une plage de dates en "09 nov. — 15 nov. 2026". */
+function formatPlage(debut: string, fin: string): string {
+  const d = depuisLocalDate(debut);
+  const f = depuisLocalDate(fin);
+  const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
+  const annee = f.getFullYear();
+  return `${d.toLocaleDateString("fr-FR", opts)} — ${f.toLocaleDateString("fr-FR", { ...opts, year: "numeric" })}`;
+}
+
+/** Vérifie si une date YYYY-MM-DD est aujourd'hui. */
+function estAujourdhui(dateStr: string): boolean {
+  return dateStr === versLocalDate(new Date());
 }
 
 export function PlanningTechnicien({
@@ -61,13 +79,11 @@ export function PlanningTechnicien({
   fin: string | undefined;
 }) {
   const navigate = useNavigate();
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
-  // Résolution des dates : défaut = aujourd'hui + 6 jours
   const aujourdhui = versLocalDate(new Date());
   const debutFinal = estDateValide(debut) ? debut : aujourdhui;
   const finInitiale = estDateValide(fin) ? fin : ajouterJours(aujourdhui, PLAGE_DEFAUT - 1);
-
-  // Si fin avant début, on corrige
   const finFinal = nbJours(debutFinal, finInitiale) >= 0 ? finInitiale : debutFinal;
 
   const query = useTechnicienPlanning(debutFinal, finFinal);
@@ -84,7 +100,22 @@ export function PlanningTechnicien({
     mettreAJourPlage(ajouterJours(debutFinal, -PLAGE_DEFAUT), ajouterJours(finFinal, -PLAGE_DEFAUT));
   const handleSuivant = () =>
     mettreAJourPlage(ajouterJours(debutFinal, PLAGE_DEFAUT), ajouterJours(finFinal, PLAGE_DEFAUT));
-  const handleAujourdhui = () => mettreAJourPlage(aujourdhui, ajouterJours(aujourdhui, PLAGE_DEFAUT - 1));
+  const handleAujourdhui = () =>
+    mettreAJourPlage(aujourdhui, ajouterJours(aujourdhui, PLAGE_DEFAUT - 1));
+
+  /** Sélection d'une date via input[type=date] : on centre la semaine autour de cette date. */
+  const handleSelectDate = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (!estDateValide(val)) return;
+    // Trouver le lundi de la semaine contenant la date choisie
+    const d = depuisLocalDate(val);
+    const jourSemaine = d.getDay(); // 0=dim, 1=lun…
+    const lundiOffset = jourSemaine === 0 ? -6 : 1 - jourSemaine;
+    const lundi = new Date(d);
+    lundi.setDate(d.getDate() + lundiOffset);
+    const debutSemaine = versLocalDate(lundi);
+    mettreAJourPlage(debutSemaine, ajouterJours(debutSemaine, PLAGE_DEFAUT - 1));
+  };
 
   const jours = nbJours(debutFinal, finFinal) + 1;
 
@@ -92,28 +123,60 @@ export function PlanningTechnicien({
     <div className="space-y-5">
       {/* En-tête + navigation */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* Titre */}
         <div className="flex items-center gap-3">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-brand-900/10 text-brand-900">
             <CalendarDays className="size-5" aria-hidden="true" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-ink-900">Planning</h1>
-            <p className="text-sm text-muted-foreground">
-              Du {formatDateLocale(debutFinal)} au {formatDateLocale(finFinal)}
-            </p>
+            <p className="text-sm text-muted-foreground">{formatPlage(debutFinal, finFinal)}</p>
           </div>
         </div>
 
+        {/* Navigation */}
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="icon" onClick={handlePrecedent} aria-label="Semaine précédente">
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={handlePrecedent}
+            aria-label="Semaine précédente"
+          >
             <ChevronLeft className="size-4" aria-hidden="true" />
           </Button>
+
           <Button variant="secondary" size="sm" onClick={handleAujourdhui}>
             Aujourd&apos;hui
           </Button>
-          <Button variant="secondary" size="icon" onClick={handleSuivant} aria-label="Semaine suivante">
+
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={handleSuivant}
+            aria-label="Semaine suivante"
+          >
             <ChevronRight className="size-4" aria-hidden="true" />
           </Button>
+
+          {/* Sélecteur de date */}
+          <div className="relative">
+            <Button
+              variant="secondary"
+              size="icon"
+              aria-label="Choisir une date"
+              onClick={() => dateInputRef.current?.showPicker?.()}
+            >
+              <CalendarDays className="size-4" aria-hidden="true" />
+            </Button>
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={debutFinal}
+              onChange={handleSelectDate}
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              aria-label="Naviguer vers une date"
+            />
+          </div>
         </div>
       </div>
 
@@ -126,11 +189,11 @@ export function PlanningTechnicien({
         </Card>
       )}
 
-      {/* Corps du planning */}
+      {/* Corps */}
       {query.isLoading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-3xl" />
+        <div className="grid grid-cols-7 gap-3">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <Skeleton key={i} className="h-48 w-full rounded-2xl" />
           ))}
         </div>
       ) : query.isError ? (
@@ -151,7 +214,6 @@ export function PlanningTechnicien({
   );
 }
 
-/** Affiche le contenu du planning : colonnes desktop + liste mobile. */
 function ContenuPlanning({
   planning,
 }: {
@@ -167,52 +229,103 @@ function ContenuPlanning({
 
   return (
     <>
-      {/* Vue desktop : colonnes par jour */}
-      <div className="hidden md:grid md:auto-cols-fr md:grid-flow-col md:gap-4 md:overflow-x-auto">
-        {planning.map((jour) => (
-          <div key={jour.date} className="min-w-48 space-y-2">
-            <div className="rounded-2xl bg-surface-alt px-3 py-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {formatDateLocale(jour.date)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {jour.essais.length} essai{jour.essais.length > 1 ? "s" : ""}
-              </p>
-            </div>
-            <JourColonnes essais={jour.essais} />
-          </div>
-        ))}
+      {/* Vue desktop */}
+      <div className="hidden md:block overflow-x-auto">
+        <div
+          className="grid gap-3"
+          style={{ gridTemplateColumns: `repeat(${planning.length}, minmax(140px, 1fr))` }}
+        >
+          {planning.map((jour) => {
+            const { jour: jourLib, numero, mois } = formatJourCourt(jour.date);
+            const actif = estAujourdhui(jour.date);
+            const nbEssais = jour.essais.length;
+            return (
+              <div key={jour.date} className="flex flex-col gap-2">
+                {/* En-tête colonne */}
+                <div
+                  className={cn(
+                    "rounded-2xl px-3 py-2.5 text-center transition-colors",
+                    actif
+                      ? "bg-brand-900 text-primary-foreground"
+                      : "bg-surface-alt",
+                  )}
+                >
+                  <p className={cn(
+                    "text-[11px] font-semibold uppercase tracking-widest",
+                    actif ? "text-white/70" : "text-muted-foreground",
+                  )}>
+                    {jourLib}
+                  </p>
+                  <p className={cn(
+                    "text-2xl font-bold leading-tight",
+                    actif ? "text-white" : "text-ink-900",
+                  )}>
+                    {numero}
+                  </p>
+                  <p className={cn(
+                    "text-[11px]",
+                    actif ? "text-white/70" : "text-muted-foreground",
+                  )}>
+                    {mois}
+                  </p>
+                  <p className={cn(
+                    "mt-1 text-[11px] font-medium",
+                    actif ? "text-white/80" : "text-muted-foreground",
+                  )}>
+                    {nbEssais === 0 ? "Aucun essai" : `${nbEssais} essai${nbEssais > 1 ? "s" : ""}`}
+                  </p>
+                </div>
+
+                {/* Cartes essais */}
+                <ColonneJour essais={jour.essais} />
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Vue mobile : liste verticale groupée par jour */}
+      {/* Vue mobile */}
       <div className="space-y-4 md:hidden">
-        {planning.map((jour) => (
-          <div key={jour.date} className="space-y-2">
-            <p className="text-sm font-bold text-ink-900">{formatDateLocale(jour.date)}</p>
-            {jour.essais.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-brand-900/10 px-3 py-2 text-xs text-muted-foreground">
-                Aucun essai
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {jour.essais.map((essai) => (
-                  <LigneEssaiCard key={essai.ligneEssaiId} essai={essai} />
-                ))}
+        {planning.map((jour) => {
+          const { jour: jourLib, numero, mois } = formatJourCourt(jour.date);
+          const actif = estAujourdhui(jour.date);
+          return (
+            <div key={jour.date} className="space-y-2">
+              <div className={cn(
+                "flex items-center gap-2 rounded-2xl px-3 py-2",
+                actif ? "bg-brand-900" : "bg-surface-alt",
+              )}>
+                <span className={cn("text-base font-bold", actif ? "text-white" : "text-ink-900")}>
+                  {numero} {mois}
+                </span>
+                <span className={cn("text-xs capitalize", actif ? "text-white/70" : "text-muted-foreground")}>
+                  {jourLib}
+                </span>
               </div>
-            )}
-          </div>
-        ))}
+              {jour.essais.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-brand-900/10 px-3 py-2 text-xs text-muted-foreground">
+                  Aucun essai
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {jour.essais.map((essai) => (
+                    <LigneEssaiCard key={essai.ligneEssaiId} essai={essai} />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </>
   );
 }
 
-/** Mini-carte d'essai pour la colonne desktop. */
-function JourColonnes({ essais }: { essais: LigneEssaiTechnicienDto[] }) {
+function ColonneJour({ essais }: { essais: LigneEssaiTechnicienDto[] }) {
   if (essais.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-brand-900/10 px-3 py-4 text-center text-xs text-muted-foreground">
-        Aucun essai
+      <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-brand-900/10 px-2 py-6 text-center text-xs text-muted-foreground">
+        —
       </div>
     );
   }
@@ -223,25 +336,25 @@ function JourColonnes({ essais }: { essais: LigneEssaiTechnicienDto[] }) {
           key={essai.ligneEssaiId}
           to="/app/essais/$ligneEssaiId"
           params={{ ligneEssaiId: String(essai.ligneEssaiId) }}
-          className="block rounded-2xl border border-brand-900/10 bg-card p-3 transition-colors hover:border-brand-900/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900"
+          className="block rounded-2xl border border-brand-900/10 bg-card p-3 transition-colors hover:border-brand-900/30 hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-900"
         >
-          <div className="flex items-center gap-2">
-            <span
-              className={cn(
-                "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold",
-                classeStatutEssai(essai.statut),
-              )}
-            >
+          {/* Statut */}
+          <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+            <span className={cn(
+              "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+              classeStatutEssai(essai.statut),
+            )}>
               {libelleStatutEssai(essai.statut)}
             </span>
             {essai.enRetard && (
-              <span className="text-[11px] font-semibold text-red-700">En retard</span>
+              <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                En retard
+              </span>
             )}
           </div>
-          <p className="mt-1 truncate text-sm font-semibold text-ink-900">
-            {essai.essai.code}
-          </p>
-          <p className="truncate text-xs text-muted-foreground">{essai.essai.designation}</p>
+          {/* Code + désignation */}
+          <p className="truncate text-sm font-bold text-ink-900">{essai.essai.code}</p>
+          <p className="truncate text-xs text-muted-foreground leading-snug">{essai.essai.designation}</p>
         </Link>
       ))}
     </div>

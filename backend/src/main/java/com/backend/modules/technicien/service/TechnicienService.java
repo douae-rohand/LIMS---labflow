@@ -30,6 +30,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -119,7 +120,7 @@ public class TechnicienService {
             int page, int size, String champTri, String direction,
             StatutEssai statut, Long domaineId, Long demandeId,
             Instant debut, Instant fin,
-            boolean enRetard, String q) {
+            boolean enRetard, boolean resultatASaisir, boolean echeanceProche, boolean validationTechniqueEnAttente, boolean retourneCorrection, String q) {
 
         Long moi = SecurityUtils.principalCourant().getId();
         Pageable pageable = construirePageable(page, size, champTri, direction);
@@ -133,10 +134,34 @@ public class TechnicienService {
             return dto;
         });
 
-        if (enRetard) {
+        if (echeanceProche) {
+            Instant maintenant = Instant.now();
+            List<LigneEssaiTechnicienDto> lignes = ligneEssaiRepository
+                    .findEcheancesDansPeriode(moi, maintenant, maintenant.plus(1, ChronoUnit.DAYS))
+                    .stream().map(this::toListDto).toList();
+            return PageResponse.<LigneEssaiTechnicienDto>builder().content(lignes).page(pageable.getPageNumber())
+                    .size(pageable.getPageSize()).totalElements(lignes.size()).totalPages(1).first(true).last(true).build();
+        }
+        if (validationTechniqueEnAttente) {
+            List<Long> ids = ligneEssaiRepository.findIdsValidationTechniqueEnAttente(moi);
+            List<LigneEssaiTechnicienDto> lignes = ids.stream().map(id -> ligneEssaiRepository.findByIdAndTechnicienId(id, moi)
+                    .map(this::toListDto).orElse(null)).filter(java.util.Objects::nonNull).toList();
+            return PageResponse.<LigneEssaiTechnicienDto>builder().content(lignes).page(pageable.getPageNumber())
+                    .size(pageable.getPageSize()).totalElements(lignes.size()).totalPages(1).first(true).last(true).build();
+        }
+        if (retourneCorrection) {
+            List<Long> ids = ligneEssaiRepository.findIdsRetournesCorrection(moi);
+            List<LigneEssaiTechnicienDto> lignes = ids.stream().map(id -> ligneEssaiRepository.findByIdAndTechnicienId(id, moi)
+                    .map(this::toListDto).orElse(null)).filter(java.util.Objects::nonNull).toList();
+            return PageResponse.<LigneEssaiTechnicienDto>builder().content(lignes).page(pageable.getPageNumber())
+                    .size(pageable.getPageSize()).totalElements(lignes.size()).totalPages(1).first(true).last(true).build();
+        }
+        if (enRetard || resultatASaisir) {
             // Filtre post-requête (car calculé en Java)
             List<LigneEssaiTechnicienDto> filtres = dtos.getContent().stream()
-                    .filter(LigneEssaiTechnicienDto::isEnRetard)
+                    .filter(dto -> (!enRetard || dto.isEnRetard())
+                            && (!resultatASaisir || ("EN_COURS".equals(dto.getStatut())
+                            && (dto.getValeur() == null || dto.getValeur().isBlank()))))
                     .toList();
             // On retourne la page déjà calculée filtrée
             // Note : le totalElements sera celui avant filtrage — acceptable pour un filtre
@@ -145,10 +170,10 @@ public class TechnicienService {
                     .content(filtres)
                     .page(dtos.getNumber())
                     .size(dtos.getSize())
-                    .totalElements(dtos.getTotalElements())
-                    .totalPages(dtos.getTotalPages())
-                    .first(dtos.isFirst())
-                    .last(dtos.isLast())
+                    .totalElements(filtres.size())
+                    .totalPages(1)
+                    .first(true)
+                    .last(true)
                     .build();
         }
 
@@ -197,12 +222,13 @@ public class TechnicienService {
         Instant debutI = debut.atStartOfDay().toInstant(ZoneOffset.UTC);
         Instant finI = fin.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
 
-        List<LigneEssai> lignes = ligneEssaiRepository.findPlanning(moi, debutI, finI);
+        List<LigneEssai> lignes = ligneEssaiRepository.findPlanningParDatePrevue(moi, debutI, finI);
 
         // Regrouper par date locale (UTC)
         Map<LocalDate, List<LigneEssai>> parJour = lignes.stream()
                 .collect(Collectors.groupingBy(le ->
-                        le.getDateAttribution().atZone(ZoneOffset.UTC).toLocalDate()));
+                        (le.getDateDebut() == null ? le.getDateAttribution() : le.getDateDebut())
+                                .atZone(ZoneOffset.UTC).toLocalDate()));
 
         // Générer tous les jours de la plage (y compris les jours sans essais)
         List<PlanningJourDto> resultat = new ArrayList<>();
@@ -226,7 +252,9 @@ public class TechnicienService {
     public SyntheseTechnicienDto synthese() {
         Long moi = SecurityUtils.principalCourant().getId();
 
-        long essaisAujoudhui = ligneEssaiRepository.countEssaisAujourdhuiPourTechnicien(moi);
+        LocalDate aujourdHui = LocalDate.now(ZoneOffset.UTC);
+        long essaisAujoudhui = ligneEssaiRepository.countEssaisAttribuesDansPeriode(moi,
+                aujourdHui.atStartOfDay().toInstant(ZoneOffset.UTC), aujourdHui.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC));
         long enCours = ligneEssaiRepository.countEnCoursPourTechnicien(moi);
         long enAttenteEchantillon = ligneEssaiRepository.countEnAttenteEchantillonPourTechnicien(moi);
         long enRetard = ligneEssaiRepository.countEnRetardPourTechnicien(moi);
@@ -236,9 +264,22 @@ public class TechnicienService {
 
         long validationsEnAttente = validationRepository.countValidationsTechniquesEnAttente(moi);
 
+        LocalDate debutMois = YearMonth.now(ZoneOffset.UTC).atDay(1);
+        LocalDate debutMoisPrecedent = YearMonth.from(debutMois).minusMonths(1).atDay(1);
+        Instant debutMoisI = debutMois.atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant debutMoisSuivantI = debutMois.plusMonths(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant debutMoisPrecedentI = debutMoisPrecedent.atStartOfDay().toInstant(ZoneOffset.UTC);
+        long termines = ligneEssaiRepository.countTerminesPourTechnicien(moi);
+        long realisesMois = ligneEssaiRepository.countTerminesPeriode(moi, debutMoisI, debutMoisSuivantI);
+        long realisesPrecedent = ligneEssaiRepository.countTerminesPeriode(moi, debutMoisPrecedentI, debutMoisI);
+        long validesMois = validationRepository.countValidationsTechniquesTermineesPeriode(moi, debutMoisI, debutMoisSuivantI);
+        long validesPrecedent = validationRepository.countValidationsTechniquesTermineesPeriode(moi, debutMoisPrecedentI, debutMoisI);
+        long avecEcheance = ligneEssaiRepository.countAvecEcheancePeriode(moi, debutMoisI, debutMoisSuivantI);
+        long dansLesDelais = ligneEssaiRepository.countTerminesDansLesDelais(moi, debutMoisI, debutMoisSuivantI);
+
         // Charge des 7 prochains jours
-        Instant debutSemaine = LocalDate.now().atStartOfDay().toInstant(ZoneOffset.UTC);
-        Instant finSemaine = LocalDate.now().plusDays(7).atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant debutSemaine = aujourdHui.atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant finSemaine = aujourdHui.plusDays(7).atStartOfDay().toInstant(ZoneOffset.UTC);
         List<Object[]> chargeRaw = ligneEssaiRepository.countParJourPourTechnicien(moi, debutSemaine, finSemaine);
 
         List<SyntheseTechnicienDto.ChargeSemaineDto> charge = chargeRaw.stream()
@@ -255,8 +296,32 @@ public class TechnicienService {
                 .enAttenteEchantillonCount(enAttenteEchantillon)
                 .terminesSemaineCount(terminesSemaine)
                 .validationsTechniquesAttenteCount(validationsEnAttente)
+                .terminesCount(termines)
+                .retournesCorrectionCount(ligneEssaiRepository.countRetournesCorrection(moi))
+                .resultatsASaisirCount(ligneEssaiRepository.countResultatsASaisir(moi))
+                .echeancesProchesCount(ligneEssaiRepository.countEcheancesAvant(moi, Instant.now().plus(1, ChronoUnit.DAYS)))
+                .realisesMoisCount(realisesMois)
+                .validesTechniquementMoisCount(validesMois)
+                .realisesMoisPrecedentCount(realisesPrecedent)
+                .validesTechniquementMoisPrecedentCount(validesPrecedent)
+                .essaisAvecEcheanceCount(avecEcheance)
+                .realisesDansLesDelaisMoisCount(dansLesDelais)
+                .essaisEnRetardIds(ligneEssaiRepository.findIdsEnRetardPourTechnicien(moi))
+                .essaisEcheanceProcheIds(ligneEssaiRepository.findIdsEcheanceAvant(moi, Instant.now().plus(1, ChronoUnit.DAYS)))
+                .essaisResultatASaisirIds(ligneEssaiRepository.findIdsResultatASaisir(moi))
+                .essaisRetournesCorrectionIds(ligneEssaiRepository.findIdsRetournesCorrection(moi))
+                .prioritesUniquesCount(compterPrioritesUniques(moi))
                 .chargeSemaine(charge)
                 .build();
+    }
+
+    private long compterPrioritesUniques(Long technicienId) {
+        Set<Long> ids = new java.util.HashSet<>();
+        ids.addAll(ligneEssaiRepository.findIdsEnRetardPourTechnicien(technicienId));
+        ids.addAll(ligneEssaiRepository.findIdsEcheanceAvant(technicienId, Instant.now().plus(1, ChronoUnit.DAYS)));
+        ids.addAll(ligneEssaiRepository.findIdsResultatASaisir(technicienId));
+        ids.addAll(ligneEssaiRepository.findIdsRetournesCorrection(technicienId));
+        return ids.size();
     }
 
     // =========================================================================
@@ -631,7 +696,7 @@ public class TechnicienService {
     /**
      * POST /{id}/temps
      *
-     * <p>Une seule valeur stockée (duree_minutes). La dernière déclaration remplace la précédente.</p>
+     * <p>Une seule valeur stockée (duree_minutes). Une durée déjà enregistrée ne peut pas être modifiée.</p>
      */
     @Transactional
     public LigneEssaiTechnicienDto declarerTemps(Long id, TempsRequest req) {
@@ -642,6 +707,11 @@ public class TechnicienService {
 
         LigneEssai ligne = ligneEssaiRepository.findByIdAndTechnicienId(id, moi)
                 .orElseThrow(() -> new ResourceNotFoundException("LigneEssai", "id", id));
+
+        if (ligne.getDureeMinutes() != null) {
+            throw new BusinessRuleException("TEMPS_DEJA_DECLARE",
+                    "Le temps a déjà été enregistré et ne peut plus être modifié.");
+        }
 
         // Calcul de la durée
         int duree;
@@ -669,12 +739,15 @@ public class TechnicienService {
                             + dureeMaxMinutes + " min).");
         }
 
-        Integer ancienneDuree = ligne.getDureeMinutes();
-        ligneEssaiRepository.mettreAJourDuree(id, moi, duree);
+        int updated = ligneEssaiRepository.mettreAJourDuree(id, moi, duree);
+        if (updated == 0) {
+            throw new BusinessRuleException("TEMPS_DEJA_DECLARE",
+                    "Le temps vient d'être enregistré et ne peut plus être modifié.");
+        }
 
         journalAuditService.enregistrer(
                 "TEMPS_DECLARE", "LigneEssai", id, acteur,
-                ancienneDuree == null ? null : String.valueOf(ancienneDuree),
+                null,
                 String.valueOf(duree),
                 null, labId);
 

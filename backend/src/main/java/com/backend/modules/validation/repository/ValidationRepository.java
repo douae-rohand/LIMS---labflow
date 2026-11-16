@@ -91,4 +91,13 @@ public interface ValidationRepository extends JpaRepository<Validation, Long> {
               )
             """, nativeQuery = true)
     long countValidationsTechniquesEnAttente(@Param("technicienId") Long technicienId);
+
+    @Query(value = """
+            SELECT COUNT(DISTINCT le.id_ligne_essai)
+            FROM ligne_essai le JOIN validation v ON v.ligne_essai_id = le.id_ligne_essai
+            WHERE le.technicien_id = :technicienId AND le.statut = 'TERMINE'
+              AND v.niveau = 1 AND v.decision = 'VALIDEE' AND v.date_validation >= le.date_fin
+              AND le.date_fin >= :debut AND le.date_fin < :fin
+            """, nativeQuery = true)
+    long countValidationsTechniquesTermineesPeriode(@Param("technicienId") Long technicienId, @Param("debut") Instant debut, @Param("fin") Instant fin);
 }

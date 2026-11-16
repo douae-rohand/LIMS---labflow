@@ -34,9 +34,10 @@ function LigneTableau({ essai }: { essai: LigneEssaiTechnicienDto }) {
       </td>
       <td className="px-4 py-3">
         <p className="text-sm font-semibold text-ink-900">{essai.essai.designation}</p>
-        <p className="text-xs text-muted-foreground">{essai.essai.code}</p>
       </td>
-      <td className="px-4 py-3 text-sm text-ink-900">{essai.demandeNumero}</td>
+      <td className="px-4 py-3">
+        <p className="text-sm font-medium text-ink-900">{essai.demandeNumero}</p>
+      </td>
       <td className="px-4 py-3">
         <span
           className={cn(
@@ -71,7 +72,7 @@ function LigneTableau({ essai }: { essai: LigneEssaiTechnicienDto }) {
           <span className="text-xs text-muted-foreground">—</span>
         )}
       </td>
-      <td className="px-4 py-3 text-right">
+      <td className="px-4 py-3 text-center">
         <Link
           to="/app/essais/$ligneEssaiId"
           params={{ ligneEssaiId: String(essai.ligneEssaiId) }}
@@ -155,7 +156,7 @@ export function TableauEssais({
             <th scope="col" className="px-4 py-3">Attribution</th>
             <th scope="col" className="px-4 py-3">Retard</th>
             <th scope="col" className="px-4 py-3">Conformité</th>
-            <th scope="col" className="px-4 py-3 text-right">Action</th>
+            <th scope="col" className="px-4 py-3 text-center">Action</th>
           </tr>
         </thead>
         <tbody>

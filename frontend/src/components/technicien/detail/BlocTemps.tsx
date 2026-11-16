@@ -35,16 +35,12 @@ export function BlocTemps({ id, dureeMinutes }: { id: number; dureeMinutes: numb
         <h2 className="text-lg font-bold text-ink-900">Temps passé</h2>
       </div>
 
-      {dureeMinutes !== null && (
+      {dureeMinutes !== null ? (
         <p className="text-sm text-muted-foreground">
-          Dernière durée déclarée :{" "}
+          Durée enregistrée :{" "}
           <span className="font-semibold text-ink-900">{formaterDuree(dureeMinutes)}</span>
-          <span className="block text-xs mt-0.5">
-            Une nouvelle déclaration remplace la précédente.
-          </span>
         </p>
-      )}
-
+      ) : (
       <form className="space-y-3" onSubmit={onSubmit}>
         <div className="space-y-2">
           <Label htmlFor="duree-minutes">Durée en minutes</Label>
@@ -81,6 +77,7 @@ export function BlocTemps({ id, dureeMinutes }: { id: number; dureeMinutes: numb
           Enregistrer le temps
         </Button>
       </form>
+      )}
     </Card>
   );
 }

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { CalendarCheck, Clock, FlaskConical, Hourglass, TriangleAlert } from "lucide-react";
+import { CalendarCheck, Clock, FlaskConical, TriangleAlert } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card } from "@/components/lab";
 import { cn } from "@/lib/utils";
@@ -17,15 +17,13 @@ type CarteDef = {
 };
 
 /** Construit une date ISO « début de journée » en local (sans décalage UTC). */
-function debutJourLocal(date: Date): string {
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0);
-  return d.toISOString();
+function debutJourUTC(date: Date): string {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).toISOString();
 }
 
 /** Construit une date ISO « fin de journée » en local. */
-function finJourLocal(date: Date): string {
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
-  return d.toISOString();
+function finJourUTC(date: Date): string {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1) - 1).toISOString();
 }
 
 /** Carte synthèse cliquable : mène vers la liste pré-filtrée. */
@@ -79,7 +77,7 @@ export function CartesSynthese({ synthese }: { synthese: SyntheseTechnicienDto }
       label: "Aujourd'hui",
       valeur: synthese.essaisAujourdhuiCount,
       icon: CalendarCheck,
-      recherche: { page: 1, debut: debutJourLocal(aujourd), fin: finJourLocal(aujourd) },
+      recherche: { page: 1, debut: debutJourUTC(aujourd), fin: finJourUTC(aujourd) },
     },
     {
       key: "enCours",
@@ -97,30 +95,16 @@ export function CartesSynthese({ synthese }: { synthese: SyntheseTechnicienDto }
       accent: "retard",
     },
     {
-      key: "enAttente",
-      label: "En attente d'échantillon",
-      valeur: synthese.enAttenteEchantillonCount,
-      icon: Hourglass,
-      recherche: { page: 1, statut: "ATTENTE_ECHANTILLON" },
-    },
-    {
       key: "aValider",
       label: "À valider techniquement",
       valeur: synthese.validationsTechniquesAttenteCount,
       icon: FlaskConical,
-      recherche: { page: 1, statut: "EN_COURS" },
-    },
-    {
-      key: "termines",
-      label: "Terminés (7 jours)",
-      valeur: synthese.terminesSemaineCount,
-      icon: CalendarCheck,
-      recherche: { page: 1, statut: "TERMINE" },
+      recherche: { page: 1, validationTechniqueEnAttente: true },
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       {cartes.map((carte) => (
         <CarteSynthese key={carte.key} carte={carte} />
       ))}

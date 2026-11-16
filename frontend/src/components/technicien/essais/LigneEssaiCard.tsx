@@ -64,9 +64,11 @@ export function LigneEssaiCard({ essai }: { essai: LigneEssaiTechnicienDto }) {
           <p className="truncate text-sm font-bold text-ink-900">
             {essai.essai.code} — {essai.essai.designation}
           </p>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {essai.demandeNumero} · ligne {essai.code}
-          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+            <span className="font-semibold text-ink-900">Demande {essai.demandeNumero}</span>
+            {essai.demandeTitre && <span className="text-muted-foreground">{essai.demandeTitre}</span>}
+            <span className="border-l border-ink-200 pl-2 text-muted-foreground">Ligne {essai.code}</span>
+          </div>
         </div>
 
         <div className="flex items-center justify-between gap-2">

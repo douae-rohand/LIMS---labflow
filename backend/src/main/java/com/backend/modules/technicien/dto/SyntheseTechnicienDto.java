@@ -36,6 +36,33 @@ public class SyntheseTechnicienDto {
      */
     long validationsTechniquesAttenteCount;
 
+    long terminesCount;
+
+    long retournesCorrectionCount;
+
+    long resultatsASaisirCount;
+
+    long echeancesProchesCount;
+
+    long realisesMoisCount;
+
+    long validesTechniquementMoisCount;
+
+    long realisesMoisPrecedentCount;
+
+    long validesTechniquementMoisPrecedentCount;
+
+    long essaisAvecEcheanceCount;
+
+    long realisesDansLesDelaisMoisCount;
+
+    List<Long> essaisEnRetardIds;
+    List<Long> essaisEcheanceProcheIds;
+    List<Long> essaisResultatASaisirIds;
+    List<Long> essaisRetournesCorrectionIds;
+
+    long prioritesUniquesCount;
+
     /**
      * Charge des 7 prochains jours :
      * nombre d'essais attribués par jour (date_attribution).

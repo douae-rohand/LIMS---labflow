@@ -2,10 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { BadgeCheck, CalendarDays, Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
 import { useSession } from "@/api/session";
 import { trouverUtilisateurParId } from "@/api/utilisateurs";
-import { Card, Skeleton } from "@/components/lab";
+import { Badge, Card, Skeleton } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import { ProfilDeuxFacteurs } from "./ProfilDeuxFacteurs";
 import { ProfilSignature } from "./ProfilSignature";
+import { useTechnicienDomaines } from "@/hooks/useTechnicienDomaines";
 
 const LIBELLES_ROLES: Record<string, string> = {
   ADMINISTRATEUR: "Administrateur",
@@ -16,6 +17,8 @@ const LIBELLES_ROLES: Record<string, string> = {
 
 export function ProfilEmploye() {
   const { session } = useSession();
+  const estTechnicien = session?.user.role === "TECHNICIEN";
+  const domainesQuery = useTechnicienDomaines(estTechnicien);
   const userId = session?.user.userId;
   const profil = useQuery({
     queryKey: ["profil-utilisateur", userId],
@@ -46,19 +49,19 @@ export function ProfilEmploye() {
       </header>
 
       {profil.isLoading && (
-        <Card className="max-w-3xl space-y-4 p-6">
+        <Card className={`mx-auto w-full space-y-4 p-6 ${estTechnicien ? "max-w-4xl" : "max-w-3xl"}`}>
           <Skeleton className="h-16 w-16 rounded-full" />
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-24 w-full" />
         </Card>
       )}
       {profil.isError && (
-        <Card className="max-w-3xl p-6 text-sm text-destructive" role="alert">
+        <Card className={`mx-auto w-full p-6 text-sm text-destructive ${estTechnicien ? "max-w-4xl" : "max-w-3xl"}`} role="alert">
           Impossible de charger votre profil. Réessayez dans quelques instants.
         </Card>
       )}
       {utilisateur && (
-        <div className="grid max-w-3xl gap-5">
+        <div className={`mx-auto grid w-full gap-5 ${estTechnicien ? "max-w-4xl" : "max-w-3xl"}`}>
           <Card className="overflow-hidden p-0">
             <div className="flex flex-wrap items-center gap-4 border-b border-brand-900/10 bg-surface-card/50 p-6">
               <span className="flex size-16 items-center justify-center rounded-full bg-brand-900 text-lg font-bold text-primary-foreground">
@@ -81,6 +84,27 @@ export function ProfilEmploye() {
               <Info icon={CalendarDays} label="Membre depuis" value={formaterDate(utilisateur.dateCreation)} />
               <Info icon={ShieldCheck} label="Authentification à deux facteurs" value={utilisateur.deuxFacteursActif ? "Activée" : "Non activée"} />
             </dl>
+            {estTechnicien && (
+              <section aria-labelledby="domaines-technicien" className="border-t border-brand-900/10 px-6 py-5 text-center">
+                <h3 id="domaines-technicien" className="text-sm font-semibold text-ink-900">Domaines de compétence</h3>
+                {domainesQuery.isLoading ? (
+                  <div className="mt-3 flex justify-center gap-2" aria-label="Chargement des domaines">
+                    <Skeleton className="h-7 w-24 rounded-full" />
+                    <Skeleton className="h-7 w-32 rounded-full" />
+                  </div>
+                ) : domainesQuery.isError ? (
+                  <p className="mt-2 text-sm text-destructive" role="alert">Impossible de charger vos domaines.</p>
+                ) : domainesQuery.data?.length ? (
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
+                    {domainesQuery.data.map((domaine) => (
+                      <Badge key={domaine.id} variant="soft" size="sm">{domaine.libelle}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">Aucun domaine ne vous est attribué.</p>
+                )}
+              </section>
+            )}
           </Card>
           <ProfilDeuxFacteurs active={utilisateur.deuxFacteursActif} />
           {session?.user.role === "RESPONSABLE" && <ProfilSignature />}
