@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { BadgeCheck, CalendarDays, Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
+import { BadgeCheck, CalendarDays, Mail, Phone, UserRound } from "lucide-react";
 import { useSession } from "@/api/session";
 import { trouverUtilisateurParId } from "@/api/utilisateurs";
 import { Badge, Card, Skeleton } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
-import { ProfilDeuxFacteurs } from "./ProfilDeuxFacteurs";
 import { ProfilSignature } from "./ProfilSignature";
 import { useTechnicienDomaines } from "@/hooks/useTechnicienDomaines";
 
@@ -82,7 +81,6 @@ export function ProfilEmploye() {
               <Info icon={Mail} label="Adresse e-mail" value={utilisateur.email} />
               <Info icon={Phone} label="Téléphone" value={utilisateur.telephone || "Non renseigné"} />
               <Info icon={CalendarDays} label="Membre depuis" value={formaterDate(utilisateur.dateCreation)} />
-              <Info icon={ShieldCheck} label="Authentification à deux facteurs" value={utilisateur.deuxFacteursActif ? "Activée" : "Non activée"} />
             </dl>
             {estTechnicien && (
               <section aria-labelledby="domaines-technicien" className="border-t border-brand-900/10 px-6 py-5 text-center">
@@ -106,7 +104,6 @@ export function ProfilEmploye() {
               </section>
             )}
           </Card>
-          <ProfilDeuxFacteurs active={utilisateur.deuxFacteursActif} />
           {session?.user.role === "RESPONSABLE" && <ProfilSignature />}
         </div>
       )}

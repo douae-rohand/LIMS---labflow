@@ -93,11 +93,6 @@
         </dependency>
 
         <!-- ===== TOTP 2FA (Google Authenticator) ===== -->
-        <dependency>
-            <groupId>com.warrenstrange</groupId>
-            <artifactId>googleauth</artifactId>
-            <version>1.5.0</version>
-        </dependency>
 
         <!-- ===== API Documentation ===== -->
         <dependency>

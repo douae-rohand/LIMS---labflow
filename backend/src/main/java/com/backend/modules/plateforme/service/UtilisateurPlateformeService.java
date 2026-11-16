@@ -88,31 +88,6 @@ public class UtilisateurPlateformeService {
                 COLONNES, lignes);
     }
 
-    /**
-     * Efface le secret TOTP : à la prochaine connexion, l'administrateur reconfigure
-     * sa 2FA (ou se connecte sans si elle n'est pas obligatoire pour son rôle).
-     * Ses sessions ouvertes sont révoquées.
-     */
-    @Transactional
-    public CompteUtilisateurDto reinitialiserDeuxFacteurs(Long id, Long acteurId, String acteurEmail, String motif) {
-        Utilisateur compte = charger(id);
-        refuserComptePlateforme(compte, acteurId);
-        if (!compte.isDoubleAuthentification() && !StringUtils.hasText(compte.getSecret2fa())) {
-            throw new BusinessRuleException("2FA_NON_CONFIGUREE",
-                    "La double authentification n'est pas configurée sur ce compte");
-        }
-        compte.setDoubleAuthentification(false);
-        compte.setSecret2fa(null);
-        utilisateurRepository.save(compte);
-        int sessions = refreshTokenRepository.revoquerTousParUtilisateur(compte.getId());
-        journalAuditService.enregistrer(
-                "REINITIALISER_2FA", "Utilisateur", compte.getId(), acteurEmail,
-                "{\"doubleAuthentification\":true}", "{\"doubleAuthentification\":false,\"sessionsRevoquees\":" + sessions + "}",
-                motifOuNull(motif), idLaboratoire(compte));
-        log.info("2FA réinitialisée et {} session(s) révoquée(s) : userId={}", sessions, compte.getId());
-        return versDto(compte);
-    }
-
     @Transactional(readOnly = true)
     public List<SessionCompteDto> sessions(Long id) {
         Utilisateur compte = charger(id);
@@ -247,7 +222,6 @@ public class UtilisateurPlateformeService {
                 .statut(compte.isActif() ? "ACTIF" : "INACTIF")
                 .derniereConnexion(compte.getDerniereConnexion())
                 .personnalise(personnalise)
-                .deuxFacteursActive(compte.isDoubleAuthentification() && StringUtils.hasText(compte.getSecret2fa()))
                 .build();
     }
 

@@ -15,7 +15,6 @@ export interface CompteUtilisateur {
   statut: "ACTIF" | "INACTIF";
   derniereConnexion?: string | null;
   personnalise: boolean;
-  deuxFacteursActive: boolean;
 }
 
 export interface SessionCompte {
@@ -86,14 +85,6 @@ export async function exporterComptes(format: "csv" | "xlsx" | "pdf", filtre: Fi
   const recherche = params({ ...filtre, page: 0, size: 20 });
   recherche.set("format", format);
   await apiClient.download(`/plateforme/utilisateurs/export?${recherche.toString()}`, `administrateurs.${format}`);
-}
-
-export async function reinitialiserDeuxFacteurs(id: number, motif?: string): Promise<CompteUtilisateur> {
-  const res = await apiClient.post<ApiResponse<CompteUtilisateur>>(
-    `/plateforme/utilisateurs/${id}/reinitialiser-2fa`,
-    { motif },
-  );
-  return res.data;
 }
 
 export async function listerSessionsCompte(id: number): Promise<SessionCompte[]> {

@@ -153,17 +153,6 @@ public class UtilisateurPlateformeController {
                 utilisateurPlateformeService.reactiver(id, acteur.getId(), acteur.getEmail(), motif(request))));
     }
 
-    @PostMapping("/{id}/reinitialiser-2fa")
-    @Operation(summary = "Réinitialiser la double authentification d'un administrateur")
-    public ResponseEntity<ApiResponse<CompteUtilisateurDto>> reinitialiserDeuxFacteurs(
-            @PathVariable Long id,
-            @Valid @RequestBody(required = false) MotifFacultatifRequest request) {
-        UtilisateurPrincipal acteur = acteur();
-        return ResponseEntity.ok(ApiResponse.success(
-                "Double authentification réinitialisée",
-                utilisateurPlateformeService.reinitialiserDeuxFacteurs(id, acteur.getId(), acteur.getEmail(), motif(request))));
-    }
-
     @GetMapping("/{id}/sessions")
     @Operation(summary = "Sessions ouvertes d'un administrateur")
     public ResponseEntity<ApiResponse<java.util.List<com.backend.modules.plateforme.dto.SessionCompteDto>>> sessions(

@@ -20,11 +20,9 @@
  *    Cookie  : refresh_token effacé (Max-Age=0)
  *
  *  POST /api/auth/2fa/valider
- *    Corps   : { twoFactorToken: string; code: string }
- *  POST /api/auth/2fa/setup
- *    Corps   : { twoFactorToken?: string }
- *  POST /api/auth/2fa/activer
- *    Corps   : { code: string; twoFactorToken?: string }
+ *    Corps   : { twoFactorToken: string; code: string } (code reçu par e-mail)
+ *  POST /api/auth/2fa/renvoyer
+ *    Corps   : { twoFactorToken: string }
  */
 
 import apiClient from './axios';
@@ -88,24 +86,6 @@ export interface TwoFactorValiderBody {
   code: string;
 }
 
-export interface TwoFactorSetupBody {
-  twoFactorToken?: string;
-}
-
-export interface TwoFactorActiverBody {
-  twoFactorToken?: string;
-  code: string;
-}
-
-export interface TwoFactorSetupResponse {
-  otpAuthUrl: string;
-}
-
-export interface TwoFactorDesactiverBody {
-  motDePasse: string;
-  code: string;
-}
-
 export interface ChangerMotDePasseBody {
   ancienMotDePasse: string;
   nouveauMotDePasse: string;
@@ -151,20 +131,6 @@ export async function valider2FA(body: TwoFactorValiderBody): Promise<LoginRespo
 /** Nouveau code de connexion par e-mail (au plus une fois par minute). */
 export async function renvoyerCode2FA(twoFactorToken: string): Promise<void> {
   await apiClient.post<ApiResponse<null>>('/auth/2fa/renvoyer', { twoFactorToken });
-}
-
-export async function setup2FA(body: TwoFactorSetupBody = {}): Promise<TwoFactorSetupResponse> {
-  const res = await apiClient.post<ApiResponse<TwoFactorSetupResponse>>('/auth/2fa/setup', body);
-  return res.data;
-}
-
-export async function activer2FA(body: TwoFactorActiverBody): Promise<LoginResponse | null> {
-  const res = await apiClient.post<ApiResponse<LoginResponse | null>>('/auth/2fa/activer', body);
-  return res.data;
-}
-
-export async function desactiver2FA(body: TwoFactorDesactiverBody): Promise<void> {
-  await apiClient.post<ApiResponse<null>>('/auth/2fa/desactiver', body);
 }
 
 /**
