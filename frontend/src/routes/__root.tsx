@@ -5,10 +5,12 @@ import {
   Outlet,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { FlechesDefilement } from "@/components/layout/FlechesDefilement";
+import { AssistantIa } from "@/components/ia/AssistantIa";
 
 function NotFoundComponent() {
   return (
@@ -78,12 +80,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const dansEspace = useRouterState({ select: (etat) => etat.location.pathname.startsWith("/app") });
 
   return (
     <QueryClientProvider client={queryClient}>
       {/* HeadContent injecte les <meta> / <link> déclarés dans head() de chaque route */}
       <HeadContent />
       <Outlet />
+      {/* Pages publiques : assistant « visiteur ». Dans /app, chaque espace affiche le sien (routes/app.tsx). */}
+      {!dansEspace && <AssistantIa profil="PUBLIC" />}
       <FlechesDefilement />
       <Toaster richColors position="top-right" />
     </QueryClientProvider>
