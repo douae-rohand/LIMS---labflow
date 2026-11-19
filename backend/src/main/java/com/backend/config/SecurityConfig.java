@@ -99,6 +99,8 @@ public class SecurityConfig {
                 // Formulaire de demande d'intégration laboratoire (landing publique)
                 // Doit être déclaré AVANT la règle /api/plateforme/** ci-dessous
                 .requestMatchers(HttpMethod.POST, "/api/plateforme/demandes").permitAll()
+                // Assistant IA des pages publiques (limité par adresse IP, aucune donnée de dossier)
+                .requestMatchers(HttpMethod.POST, "/api/public/ia/assistant").permitAll()
                 // Lien envoyé au demandeur pour compléter son dossier (jeton à usage unique)
                 .requestMatchers(HttpMethod.POST,
                         "/api/public/integration/complements/consulter",

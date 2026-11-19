@@ -27,6 +27,17 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     // -------------------------------------------------------------------------
+    // 503 / 429 – Assistant IA indisponible ou fournisseur saturé
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(com.backend.integration.llm.IaIndisponibleException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIaIndisponible(
+            com.backend.integration.llm.IaIndisponibleException ex) {
+        HttpStatus statut = ex.isQuotaAtteint() ? HttpStatus.TOO_MANY_REQUESTS : HttpStatus.SERVICE_UNAVAILABLE;
+        return ResponseEntity.status(statut).body(ApiResponse.error(ex.getMessage()));
+    }
+
+    // -------------------------------------------------------------------------
     // 404 – Ressource introuvable
     // -------------------------------------------------------------------------
 

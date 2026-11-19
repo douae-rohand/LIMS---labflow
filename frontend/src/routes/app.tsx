@@ -6,6 +6,7 @@ import type { RoleUtilisateur } from "@/api/session";
 import { SuperAdminShell } from "@/features/super-admin/SuperAdminShell";
 import { AdminShell } from "@/features/admin/AdminShell";
 import { ClientShell } from "@/features/client/ClientShell";
+import { AssistantIa } from "@/components/ia/AssistantIa";
 import { TechnicienShell } from "@/features/technicien/TechnicienShell";
 import { LogOut, User } from "lucide-react";
 import { Button } from "@/components/lab";
@@ -71,10 +72,14 @@ function AppLayout() {
     return null;
   }
 
+  // Assistant IA présent dans tous les espaces ; le serveur adapte ses réponses au rôle connecté
+  const assistant = <AssistantIa profil={user.role} />;
+
   if (isSuperAdmin) {
     return (
       <SuperAdminShell utilisateur={user} onLogout={() => void handleLogout()}>
         <Outlet />
+        {assistant}
       </SuperAdminShell>
     );
   }
@@ -83,6 +88,7 @@ function AppLayout() {
     return (
       <TechnicienShell utilisateur={user} onLogout={() => void handleLogout()}>
         <Outlet />
+        {assistant}
       </TechnicienShell>
     );
   }
@@ -91,6 +97,7 @@ function AppLayout() {
     return (
       <AdminShell utilisateur={user} onLogout={() => void handleLogout()}>
         <Outlet />
+        {assistant}
       </AdminShell>
     );
   }
@@ -99,6 +106,7 @@ function AppLayout() {
     return (
       <ClientShell utilisateur={user} onLogout={() => void handleLogout()}>
         <Outlet />
+        {assistant}
       </ClientShell>
     );
   }
@@ -130,6 +138,7 @@ function AppLayout() {
         </Container>
       </header>
       <Outlet />
+      {assistant}
     </div>
   );
 }

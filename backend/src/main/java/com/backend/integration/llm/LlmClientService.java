@@ -2,87 +2,83 @@ package com.backend.integration.llm;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.model.ChatModel;
+import com.openai.errors.RateLimitException;
+import com.openai.errors.UnauthorizedException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 /**
- * Service d'intégration LLM basé sur Spring AI.
+ * Client du modèle de langage (Groq, via l'API compatible OpenAI de Spring AI).
  *
- * <p>Utilise le {@link ChatClient} auto-configuré par Spring AI à partir de
- * {@code spring.ai.openai.*} dans {@code application.yaml}. Compatible avec
- * tout provider OpenAI-compatible (OpenAI, Ollama, vLLM, LM Studio…).
- *
- * <p>Méthodes métier à implémenter dans le cadre du module M14 :
- * <ul>
- *   <li>{@code calculerScoreAnomalie(Resultat)} — détection d'anomalies dans les résultats</li>
- *   <li>{@code genererSynthese(List<Resultat>)} — synthèse automatique des résultats d'analyse</li>
- *   <li>{@code repondreQuestion(String, String)} — assistant RAG sur la base documentaire</li>
- * </ul>
+ * <p>Ne renvoie jamais un texte d'erreur à la place d'une réponse : en cas d'échec,
+ * {@link IaIndisponibleException} est levée et traduite en HTTP 503 (ou 429 si le
+ * quota du fournisseur est atteint).
  */
 @Slf4j
 @Service
 public class LlmClientService {
 
     private final ChatClient chatClient;
-    private final ChatModel chatModel;
+    private final String modele;
 
-    public LlmClientService(ChatClient.Builder chatClientBuilder, ChatModel chatModel) {
+    public LlmClientService(ChatClient.Builder chatClientBuilder,
+                            @Value("${spring.ai.openai.chat.model:inconnu}") String modele) {
         this.chatClient = chatClientBuilder.build();
-        this.chatModel = chatModel;
-    }
-
-    // -------------------------------------------------------------------------
-    // API de compatibilité — utilisée par IaService (M14)
-    // TODO: remplacer ces méthodes génériques par les méthodes métier ci-dessous
-    // -------------------------------------------------------------------------
-
-    /**
-     * Envoie un prompt au LLM et retourne la réponse en texte brut.
-     * Stub de compatibilité — sera remplacé par les méthodes métier M14.
-     */
-    public String appelerLlm(String prompt) {
-        return appelerLlm(prompt, null);
+        this.modele = modele;
     }
 
     /**
-     * Envoie un prompt avec un message système optionnel.
-     * Stub de compatibilité — sera remplacé par les méthodes métier M14.
+     * Envoie un message système et un message utilisateur, renvoie le texte produit.
+     *
+     * @throws IaIndisponibleException si le fournisseur refuse, est saturé ou ne répond pas
      */
-    public String appelerLlm(String prompt, String systemPrompt) {
-        log.debug("Appel LLM via Spring AI – prompt ({} chars)", prompt.length());
+    public String repondre(String systeme, String utilisateur) {
+        long debut = System.currentTimeMillis();
         try {
-            var spec = chatClient.prompt();
-            if (systemPrompt != null && !systemPrompt.isBlank()) {
-                spec = spec.system(systemPrompt);
+            String contenu = chatClient.prompt()
+                    .system(systeme)
+                    .user(utilisateur)
+                    .call()
+                    .content();
+            if (!StringUtils.hasText(contenu)) {
+                throw new IaIndisponibleException(false, "L'assistant n'a pas pu formuler de réponse. Reformulez votre question.");
             }
-            return spec.user(prompt).call().content();
+            log.debug("Réponse LLM ({}) en {} ms", modele, System.currentTimeMillis() - debut);
+            return contenu.trim();
+        } catch (IaIndisponibleException ex) {
+            throw ex;
         } catch (Exception ex) {
-            log.error("Erreur appel LLM : {}", ex.getMessage());
-            return "Erreur lors de l'appel au modèle IA : " + ex.getMessage();
+            if (cause(ex, RateLimitException.class)) {
+                log.warn("Quota du fournisseur LLM atteint ({})", modele);
+                throw new IaIndisponibleException(true, "L'assistant est très sollicité. Réessayez dans une minute.");
+            }
+            if (cause(ex, UnauthorizedException.class)) {
+                log.error("Clé API du fournisseur LLM refusée : vérifier LLM_API_KEY");
+            } else {
+                log.error("Appel LLM échoué ({}) : {}", modele, premiereLigne(ex.getMessage()));
+            }
+            throw new IaIndisponibleException(false, "L'assistant est momentanément indisponible.");
         }
     }
 
-    /**
-     * Retourne le nom du modèle actuellement utilisé par Spring AI.
-     */
+    /** Nom du modèle configuré (ex. {@code llama-3.3-70b-versatile}). */
     public String getModeleActif() {
-        // Le nom du modèle est géré par spring.ai.openai.chat.options.model
-        return chatModel.getClass().getSimpleName();
+        return modele;
     }
 
-    // -------------------------------------------------------------------------
-    // TODO (M14) : méthodes métier à implémenter
-    // -------------------------------------------------------------------------
+    private static boolean cause(Throwable ex, Class<? extends Throwable> type) {
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            if (type.isInstance(t)) return true;
+            if (t.getCause() == t) break;
+        }
+        return false;
+    }
 
-    // TODO: calculerScoreAnomalie(Resultat resultat)
-    //   → construire un prompt structuré à partir des valeurs mesurées et des normes,
-    //     parser la réponse JSON du LLM, retourner un score [0.0 - 1.0]
-
-    // TODO: genererSynthese(List<Resultat> resultats)
-    //   → résumé automatique en langage naturel des résultats d'une demande,
-    //     destiné à être inclus dans le rapport client
-
-    // TODO: repondreQuestion(String question, String contexte)
-    //   → assistant RAG : récupérer les chunks pertinents (vecteurs),
-    //     injecter dans le prompt système, appeler chatClient
+    /** Évite de recopier dans les logs un corps de réponse entier. */
+    private static String premiereLigne(String texte) {
+        if (texte == null) return "";
+        String ligne = texte.lines().findFirst().orElse("");
+        return ligne.length() > 300 ? ligne.substring(0, 300) + "…" : ligne;
+    }
 }

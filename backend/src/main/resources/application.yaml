@@ -67,16 +67,37 @@ spring:
       max-request-size: 65MB
 
   # ============================================================
-  # Spring AI — client OpenAI-compatible (Ollama, vLLM, OpenAI…)
+  # Spring AI 2.0 — chat via le SDK OpenAI, pointé sur Groq (API compatible OpenAI)
+  # Attention : en 2.0, les options sont directement sous chat.* (plus de chat.options.*)
   # ============================================================
   ai:
+    model:
+      chat: openai            # le chat passe par le client OpenAI (donc Groq)
+      embedding: transformers # les embeddings sont calculés en local
     openai:
-      base-url: ${LLM_API_URL:http://localhost:11434/v1}
-      api-key: ${LLM_API_KEY:no-key-required}
+      base-url: ${LLM_API_URL:https://api.groq.com/openai/v1}
+      api-key: ${LLM_API_KEY}
       chat:
-        options:
-          model: ${LLM_MODEL:llama3.2}
-          temperature: 0.7
+        # Modèles disponibles : GET https://api.groq.com/openai/v1/models (la famille Llama a été retirée)
+        model: ${LLM_MODEL:openai/gpt-oss-120b}
+        temperature: 0.3
+        # gpt-oss raisonne avant de répondre : effort faible pour répondre vite et économiser le quota
+        reasoning-effort: ${LLM_REASONING_EFFORT:low}
+        max-completion-tokens: 1500
+        # Le client attend la réponse : délai court et une seule nouvelle tentative
+        timeout: 30s
+        max-retries: 1
+    # Embeddings de l'assistant, calculés en local (modèle multilingue ONNX quantifié, ~118 Mo,
+    # téléchargé une seule fois dans data/modeles)
+    embedding:
+      transformer:
+        onnx:
+          model-uri: https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/onnx/model_quantized.onnx
+        tokenizer:
+          uri: https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json
+        cache:
+          enabled: true
+          directory: ${LABFLOW_MODELES_DIR:./data/modeles}
 
 # ============================================================
 # CORS

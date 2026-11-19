@@ -38,3 +38,6 @@ build/
 ### OS ###
 .DS_Store
 Thumbs.db
+
+# Modèles IA téléchargés (embeddings de l assistant)
+data/

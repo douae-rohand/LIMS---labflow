@@ -148,6 +148,16 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-openai</artifactId>
         </dependency>
+        <!-- Embeddings calculés en local (ONNX) : Groq ne fournit pas de modèle d'embeddings -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-transformers</artifactId>
+        </dependency>
+        <!-- SimpleVectorStore : index de l'assistant IA (RAG) -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-vector-store</artifactId>
+        </dependency>
 
         <!-- ===== Tests ===== -->
         <dependency>
