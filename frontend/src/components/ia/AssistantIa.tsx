@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { Bot, ChevronRight, FileText, FlaskConical, Loader2, MessageCircle, Send, ShoppingCart, X } from "lucide-react";
+import { Bot, ChevronRight, Database, FileText, FlaskConical, Loader2, MessageCircle, Send, ShoppingCart, X } from "lucide-react";
 import {
   messageErreurAssistant,
   poserQuestionAssistant,
@@ -15,6 +15,8 @@ interface Message {
   texte: string;
   sources?: SourceAssistant[];
   erreur?: boolean;
+  /** Instant de lecture des données du laboratoire (réponse appuyée sur les outils de données). */
+  donneesA?: string | null;
 }
 
 /** Qui utilise l'assistant : visiteur des pages publiques ou rôle de l'utilisateur connecté. */
@@ -40,27 +42,27 @@ const CONFIGS: Record<ProfilAssistantUi, ConfigProfil> = {
   ACCUEIL: {
     accueil: "Bonjour ! Je vous aide à utiliser votre espace Accueil : patients, réception des échantillons, étiquettes, caisse.",
     sousTitre: "Aide pour l'espace Accueil",
-    suggestions: ["Comment annuler un encaissement ?", "Comment imprimer les étiquettes ?", "Que se passe-t-il après 48 h sans paiement ?"],
+    suggestions: ["Combien ai-je encaissé aujourd'hui ?", "Comment annuler un encaissement ?", "Comment imprimer les étiquettes ?"],
   },
   RESPONSABLE: {
     accueil: "Bonjour ! Je vous aide à utiliser votre espace Responsable : décisions, planification, validation des résultats, rapports.",
     sousTitre: "Aide pour l'espace Responsable",
-    suggestions: ["Pourquoi je ne peux pas affecter une analyse ?", "Comment fonctionne la règle des deux personnes ?", "Comment publier un rapport partiel ?"],
+    suggestions: ["Quelles analyses sont en retard ?", "Quels résultats sont en alerte d'anomalie ?", "Pourquoi je ne peux pas affecter une analyse ?"],
   },
   TECHNICIEN: {
     accueil: "Bonjour ! Je vous aide à utiliser votre espace Technicien : essais, saisie des résultats, planning, import CSV.",
     sousTitre: "Aide pour l'espace Technicien",
-    suggestions: ["Comment déclarer un essai non réalisable ?", "Comment importer des résultats en CSV ?", "Que faire d'un résultat retourné ?"],
+    suggestions: ["Quels sont mes essais en retard ?", "Ai-je des résultats retournés ?", "Comment déclarer un essai non réalisable ?"],
   },
   ADMINISTRATEUR: {
     accueil: "Bonjour ! Je vous aide à administrer votre laboratoire : employés, domaines des techniciens, catalogue, stock, facturation.",
     sousTitre: "Aide pour l'administration du laboratoire",
-    suggestions: ["Comment attribuer un domaine à un technicien ?", "Comment ajouter une analyse au catalogue ?", "Comment désactiver un employé ?"],
+    suggestions: ["Quels produits sont sous le seuil de stock ?", "Combien de factures sont en retard ?", "Comment attribuer un domaine à un technicien ?"],
   },
   SUPER_ADMINISTRATEUR: {
     accueil: "Bonjour ! Je vous aide à gérer la plateforme : demandes d'intégration, laboratoires, administrateurs, double authentification, commission.",
     sousTitre: "Aide pour l'administration de la plateforme",
-    suggestions: ["Comment accepter une demande d'intégration ?", "Comment activer le code de vérification par e-mail ?", "Comment est calculée la commission ?"],
+    suggestions: ["Combien de demandes d'intégration sont en attente ?", "Comment accepter une demande d'intégration ?", "Comment est calculée la commission ?"],
   },
 };
 
@@ -76,6 +78,8 @@ export function AssistantIa({ profil }: { profil: ProfilAssistantUi }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [saisie, setSaisie] = useState("");
   const [enCours, setEnCours] = useState(false);
+  // Pseudonymes TECH_<id> → noms, cumulés sur la conversation : affichés ici, jamais renvoyés au serveur
+  const [noms, setNoms] = useState<Record<string, string>>({});
   const compteur = useRef(0);
   const fil = useRef<HTMLDivElement>(null);
   const bouton = useRef<HTMLButtonElement>(null);
@@ -105,9 +109,18 @@ export function AssistantIa({ profil }: { profil: ProfilAssistantUi }) {
     setEnCours(true);
     try {
       const reponse = await poserQuestionAssistant(texte, historique, publique);
+      if (reponse.noms && Object.keys(reponse.noms).length > 0) {
+        setNoms((actuels) => ({ ...actuels, ...reponse.noms }));
+      }
       setMessages((liste) => [
         ...liste,
-        { id: ++compteur.current, role: "assistant", texte: reponse.reponse, sources: reponse.sources },
+        {
+          id: ++compteur.current,
+          role: "assistant",
+          texte: reponse.reponse,
+          sources: reponse.sources,
+          donneesA: reponse.donneesA ?? null,
+        },
       ]);
     } catch (e) {
       setMessages((liste) => [
@@ -190,7 +203,14 @@ export function AssistantIa({ profil }: { profil: ProfilAssistantUi }) {
               </div>
             )}
             {messages.map((m) => (
-              <Bulle key={m.id} role={m.role} texte={m.texte} sources={m.sources} erreur={m.erreur} />
+              <Bulle
+                key={m.id}
+                role={m.role}
+                texte={m.role === "assistant" ? remettreNoms(m.texte, noms) : m.texte}
+                sources={m.sources}
+                erreur={m.erreur}
+                donneesA={m.donneesA}
+              />
             ))}
             {enCours && (
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -239,11 +259,24 @@ function enrichir(texte: string): ReactNode[] {
   return texte.split(/\*\*(.+?)\*\*/g).map((morceau, i) => (i % 2 === 1 ? <strong key={i}>{morceau}</strong> : morceau));
 }
 
-function Bulle({ role, texte, sources, erreur }: {
+/** Remet le nom des personnes à la place des pseudonymes TECH_<id> écrits par le modèle. */
+function remettreNoms(texte: string, noms: Record<string, string>): string {
+  return texte.replace(/\[?TECH_(\d+)\]?/g, (_, id: string) => noms[`TECH_${id}`] ?? "un membre de l'équipe");
+}
+
+function heureLecture(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? ""
+    : date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function Bulle({ role, texte, sources, erreur, donneesA }: {
   role: "client" | "assistant";
   texte: string;
   sources?: SourceAssistant[] | undefined;
   erreur?: boolean | undefined;
+  donneesA?: string | null | undefined;
 }) {
   if (role === "client") {
     return (
@@ -264,6 +297,11 @@ function Bulle({ role, texte, sources, erreur }: {
       >
         {enrichir(texte)}
       </p>
+      {donneesA && (
+        <p className="flex items-center gap-1 px-1 text-[11px] text-muted-foreground">
+          <Database className="size-3" aria-hidden="true" /> Données de votre laboratoire lues à {heureLecture(donneesA)}
+        </p>
+      )}
       {sources && sources.length > 0 && (
         <ul className="flex flex-col gap-1.5" aria-label="Sources et liens">
           {sources.map((s) => (s.prix ? <CarteAnalyse key={s.titre} source={s} /> : <PuceSource key={s.titre} source={s} />))}

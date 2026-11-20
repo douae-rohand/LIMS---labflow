@@ -7,7 +7,7 @@ import type { ApiResponse } from "./auth";
  *  POST /api/ia/assistant          (utilisateur connecté, tous rôles)
  *  POST /api/public/ia/assistant   (pages publiques, sans connexion)
  *    Corps   : { question: string; historique?: MessageHistorique[] } (6 messages au plus)
- *    Réponse : { reponse: string; sources: SourceAssistant[] }
+ *    Réponse : { reponse: string; sources: SourceAssistant[]; noms?; donneesA? }
  *    Erreurs : 429 (limite de questions ou fournisseur saturé), 503 (assistant indisponible)
  */
 
@@ -31,6 +31,13 @@ export interface SourceAssistant {
 export interface ReponseAssistant {
   reponse: string;
   sources: SourceAssistant[];
+  /**
+   * Personnel : noms à afficher à la place des pseudonymes « TECH_<id> » de la réponse.
+   * Le fournisseur d'IA ne voit jamais ces noms ; l'historique renvoyé garde les pseudonymes.
+   */
+  noms?: Record<string, string>;
+  /** Instant ISO de lecture des données du laboratoire, ou null si la réponse vient de la documentation seule. */
+  donneesA?: string | null;
 }
 
 /**

@@ -34,11 +34,28 @@ public class LlmClientService {
      * @throws IaIndisponibleException si le fournisseur refuse, est saturé ou ne répond pas
      */
     public String repondre(String systeme, String utilisateur) {
+        return repondre(systeme, utilisateur, null);
+    }
+
+    /**
+     * Comme {@link #repondre(String, String)}, en laissant le modèle appeler les méthodes {@code @Tool}
+     * de {@code outils} (lecture des données du laboratoire). Les outils sont exécutés par Spring AI dans
+     * ce même fil, avant la réponse finale.
+     */
+    public String repondre(String systeme, String utilisateur, Object outils) {
         long debut = System.currentTimeMillis();
         try {
-            String contenu = chatClient.prompt()
+            var requete = chatClient.prompt()
                     .system(systeme)
-                    .user(utilisateur)
+                    .user(utilisateur);
+            if (outils != null) {
+                // Groq refuse, au second tour, le champ « reasoning_content » que Spring AI recopie depuis
+                // la première réponse : on demande à Groq de ne pas renvoyer le raisonnement du modèle.
+                requete = requete.tools(outils)
+                        .options(org.springframework.ai.openai.OpenAiChatOptions.builder()
+                                .extraBody(java.util.Map.of("include_reasoning", false)));
+            }
+            String contenu = requete
                     .call()
                     .content();
             if (!StringUtils.hasText(contenu)) {

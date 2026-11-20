@@ -42,6 +42,7 @@ public class IaController {
 
     private final AssistantService assistantService;
     private final ProfilsAssistantService profils;
+    private final com.backend.modules.ia.donnees.OutilsDonneesService outilsDonnees;
     private final IndexationRagService indexationRagService;
     private final SyntheseResultatsService syntheseResultatsService;
 
@@ -49,8 +50,10 @@ public class IaController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Poser une question à l'assistant (utilisateur connecté, tous rôles)")
     public ResponseEntity<ApiResponse<ReponseAssistant>> poserQuestion(@Valid @RequestBody QuestionRequest requete) {
-        var profil = profils.utilisateur(SecurityUtils.principalCourant());
-        return ResponseEntity.ok(ApiResponse.success(assistantService.repondre(profil, requete)));
+        var principal = SecurityUtils.principalCourant();
+        var profil = profils.utilisateur(principal);
+        var outils = outilsDonnees.pour(principal).orElse(null);
+        return ResponseEntity.ok(ApiResponse.success(assistantService.repondre(profil, requete, outils)));
     }
 
     @PostMapping("/api/public/ia/assistant")

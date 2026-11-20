@@ -2,6 +2,8 @@ package com.backend.modules.ia.rag;
 
 import com.backend.integration.llm.IaIndisponibleException;
 import com.backend.integration.llm.LlmClientService;
+import com.backend.modules.ia.donnees.OutilsDonneesService.OutilsAssistant;
+import com.backend.modules.ia.donnees.SessionOutils;
 import com.backend.modules.ia.dto.AssistantDtos.MessageHistorique;
 import com.backend.modules.ia.dto.AssistantDtos.QuestionRequest;
 import com.backend.modules.ia.dto.AssistantDtos.ReponseAssistant;
@@ -35,8 +37,10 @@ import java.util.stream.Collectors;
  *   <li>Sinon, appel au modèle avec les règles, les passages, l'historique récent et la question.</li>
  * </ol>
  *
- * <p>Seuls la question, l'historique saisi par l'utilisateur et des extraits de documentation
- * ou de catalogue sont envoyés au fournisseur : aucune donnée de dossier (demande, résultat, facture).
+ * <p>Pour le personnel et le Super Admin, le modèle peut aussi appeler des outils de lecture des données
+ * du laboratoire (CDC § 3.4, paquet {@code ia.donnees}) : totaux, références de demandes, codes d'analyses.
+ * Jamais de nom de patient ni de client ; les techniciens sont envoyés sous pseudonyme {@code TECH_<id>},
+ * remplacé par leur nom dans le navigateur seulement.
  */
 @Slf4j
 @Service
@@ -54,6 +58,8 @@ public class AssistantService {
     private final LlmClientService llm;
     private final LimiteurAssistant limiteur;
     private final String promptSysteme;
+    private final String regleAvecDonnees;
+    private final String regleSansDonnees;
     private final double seuilSimilarite;
 
     public AssistantService(SimpleVectorStore vectorStore,
@@ -61,6 +67,8 @@ public class AssistantService {
                             LlmClientService llm,
                             LimiteurAssistant limiteur,
                             @Value("classpath:prompts/assistant-systeme.txt") Resource prompt,
+                            @Value("classpath:prompts/assistant-donnees.txt") Resource promptDonnees,
+                            @Value("classpath:prompts/assistant-sans-donnees.txt") Resource promptSansDonnees,
                             @Value("${labflow.assistant.seuil-similarite:0.28}") double seuilSimilarite) {
         this.vectorStore = vectorStore;
         this.indexation = indexation;
@@ -69,12 +77,21 @@ public class AssistantService {
         this.seuilSimilarite = seuilSimilarite;
         try {
             this.promptSysteme = prompt.getContentAsString(StandardCharsets.UTF_8);
+            this.regleAvecDonnees = promptDonnees.getContentAsString(StandardCharsets.UTF_8).strip();
+            this.regleSansDonnees = promptSansDonnees.getContentAsString(StandardCharsets.UTF_8).strip();
         } catch (IOException ex) {
             throw new UncheckedIOException("Prompt de l'assistant introuvable", ex);
         }
     }
 
     public ReponseAssistant repondre(ProfilAssistant profil, QuestionRequest requete) {
+        return repondre(profil, requete, null);
+    }
+
+    /**
+     * @param outils outils de lecture des données propres au rôle, ou {@code null} (visiteur, client)
+     */
+    public ReponseAssistant repondre(ProfilAssistant profil, QuestionRequest requete, OutilsAssistant outils) {
         if (!indexation.estPret()) {
             throw new IaIndisponibleException(false, "L'assistant démarre. Réessayez dans quelques instants.");
         }
@@ -82,7 +99,8 @@ public class AssistantService {
         long debut = System.currentTimeMillis();
 
         List<Document> passages = rechercher(requete.question(), profil);
-        if (passages.isEmpty()) {
+        // Sans outil de données, inutile d'appeler le modèle quand la documentation ne dit rien
+        if (passages.isEmpty() && outils == null) {
             log.info("Assistant IA : {}, aucun passage pertinent, réponse sans appel au modèle", profil.cleLimite());
             return new ReponseAssistant(profil.sansInformation(), List.of());
         }
@@ -90,12 +108,24 @@ public class AssistantService {
         String systeme = promptSysteme
                 .replace("{profil}", profil.description())
                 .replace("{laboratoires}", profil.laboratoires())
-                .replace("{sans_information}", profil.sansInformation());
-        String reponse = llm.repondre(systeme, messageUtilisateur(requete, passages));
+                .replace("{sans_information}", profil.sansInformation())
+                .replace("{donnees}", outils == null ? regleSansDonnees : regleAvecDonnees);
+        String reponse = llm.repondre(systeme, messageUtilisateur(requete, passages), outils == null ? null : outils.outils());
 
-        log.info("Assistant IA : {}, passages={}, modèle={}, durée={} ms",
-                profil.cleLimite(), passages.size(), llm.getModeleActif(), System.currentTimeMillis() - debut);
-        return new ReponseAssistant(reponse, sources(reponse, passages, profil));
+        SessionOutils session = outils == null ? null : outils.session();
+        List<Source> sources = new ArrayList<>(session == null ? List.of() : session.liens());
+        for (Source s : sources(reponse, passages, profil)) {
+            if (sources.size() >= NB_SOURCES_MAX) break;
+            // Après une lecture de données, seules les pages de documentation qui mènent quelque part restent utiles
+            if (!sources.isEmpty() && s.lien() == null) continue;
+            if (sources.stream().noneMatch(d -> Objects.equals(d.lien(), s.lien()) && s.prix() == null)) sources.add(s);
+        }
+        log.info("Assistant IA : {}, passages={}, outils={}, modèle={}, durée={} ms",
+                profil.cleLimite(), passages.size(), session == null ? "aucun" : session.liens().size() + " lecture(s)",
+                llm.getModeleActif(), System.currentTimeMillis() - debut);
+        return new ReponseAssistant(reponse, sources,
+                session == null ? java.util.Map.of() : session.noms(),
+                session == null ? null : session.lecture());
     }
 
     // -------------------------------------------------------------------------
