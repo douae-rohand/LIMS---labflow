@@ -61,3 +61,34 @@ export function messageErreurAssistant(erreur: unknown): string {
   }
   return "L'assistant est momentanément indisponible. Réessayez plus tard.";
 }
+
+// -----------------------------------------------------------------------------
+// Synthèse IA des résultats (CDC M07) : générée automatiquement à la signature du rapport.
+//  GET  /api/ia/syntheses/{demandeId}            → SyntheseIa | null
+//  POST /api/ia/syntheses/{demandeId}/regenerer  → SyntheseIa (rapport signé uniquement)
+// -----------------------------------------------------------------------------
+
+export interface SyntheseIa {
+  demandeId: number;
+  contenu: string;
+  dateGeneration: string;
+  mention: string;
+}
+
+export async function lireSyntheseIa(demandeId: number): Promise<SyntheseIa | null> {
+  const res = await apiClient.get<ApiResponse<SyntheseIa | null>>(`/ia/syntheses/${demandeId}`);
+  return res.data ?? null;
+}
+
+export async function regenererSyntheseIa(demandeId: number): Promise<SyntheseIa> {
+  const res = await apiClient.post<ApiResponse<SyntheseIa>>(`/ia/syntheses/${demandeId}/regenerer`, {}, { timeout: 60_000 });
+  return res.data;
+}
+
+export function messageErreurSynthese(erreur: unknown): string {
+  if (erreur instanceof ApiError && erreur.status !== 0) {
+    const message = erreur.message.replace(/^\[[A-Z0-9_]+\]\s*/, "");
+    if (message) return message;
+  }
+  return "La synthèse n'a pas pu être générée. Réessayez plus tard.";
+}

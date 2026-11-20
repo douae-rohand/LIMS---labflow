@@ -26,6 +26,7 @@ public class SuiviResponsableService {
     private final LigneTravailAssembleur assembleur;
     private final PlanificationService planificationService;
     private final RapportService rapportService;
+    private final com.backend.modules.ia.anomalie.AnomalieService anomalieService;
 
     @Transactional(readOnly = true)
     public SuiviResponsableDto suivi() {
@@ -58,10 +59,16 @@ public class SuiviResponsableService {
                 .filter(a -> a.getTechnicienId() != null && !termineeOuNonRealisable(a))
                 .count();
         List<LigneTravailDto> enRetard = analyses.stream().filter(LigneTravailDto::isEnRetard).toList();
-        long aValider = analyses.stream()
+        List<LigneTravailDto> resultatsAValider = analyses.stream()
                 .filter(a -> a.getStatut() == StatutEssai.TERMINE
                         && LigneTravailAssembleur.TECHNIQUE_VALIDEE.equals(a.getEtatValidation()))
-                .count();
+                .toList();
+        long aValider = resultatsAValider.size();
+        // Alertes anomalies (CDC M08) : scores calculés sur les résultats qui attendent la décision du responsable
+        java.util.Set<Long> idsAValider = resultatsAValider.stream().map(LigneTravailDto::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        List<LigneTravailDto> alertes = anomalieService.completer(resultatsAValider,
+                lignes.stream().filter(l -> idsAValider.contains(l.getId())).toList());
         long aPreparer = rapportService.compterAPreparer();
         List<LigneTravailDto> retards = enRetard.stream()
                 .sorted(Comparator.comparingLong(LigneTravailDto::getJoursRetard).reversed())
@@ -69,9 +76,10 @@ public class SuiviResponsableService {
                 .toList();
         return new SuiviResponsableDto(
                 new SuiviResponsableDto.Indicateurs(aDecider, aAffecter, enCours, enRetard.size(), aValider, aPreparer,
-                        aReaffecter, demandesAAffecter),
+                        aReaffecter, demandesAAffecter, alertes.size()),
                 planificationService.techniciens(lignes),
-                retards);
+                retards,
+                alertes.stream().limit(10).toList());
     }
 
     private static boolean termineeOuNonRealisable(LigneTravailDto analyse) {

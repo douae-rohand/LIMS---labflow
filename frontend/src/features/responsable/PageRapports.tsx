@@ -17,6 +17,7 @@ import {
   type RapportTravail,
 } from "@/api/responsable";
 import { Dialogue } from "@/features/super-admin/Fenetres";
+import { SyntheseIaBouton } from "@/components/ia/SyntheseIaBouton";
 import {
   Actualisation,
   BarreFiltres,
@@ -243,6 +244,7 @@ export function PageRapports() {
                     >
                       Télécharger
                     </Button>
+                    <SyntheseIaBouton demandeId={rapport.demandeId} reference={rapport.demandeReference} />
                     <BoutonEnvoyer rapportId={rapport.rapportId} />
                   </>
                 )}
@@ -267,6 +269,7 @@ export function PageRapports() {
                     >
                       Télécharger
                     </Button>
+                    <SyntheseIaBouton demandeId={rapport.demandeId} reference={rapport.demandeReference} />
                     <BoutonRenvoi rapportId={rapport.rapportId} />
                   </>
                 )}

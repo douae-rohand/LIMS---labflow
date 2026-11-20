@@ -41,6 +41,12 @@ public class LigneTravailDto {
     private Boolean conformite;
     /** Valeur numérique hors des seuils critiques de l'essai : à traiter en priorité. */
     private boolean critique;
+    /** Score d'anomalie de 0 à 100 (AnomalieService) ; null si pas encore de résultat. Alerte à partir de 40. */
+    private Integer scoreAnomalie;
+    /** CRITIQUE, HORS_INTERVALLE (OOS), HORS_TENDANCE (OOT), NON_CONFORME ; null si aucune anomalie. */
+    private String typeAnomalie;
+    /** Explication lisible du score. */
+    private String motifAnomalie;
     /** ATTENDU, CONFORME ou NON_CONFORME : état de l'échantillon rattaché à l'analyse. */
     private String etatEchantillon;
     /** AUCUNE_FACTURE, NON_PAYEE, PARTIELLE ou PAYEE : paiement de la facture de la demande. */

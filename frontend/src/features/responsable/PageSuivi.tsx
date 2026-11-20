@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { AlarmClock, ClipboardCheck, FileSignature, Gauge, Inbox, ListTodo } from "lucide-react";
+import { Activity, AlarmClock, ClipboardCheck, FileSignature, Gauge, Inbox, ListTodo } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import { lireSuivi } from "@/api/responsable";
+import { BadgeAnomalie } from "@/components/ia/BadgeAnomalie";
 import {
   Actualisation,
   BadgeStatutAnalyse,
@@ -82,6 +83,13 @@ export function PageSuivi() {
               lien={{ to: "/app/validation-resultats" }}
             />
             <Indicateur
+              icone={Activity}
+              libelle="Résultats en alerte d'anomalie"
+              valeur={donnees.indicateurs.resultatsEnAlerte ?? 0}
+              alerte
+              lien={{ to: "/app/validation-resultats" }}
+            />
+            <Indicateur
               icone={FileSignature}
               libelle="Rapports à signer"
               valeur={donnees.indicateurs.rapportsAPreparer}
@@ -152,6 +160,48 @@ export function PageSuivi() {
                   </tbody>
                 </table>
               </div>
+            )}
+          </section>
+
+          <section>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="text-lg font-bold text-ink-900">Alertes anomalies</h2>
+              {(donnees.alertesAnomalies ?? []).length > 0 && (
+                <Link
+                  to="/app/validation-resultats"
+                  className="text-sm font-semibold text-brand-900 underline-offset-4 hover:underline"
+                >
+                  Ouvrir la validation des résultats
+                </Link>
+              )}
+            </div>
+            {(donnees.alertesAnomalies ?? []).length === 0 ? (
+              <EtatChargement
+                chargement={false}
+                erreur={false}
+                vide
+                messageVide="Aucun résultat inhabituel parmi ceux qui attendent votre validation."
+              />
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {donnees.alertesAnomalies.slice(0, 5).map((analyse) => (
+                  <li
+                    key={analyse.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-900/10 bg-card px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold text-ink-900">
+                        {analyse.essaiLibelle ?? analyse.code} : {analyse.valeur} {analyse.unite ?? ""}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {analyse.demandeReference} · {analyse.technicienNom ?? "—"}
+                        {analyse.motifAnomalie ? ` · ${analyse.motifAnomalie}` : ""}
+                      </p>
+                    </div>
+                    <BadgeAnomalie score={analyse.scoreAnomalie} type={analyse.typeAnomalie} motif={analyse.motifAnomalie} />
+                  </li>
+                ))}
+              </ul>
             )}
           </section>
 
