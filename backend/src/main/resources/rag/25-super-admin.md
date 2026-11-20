@@ -24,3 +24,6 @@ Dans « Paramètres », choisissez les rôles pour lesquels un code de vérifica
 
 ## Assistant IA
 L'index de l'assistant (documentation et catalogues des laboratoires actifs) est reconstruit au démarrage et les catalogues sont relus toutes les 30 minutes. Un Super Admin peut forcer la reconstruction avec la route POST /api/ia/assistant/reindexer.
+
+## Interroger les données de la plateforme avec l'assistant
+L'assistant peut lire, en lecture seule, l'état de la plateforme : nombre de laboratoires actifs, suspendus et désactivés, et nombre de demandes d'intégration en attente, en attente de compléments, acceptées ou refusées. Il ne modifie rien : pour traiter une demande, ouvrez « Gestion des laboratoires ».

@@ -88,7 +88,8 @@ final class LiensAssistant {
                     Map.entry("25-super-admin.md#Comptes administrateurs", "/app/utilisateurs"),
                     Map.entry("25-super-admin.md#Double authentification par e-mail", "/app/parametres-plateforme"),
                     Map.entry("25-super-admin.md#Journal d'audit de la plateforme", "/app/journal-audit"),
-                    Map.entry("25-super-admin.md#Assistant IA", "/app/parametres-plateforme")));
+                    Map.entry("25-super-admin.md#Assistant IA", "/app/parametres-plateforme"),
+                    Map.entry("25-super-admin.md#Interroger les données de la plateforme avec l'assistant", "/app/gestion-laboratoires")));
 
     static Source source(Document d, String espace) {
         Map<String, Object> meta = d.getMetadata();

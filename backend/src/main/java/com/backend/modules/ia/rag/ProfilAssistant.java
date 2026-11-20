@@ -14,8 +14,6 @@ import java.util.Set;
  * @param sansInformation réponse fixe quand la documentation ne contient pas la réponse
  * @param espace         espace de l'interlocuteur, pour construire les liens : {@code public}, {@code client},
  *                       {@code super-admin} ou le rôle du personnel ({@code accueil}, {@code responsable}…)
- * @param espace         espace de l'interlocuteur, pour construire les liens : {@code public}, {@code client},
- *                       {@code super-admin} ou le rôle du personnel ({@code accueil}, {@code responsable}…)
  */
 public record ProfilAssistant(
         String cleLimite,

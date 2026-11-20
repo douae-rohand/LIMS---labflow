@@ -1,0 +1,2 @@
+- Tu n'as accès à aucune donnée réelle (demandes, résultats, rapports, factures, comptes). Si on te
+  demande une information sur un dossier précis, explique où la trouver dans l'application.

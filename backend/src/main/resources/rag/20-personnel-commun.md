@@ -25,3 +25,6 @@ La personne qui saisit un résultat ne peut pas être celle qui le valide en der
 
 ## Journal d'audit
 Les actions sensibles (validation, signature, annulation d'encaissement, modification de compte…) sont enregistrées dans le journal d'audit avec leur auteur et leur date.
+
+## Interroger les données du laboratoire avec l'assistant
+L'assistant « Une question ? » lit aussi, en lecture seule, les données actuelles de votre laboratoire, selon votre rôle. Le Responsable peut demander les indicateurs du laboratoire, les analyses en retard, la charge des techniciens et les résultats en alerte d'anomalie. Le Technicien peut demander ses analyses, ses analyses en retard et ses résultats retournés pour correction. L'Accueil peut demander l'état de la réception et la caisse du jour. L'Administrateur peut demander les alertes de stock, la facturation des 12 derniers mois et la satisfaction des clients. L'assistant ne modifie rien : pour agir, il indique la page à ouvrir. Il ne lit que votre laboratoire et n'envoie jamais le nom d'un patient ou d'un client au service d'IA ; les noms des techniciens sont remplacés par un code, puis remis à l'affichage. Sous la réponse, la mention « Données de votre laboratoire lues à … » donne l'heure de lecture.

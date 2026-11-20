@@ -33,7 +33,19 @@ public final class AssistantDtos {
      */
     public record Source(String titre, String source, String lien, String prix, String lienAjout) {}
 
-    public record ReponseAssistant(String reponse, List<Source> sources) {}
+    /**
+     * Réponse de l'assistant.
+     *
+     * @param noms     noms des personnes à afficher à la place des pseudonymes {@code TECH_<id>} de la réponse
+     *                 (le fournisseur d'IA ne voit que les pseudonymes) ; vide sans lecture de données
+     * @param donneesA instant de lecture des données du laboratoire, ou {@code null} si aucune n'a été lue
+     */
+    public record ReponseAssistant(String reponse, List<Source> sources,
+                                   java.util.Map<String, String> noms, java.time.Instant donneesA) {
+        public ReponseAssistant(String reponse, List<Source> sources) {
+            this(reponse, sources, java.util.Map.of(), null);
+        }
+    }
 
     public record EtatIndex(boolean pret, java.util.Map<String, Integer> passages) {}
 }
