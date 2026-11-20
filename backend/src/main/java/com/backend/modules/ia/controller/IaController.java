@@ -6,6 +6,10 @@ import com.backend.modules.ia.dto.AssistantDtos.EtatIndex;
 import com.backend.modules.ia.dto.AssistantDtos.QuestionRequest;
 import com.backend.modules.ia.dto.AssistantDtos.ReponseAssistant;
 import com.backend.modules.ia.rag.AssistantService;
+import com.backend.modules.ia.synthese.SyntheseResultatsService;
+import com.backend.modules.ia.synthese.SyntheseResultatsService.SyntheseDto;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import com.backend.modules.ia.rag.IndexationRagService;
 import com.backend.modules.ia.rag.ProfilsAssistantService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +31,8 @@ import org.springframework.web.bind.annotation.RestController;
  *       est déduit du jeton, jamais du corps de la requête.</li>
  *   <li>{@code POST /api/public/ia/assistant} : visiteurs des pages publiques, limités par adresse IP.</li>
  *   <li>{@code POST /api/ia/assistant/reindexer} : Super Admin, reconstruit l'index.</li>
+ *   <li>{@code GET /api/ia/syntheses/{demandeId}} et {@code POST …/regenerer} : synthèse IA des résultats
+ *       (M07), pour le personnel qui gère les rapports ; elle est générée automatiquement à la signature.</li>
  * </ul>
  */
 @RestController
@@ -37,6 +43,7 @@ public class IaController {
     private final AssistantService assistantService;
     private final ProfilsAssistantService profils;
     private final IndexationRagService indexationRagService;
+    private final SyntheseResultatsService syntheseResultatsService;
 
     @PostMapping("/api/ia/assistant")
     @PreAuthorize("isAuthenticated()")
@@ -60,5 +67,19 @@ public class IaController {
     public ResponseEntity<ApiResponse<EtatIndex>> reindexer() {
         var bilan = indexationRagService.reindexerTout();
         return ResponseEntity.ok(ApiResponse.success(new EtatIndex(indexationRagService.estPret(), bilan)));
+    }
+
+    @GetMapping("/api/ia/syntheses/{demandeId}")
+    @PreAuthorize("hasAuthority('PERM_RAPPORTS_GERER')")
+    @Operation(summary = "Synthèse IA des résultats d'une demande (null si pas encore générée)")
+    public ResponseEntity<ApiResponse<SyntheseDto>> synthese(@PathVariable Long demandeId) {
+        return ResponseEntity.ok(ApiResponse.success(syntheseResultatsService.consulter(demandeId).orElse(null)));
+    }
+
+    @PostMapping("/api/ia/syntheses/{demandeId}/regenerer")
+    @PreAuthorize("hasAuthority('PERM_RAPPORTS_GERER')")
+    @Operation(summary = "Régénérer la synthèse IA d'une demande dont le rapport est signé")
+    public ResponseEntity<ApiResponse<SyntheseDto>> regenererSynthese(@PathVariable Long demandeId) {
+        return ResponseEntity.ok(ApiResponse.success(syntheseResultatsService.regenerer(demandeId)));
     }
 }

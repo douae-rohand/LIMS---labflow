@@ -227,7 +227,130 @@ Quand une analyse est citée par son code (NFS, TSH…), seules ses fiches s'aff
 
 ---
 
-## 8. Points d'attention
+## 8. Synthèse IA des résultats (CDC : M07, M14, § 3.4)
+
+**Ce que demande le CDC** : générer automatiquement une synthèse des résultats par l'IA, à partir des données structurées. Elle doit être affichée dans l'interface, séparément du rapport officiel, sans remplacer la validation humaine.
+
+**Avant** : la table `synthese_ia` (V15) et l'affichage côté client (`RapportDetail.tsx`) existaient déjà, mais aucun code ne remplissait la table. Seules quelques lignes de démonstration avaient été ajoutées à la main.
+
+**Fonctionnement :**
+
+1. Le Responsable **signe** le rapport (`RapportService.signerDemande`).
+2. Après l'enregistrement en base (commit), la synthèse est générée **en arrière-plan** (`@Async`) : la signature n'attend pas l'IA.
+3. Le **code** calcule le statut de chaque résultat à partir des limites du catalogue :
+   - dans l'intervalle ;
+   - en dessous ou au-dessus ;
+   - CRITIQUE (hors seuil critique) ;
+   - conforme ou non conforme (valeur non numérique).
+
+   Il compte aussi le **bilan** : nombre de critiques, de valeurs hors intervalle et de valeurs normales.
+4. Le **modèle** (Groq) se contente de **rédiger** à partir de ces statuts et de ce bilan. Il ne recalcule rien, car il se trompait parfois dans les totaux.
+5. La synthèse est enregistrée dans `synthese_ia`, une par demande, remplacée à chaque génération. Le client la voit avec la mention « Synthèse automatique, non contractuelle ».
+
+**Données envoyées à Groq, anonymes :**
+- envoyé : code, désignation et domaine de l'analyse, valeur, unité, intervalles, statut, bilan ;
+- **jamais envoyé** : nom, identité, titre de la demande, motifs saisis ou toute autre donnée du client (loi 09-08, CNDP).
+
+**Règles du prompt** (`prompts/synthese-resultats.txt`) :
+- reprendre les statuts et le bilan tels quels ;
+- aucun diagnostic, aucune maladie nommée, aucun traitement ;
+- valeur critique : la faire voir rapidement par le professionnel concerné ;
+- valeur hors intervalle d'une analyse médicale : en parler avec son médecin.
+
+**Espace Responsable** : un bouton **« Synthèse IA »** sur chaque rapport signé ou envoyé (page Rapports) ouvre la synthèse. Le bouton **« Régénérer »** sert si Groq était indisponible au moment de la signature.
+
+**Fichiers :**
+
+| Fichier | Rôle |
+|---|---|
+| `modules/ia/synthese/SyntheseResultatsService.java` (nouveau) | Lecture des résultats, statuts et bilan, appel du modèle, enregistrement, consultation et régénération. |
+| `resources/prompts/synthese-resultats.txt` (nouveau) | Règles de rédaction. |
+| `modules/rapport/service/RapportService.java` | 6 lignes : déclenchement après la signature. |
+| `modules/ia/controller/IaController.java` | Deux routes, réservées à la permission `PERM_RAPPORTS_GERER` : `GET /api/ia/syntheses/{demandeId}` et `POST /api/ia/syntheses/{demandeId}/regenerer`. |
+| `frontend/src/api/ia.ts` | Ajout de `lireSyntheseIa`, `regenererSyntheseIa` et `messageErreurSynthese`. |
+| `frontend/src/components/ia/SyntheseIaBouton.tsx` (nouveau) | Bouton et fenêtre de la synthèse. |
+| `frontend/src/features/responsable/PageRapports.tsx` | Ajout du bouton sur les rapports signés et envoyés. |
+
+**Protections :**
+- régénération seulement pour un rapport signé (sinon 422) ;
+- 20 régénérations par heure et par utilisateur ;
+- un client ne peut pas appeler ces routes (403) ;
+- une panne de Groq ne bloque jamais la signature.
+
+**Tests :**
+
+| Test | Résultat |
+|---|---|
+| Régénération de 2 rapports d'Atlas | 1 à 4 s, liste de chaque analyse avec valeur, unité et intervalle ✅ |
+| Rapport non signé | 422 « La synthèse n'est générée qu'après la signature » ✅ |
+| Client sur la route du personnel | 403 ✅ |
+| Calcul des statuts (0,92 / 0,55 / 1,40 / 0,30 / 5 / « positif » avec intervalle 0,7–1,1 et seuils 0,4–4) | dans l'intervalle / en dessous / au-dessus / critique bas / critique haut / non numérique ✅ |
+| Prompt sur des résultats **fictifs** anormaux (potassium critique, glycémie haute) | bilan juste, critique cité en premier, aucun diagnostic ✅ |
+| Bouton « Synthèse IA » et « Régénérer » dans l'espace Responsable | ✅ |
+
+**Non testé** : la génération automatique juste après une vraie signature. Aucun rapport n'attendait d'être signé dans les données d'essai, et signer modifie les données. Elle utilise la même méthode que « Régénérer ».
+
+---
+
+## 9. Score d'anomalie des résultats (CDC : § 2.2.1 étape 5, M04 OOS/OOT, M08 « alertes anomalies »)
+
+**Avant** : la colonne `ligne_essai.score_anomalie` existait (V10), mais aucun code ne la calculait.
+
+**Principe** : un score de 0 à 100, calculé **sans IA générative**, uniquement par règles et statistique. Il est donc gratuit, immédiat et explicable, et aucune donnée ne quitte le serveur.
+
+| Type | Condition | Score |
+|---|---|---|
+| CRITIQUE | valeur hors des seuils critiques de l'essai | 100 |
+| HORS_INTERVALLE (OOS) | valeur hors de l'intervalle de référence | 50 à 90 selon l'écart (rapporté à la largeur de l'intervalle) |
+| HORS_TENDANCE (OOT) | valeur dans les normes mais inhabituelle par rapport aux résultats précédents du même essai : score z robuste (médiane et écart absolu médian), \|z\| ≥ 3,5, au moins 10 résultats précédents | 40 à 80 |
+| NON_CONFORME | résultat non numérique déclaré non conforme | 50 |
+
+Une **alerte** est levée à partir de **40**. Le score aide à prioriser : il ne décide rien, la validation reste humaine.
+
+**Où le calcul a lieu** : à chaque lecture de la file de validation et du tableau de suivi du Responsable. Le score suit donc toujours la valeur actuelle, même après une correction. Il est enregistré dans `score_anomalie` quand il change, dans une transaction séparée.
+
+Choix volontaire : je n'ai **pas** modifié la saisie du Technicien (`TechnicienService` et l'import CSV), qui appartient au binôme.
+
+**Affichage (espace Responsable) :**
+- **Tableau de suivi** : la carte « Résultats en alerte d'anomalie » et la section « Alertes anomalies » (5 résultats au plus, avec badge, score et motif).
+- **Validation des résultats** :
+  - nouvel ordre de priorité : critiques, puis hors norme, puis **inhabituels**, puis conformes ;
+  - filtre « Inhabituels » ;
+  - badge « Inhabituel (OOT) » ;
+  - ligne « Score d'anomalie » dans le panneau Examiner, avec son explication.
+- Le **chatbot** explique le score et la synthèse IA grâce aux nouvelles sections du guide `22-responsable.md`, avec des liens vers `/app/validation-resultats` et `/app/rapports-laboratoire`.
+
+**Fichiers :**
+
+| Fichier | Changement |
+|---|---|
+| `modules/ia/anomalie/AnomalieService.java` (nouveau) | Calcul, historique par essai, enregistrement, complément des DTO. |
+| `modules/planification/dto/LigneTravailDto.java` | Ajout de `scoreAnomalie`, `typeAnomalie` et `motifAnomalie`. |
+| `modules/planification/dto/SuiviResponsableDto.java` | Ajout de `resultatsEnAlerte` et `alertesAnomalies`. |
+| `modules/validation/service/ValidationService.java` | Scores ajoutés à la file de validation. |
+| `modules/planification/service/SuiviResponsableService.java` | Alertes du tableau de suivi. |
+| `resources/rag/22-responsable.md` | Ajout des sections « Score d'anomalie » et « Synthèse IA ». |
+| `modules/ia/rag/LiensAssistant.java` | Ajout des liens de ces deux sections. |
+| `frontend/src/components/ia/BadgeAnomalie.tsx` (nouveau) | Badge du score, avec son explication au survol. |
+| `frontend/src/api/responsable.ts` | Ajout des types. |
+| `frontend/src/features/responsable/PageSuivi.tsx` | Ajout de la carte et de la section « Alertes anomalies ». |
+| `frontend/src/features/responsable/PageValidation.tsx` | Ajout de la priorité et du filtre « Inhabituels », du badge et du score. |
+
+**Tests :**
+
+| Test | Résultat |
+|---|---|
+| Calcul sur des cas connus (intervalle 0,7–1,1, seuils 0,4–4, historique de médiane 0,91) | 0,92 → 0 ; 0,30 → 100 critique ; 2,60 → 90 OOS ; 1,08 → 58 OOT ; 0,72 → 63 OOT ; « positif » non conforme → 50 ✅ |
+| File de validation d'Atlas (API) | GLY 3,20 → 100 ; HbA1c 8,4 → 90 ; cholestérol 2,35 → 78 ; GLY 0,95 → 0 ✅ |
+| Tableau de suivi | 3 alertes, triées par score ✅ |
+| Écran : carte, section « Alertes anomalies », panneau Examiner | ✅ |
+| Chatbot (Responsable) : « C'est quoi le score d'anomalie ? » | réponse juste, lien vers la validation ✅ |
+
+**Non testé à l'écran** : le badge « Inhabituel (OOT) ». Aucune donnée d'essai n'a 10 résultats précédents pour le même essai. Le calcul OOT a été vérifié séparément.
+
+---
+
+## 10. Points d'attention
 
 - **Premier démarrage** : téléchargement unique du modèle d'embeddings (118 Mo) et des bibliothèques PyTorch (DJL). Il faut Internet la première fois ; ensuite le démarrage prend environ 25 s et l'index est prêt quelques secondes après.
 - **Limites en mémoire** : les compteurs repartent à zéro au redémarrage du backend.

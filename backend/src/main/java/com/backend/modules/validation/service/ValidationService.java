@@ -51,6 +51,7 @@ public class ValidationService {
     private final ProprieteClient proprieteClient;
     private final LigneTravailAssembleur assembleur;
     private final JournalAuditService journalAuditService;
+    private final com.backend.modules.ia.anomalie.AnomalieService anomalieService;
 
     @Transactional(readOnly = true)
     public List<ValidationDto> listerParEssai(Long essaiId) {
@@ -71,11 +72,15 @@ public class ValidationService {
                 .filter(l -> l.getStatut() == StatutEssai.TERMINE)
                 .toList();
         // Les plus récemment soumis d'abord.
-        return assembleur.assembler(lignes).stream()
+        List<LigneTravailDto> aValider = assembleur.assembler(lignes).stream()
                 .filter(l -> LigneTravailAssembleur.TECHNIQUE_VALIDEE.equals(l.getEtatValidation()))
                 .sorted(Comparator.comparing(LigneTravailDto::getDerniereDecisionDate,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
+        // Score d'anomalie (critique, hors intervalle, hors tendance) : aide à prioriser la file
+        java.util.Set<Long> ids = aValider.stream().map(LigneTravailDto::getId).collect(java.util.stream.Collectors.toSet());
+        anomalieService.completer(aValider, lignes.stream().filter(l -> ids.contains(l.getId())).toList());
+        return aValider;
     }
 
     /** Niveau 1 : le technicien affecté confirme son résultat. */

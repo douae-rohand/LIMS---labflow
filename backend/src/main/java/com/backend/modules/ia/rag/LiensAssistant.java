@@ -59,6 +59,8 @@ final class LiensAssistant {
                     Map.entry("22-responsable.md#Valider les résultats", "/app/validation-resultats"),
                     Map.entry("22-responsable.md#Signer le rapport", "/app/rapports-laboratoire"),
                     Map.entry("22-responsable.md#Tableau de suivi", "/app/suivi"),
+                    Map.entry("22-responsable.md#Score d'anomalie des résultats", "/app/validation-resultats"),
+                    Map.entry("22-responsable.md#Synthèse IA des résultats", "/app/rapports-laboratoire"),
                     Map.entry("22-responsable.md#Exports", "/app/exports")),
             "technicien", Map.ofEntries(
                     Map.entry("20-personnel-commun.md#Profil et mot de passe", "/app/profil"),

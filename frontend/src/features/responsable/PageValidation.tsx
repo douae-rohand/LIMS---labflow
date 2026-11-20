@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Badge, Button, Label, Textarea } from "@/components/lab";
+import { BadgeAnomalie, SEUIL_ALERTE_ANOMALIE, libelleAnomalie } from "@/components/ia/BadgeAnomalie";
 import { Container } from "@/components/layout/Container";
 import {
   deciderResultat,
@@ -56,8 +57,10 @@ export function PageValidation() {
     }
     return [...parId.entries()].sort((x, y) => x[1].localeCompare(y[1], "fr"));
   }, [resultats.data]);
-  // Priorité : critiques, puis hors norme, puis conformes ; à priorité égale, le plus récemment soumis en haut.
-  const priorite = (a: AnalyseTravail) => (a.critique ? 0 : a.conformite === false ? 1 : 2);
+  // Priorité : critiques, puis hors norme, puis inhabituels (score d'anomalie), puis conformes ;
+  // à priorité égale, le plus récemment soumis en haut.
+  const inhabituel = (a: AnalyseTravail) => (a.scoreAnomalie ?? 0) >= SEUIL_ALERTE_ANOMALIE;
+  const priorite = (a: AnalyseTravail) => (a.critique ? 0 : a.conformite === false ? 1 : inhabituel(a) ? 2 : 3);
   const date = (a: AnalyseTravail) => (a.derniereDecisionDate ? Date.parse(a.derniereDecisionDate) : 0);
   const visibles = (resultats.data ?? [])
     .filter((a) => !domaine || a.domaineCode === domaine)
@@ -70,6 +73,7 @@ export function PageValidation() {
     .sort((x, y) => priorite(x) - priorite(y) || date(y) - date(x));
   const nbCritiques = (resultats.data ?? []).filter((a) => a.critique).length;
   const nbHorsNorme = (resultats.data ?? []).filter((a) => !a.critique && a.conformite === false).length;
+  const nbInhabituels = (resultats.data ?? []).filter((a) => priorite(a) === 2).length;
 
   const validationRapide = useMutation({
     mutationFn: (analyse: AnalyseTravail) => deciderResultat(analyse.id, "VALIDER"),
@@ -108,7 +112,8 @@ export function PageValidation() {
           <FiltreSelect className="w-full lg:w-48" libelle="Filtrer par priorité" tous="Toutes les priorités" valeur={niveau}
             onChange={setNiveau}
             options={[["0", `Critiques (${nbCritiques})`], ["1", `Hors norme (${nbHorsNorme})`],
-              ["2", `Conformes (${(resultats.data?.length ?? 0) - nbCritiques - nbHorsNorme})`]]} />
+              ["2", `Inhabituels (${nbInhabituels})`],
+              ["3", `Conformes (${(resultats.data?.length ?? 0) - nbCritiques - nbHorsNorme - nbInhabituels})`]]} />
           <FiltreSelect className="w-full lg:w-44" libelle="Filtrer par domaine" tous="Tous les domaines" valeur={domaine}
             onChange={setDomaine} options={domaines} />
           <FiltreSelect className="w-full lg:w-48" libelle="Filtrer par technicien" tous="Tous les techniciens" valeur={technicien}
@@ -163,6 +168,9 @@ export function PageValidation() {
                       </span>
                     ) : analyse.conformite != null && (
                       <Badge size="sm" variant={analyse.conformite ? "mint" : "dark"}>{analyse.conformite ? "Conforme" : "Hors norme"}</Badge>
+                    )}{" "}
+                    {analyse.typeAnomalie === "HORS_TENDANCE" && (
+                      <BadgeAnomalie score={analyse.scoreAnomalie} type={analyse.typeAnomalie} motif={analyse.motifAnomalie} />
                     )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{reference(analyse)}</td>
@@ -240,6 +248,12 @@ function PanneauDecision({ analyse, onFermer, onDecide }: {
             <Info libelle="Résultat" valeur={`${analyse.valeur ?? "—"} ${analyse.unite ?? ""}`} />
             <Info libelle="Valeurs de référence" valeur={reference(analyse)} />
             <Info libelle="Conformité" valeur={analyse.conformite == null ? "Non calculée" : analyse.conformite ? "Conforme" : "Hors norme"} />
+            <Info
+              libelle="Score d'anomalie"
+              valeur={analyse.scoreAnomalie == null
+                ? "Non calculé"
+                : `${analyse.scoreAnomalie}/100 · ${libelleAnomalie(analyse.typeAnomalie)}${analyse.motifAnomalie ? ` — ${analyse.motifAnomalie}` : ""}`}
+            />
             <Info libelle="Technicien" valeur={analyse.technicienNom ?? "—"} />
             <Info libelle="Saisi le" valeur={formaterDate(analyse.dateSaisie, true)} />
             <Info libelle="Observations" valeur={analyse.observations ?? "—"} />

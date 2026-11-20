@@ -37,6 +37,10 @@ export interface AnalyseTravail {
   conformite?: boolean | null;
   /** Valeur hors des seuils critiques de l'essai. */
   critique?: boolean;
+  /** Score d'anomalie 0-100 (critique, hors intervalle OOS, hors tendance OOT) ; alerte à partir de 40. */
+  scoreAnomalie?: number | null;
+  typeAnomalie?: string | null;
+  motifAnomalie?: string | null;
   /** État de l'échantillon rattaché à l'analyse. */
   etatEchantillon?: "ATTENDU" | "CONFORME" | "NON_CONFORME";
   /** Paiement de la facture de la demande. */
@@ -70,9 +74,12 @@ export interface SuiviResponsable {
     analysesAReaffecter: number;
     /** Demandes ayant au moins une analyse sans technicien. */
     demandesAAffecter: number;
+    resultatsEnAlerte: number;
   };
   techniciens: TechnicienCharge[];
   retards: AnalyseTravail[];
+  /** Résultats à valider en alerte d'anomalie, du score le plus haut au plus bas. */
+  alertesAnomalies: AnalyseTravail[];
 }
 
 export interface ValidationHistorique {

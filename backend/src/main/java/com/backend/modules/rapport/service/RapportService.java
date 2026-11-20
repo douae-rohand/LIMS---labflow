@@ -82,6 +82,7 @@ public class RapportService {
     private final com.backend.modules.rapport.signature.SignatureManuscriteService signatureManuscriteService;
     private final com.backend.modules.facturation.repository.FactureRepository factureRepository;
     private final com.backend.modules.notification.service.NotificationsLaboratoire notificationsLaboratoire;
+    private final com.backend.modules.ia.synthese.SyntheseResultatsService syntheseResultatsService;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -276,6 +277,12 @@ public class RapportService {
         journalAuditService.enregistrer("SIGNER_RAPPORT", "Rapport", rapport.getId(), acteur.getEmail(),
                 null, "{\"numero\":\"" + rapport.getNumero() + "\",\"statut\":\"SIGNE\"}",
                 null, acteur.getLaboratoireId());
+        // Synthèse IA des résultats (CDC M07) : générée après la signature, en arrière-plan, sans bloquer
+        String schemaSynthese = TenantContext.getCurrentTenant();
+        Long idDemande = demande.getId();
+        if (schemaSynthese != null) {
+            ApresCommit.executer(() -> syntheseResultatsService.genererEnArrierePlan(schemaSynthese, idDemande));
+        }
         Map<Long, String> noms = assembleur.nomsUtilisateurs(List.of(acteur.getId()));
         return new RapportTravailDto(demande.getId(), demande.getNumero(), demande.getTitre(), nomClient(demande, noms),
                 lignes.size(), rapport.getId(), rapport.getNumero(), StatutRapport.SIGNE, rapport.getDateEmission(), maintenant,
