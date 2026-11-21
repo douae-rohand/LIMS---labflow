@@ -1,0 +1,220 @@
+{
+  "updatedAt": "2026-11-21T22:09:14.957Z",
+  "createdAt": "2026-11-21T22:08:47.568Z",
+  "id": "UveNaJi7fvOJgvNG",
+  "name": "W7 relance-factures",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "a5ef4711-03c8-4657-a359-8ec3b4c8543f",
+      "name": "Chaque jour 9h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8081/api/n8n/factures-echues",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "bdb72b7b-8a24-45a8-9c66-2ab131315b0f",
+      "name": "Factures echues",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "tluIM8zoebtaqQes",
+          "name": "LIMS Webhook Authentication"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "4e626221-66e7-445f-bd9d-fdea207e5867",
+              "leftValue": "={{ $json.factureId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2262b90b-0b78-4322-a6f4-f75e09f9ce13",
+      "name": "Facture presente ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "LabFlow LIMS <tafraouti.sanae1@gmail.com>",
+        "toEmail": "={{ $json.clientEmail }}",
+        "subject": "={{ 'Rappel de paiement - facture ' + $json.numeroFacture }}",
+        "html": "=<div style=\"margin:0;padding:24px 12px;background:#F4F7F6;font-family:Arial,Helvetica,sans-serif;color:#1A2A2E\">\n  <div style=\"display:none;max-height:0;overflow:hidden;opacity:0\">\n    Une facture du laboratoire est arrivée à échéance.\n  </div>\n\n  <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"max-width:600px;margin:0 auto;background:#FFFFFF;border-radius:16px;overflow:hidden\">\n    <tr>\n      <td style=\"padding:22px 28px;background:#1A4A54\">\n        <p style=\"margin:0;color:#C8E86A;font-size:13px;font-weight:bold;letter-spacing:1px\">LABFLOW LIMS</p>\n        <h1 style=\"margin:8px 0 0;color:#FFFFFF;font-size:22px;line-height:1.3\">Facture arrivée à échéance</h1>\n      </td>\n    </tr>\n\n    <tr>\n      <td style=\"padding:28px;font-size:15px;line-height:1.6\">\n        <p style=\"margin:0 0 12px\">\n          {{ 'Bonjour ' + ($json.clientNom || $json.nom) + ',' }}\n        </p>\n\n        <p style=\"margin:0 0 12px\">\n          {{ 'La facture ' + $json.numeroFacture + ' du laboratoire ' + ($json.laboratoireNom || $json.nomLaboratoire) + ' est arrivée à échéance le ' + $json.dateEcheance + '.' }}\n        </p>\n\n        <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"margin:20px 0;background:#F4F7F6;border:1px solid #D7E4E2;border-radius:12px\">\n          <tr>\n            <td style=\"padding:16px 18px;color:#5B6B70;font-size:14px\">\n              Montant restant dû\n            </td>\n            <td align=\"right\" style=\"padding:16px 18px;color:#1A4A54;font-size:18px;font-weight:bold\">\n              {{ $json.montantRestant }} MAD\n            </td>\n          </tr>\n        </table>\n\n        <p style=\"margin:0 0 12px\">\n          Merci de régulariser votre paiement. Si vous avez déjà effectué le règlement, vous pouvez ignorer ce message.\n        </p>\n\n        <a href=\"{{ $json.lienEspaceClient || $json.lienFacture }}\"\n           style=\"display:inline-block;margin:16px 0 8px;padding:12px 22px;border-radius:999px;background:#1A4A54;color:#FFFFFF;font-size:14px;font-weight:bold;text-decoration:none\">\n          Consulter ma facture\n        </a>\n\n        <p style=\"margin:24px 0 0;color:#5B6B70;font-size:13px\">\n          L’équipe LabFlow\n        </p>\n      </td>\n    </tr>\n\n    <tr>\n      <td style=\"padding:16px 28px 24px;color:#7A8A8E;font-size:12px\">\n        Cet e-mail a été envoyé automatiquement. Merci de ne pas y répondre.\n      </td>\n    </tr>\n  </table>\n</div>",
+        "options": {}
+      },
+      "id": "b8ab6958-77ba-4d83-b49a-c3c027b262f2",
+      "name": "E-mail relance",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        672,
+        0
+      ],
+      "webhookId": "5f13b668-f6e7-4745-a388-639f6feb1084",
+      "credentials": {
+        "smtp": {
+          "id": "mXLSKFcgTUXitKSa",
+          "name": "LIMS SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://localhost:8081/api/n8n/factures/{{ $('Factures echues').item.json.laboratoireId }}/{{ $('Factures echues').item.json.factureId }}/relance-envoyee",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "15535906-9df2-4773-bd52-d20e51868392",
+      "name": "Marquer relance envoyee",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "tluIM8zoebtaqQes",
+          "name": "LIMS Webhook Authentication"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Chaque jour 9h": {
+      "main": [
+        [
+          {
+            "node": "Factures echues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Factures echues": {
+      "main": [
+        [
+          {
+            "node": "Facture presente ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facture presente ?": {
+      "main": [
+        [
+          {
+            "node": "E-mail relance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "E-mail relance": {
+      "main": [
+        [
+          {
+            "node": "Marquer relance envoyee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Chaque jour 9h": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "714d5e6c-7246-48df-a246-5ac134a7f939",
+  "activeVersionId": "714d5e6c-7246-48df-a246-5ac134a7f939",
+  "versionCounter": 2,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-11-21T22:08:47.569Z",
+      "createdAt": "2026-11-21T22:08:47.569Z",
+      "role": "workflow:owner",
+      "workflowId": "UveNaJi7fvOJgvNG",
+      "projectId": "ZEnGcqU1t6ecfvab",
+      "project": {
+        "updatedAt": "2026-11-20T22:42:56.230Z",
+        "createdAt": "2026-06-05T10:23:16.200Z",
+        "id": "ZEnGcqU1t6ecfvab",
+        "name": "douae rohand <rohand.douae@etu.uae.ac.ma>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "263edc04-e1c0-4ec2-826b-a433682d60a8"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": "Version 714d5e6c",
+    "description": ""
+  }
+}

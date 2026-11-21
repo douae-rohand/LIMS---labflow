@@ -1,0 +1,134 @@
+{
+  "updatedAt": "2026-11-21T22:08:16.727Z",
+  "createdAt": "2026-11-21T22:07:41.100Z",
+  "id": "JJyQkCxwso4naAcC",
+  "name": "W5 rapport-signe",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rapport-signe",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "0a16a665-b500-4394-8bb4-a17271ddee77",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "f2469077-96cf-4701-90b5-01fa3db404f3",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "tluIM8zoebtaqQes",
+          "name": "LIMS Webhook Authentication"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true } }}",
+        "options": {}
+      },
+      "id": "ed51b320-338f-4441-8eae-0aef4905e583",
+      "name": "Repondre 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "LabFlow LIMS <tafraouti.sanae1@gmail.com>",
+        "toEmail": "={{ ($json.body.clientEmail || $json.body.email) }}",
+        "subject": "={{ 'Rapport disponible - demande ' + ($json.body.reference || $json.body.referenceDemande) }}",
+        "html": "=<div style=\"margin:0;padding:24px 12px;background:#F4F7F6;font-family:Arial,Helvetica,sans-serif;color:#1A2A2E\">\n  <div style=\"display:none;max-height:0;overflow:hidden;opacity:0\">\n    Votre rapport signé est disponible dans votre espace client.\n  </div>\n\n  <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"max-width:600px;margin:0 auto;background:#FFFFFF;border-radius:16px;overflow:hidden\">\n    <tr>\n      <td style=\"padding:22px 28px;background:#1A4A54\">\n        <p style=\"margin:0;color:#C8E86A;font-size:13px;font-weight:bold;letter-spacing:1px\">LABFLOW LIMS</p>\n        <h1 style=\"margin:8px 0 0;color:#FFFFFF;font-size:22px;line-height:1.3\">Votre rapport est disponible</h1>\n      </td>\n    </tr>\n\n    <tr>\n      <td style=\"padding:28px;font-size:15px;line-height:1.6\">\n        <p style=\"margin:0 0 12px\">\n          {{ 'Bonjour ' + ($json.body.clientNom || $json.body.nom) + ',' }}\n        </p>\n\n        <p style=\"margin:0 0 12px\">\n          {{ 'Le rapport de la demande ' + ($json.body.reference || $json.body.referenceDemande) + ' du laboratoire ' + ($json.body.laboratoireNom || $json.body.nomLaboratoire) + ' a été signé et est disponible dans votre espace client.' }}\n        </p>\n\n        <a href=\"{{ $json.body.lienEspaceClient || $json.body.lienRapport }}\"\n           style=\"display:inline-block;margin:16px 0 8px;padding:12px 22px;border-radius:999px;background:#1A4A54;color:#FFFFFF;font-size:14px;font-weight:bold;text-decoration:none\">\n          Ouvrir mon espace client\n        </a>\n\n        <p style=\"margin:24px 0 0;color:#5B6B70;font-size:13px\">\n          L’équipe LabFlow\n        </p>\n      </td>\n    </tr>\n\n    <tr>\n      <td style=\"padding:16px 28px 24px;color:#7A8A8E;font-size:12px\">\n        Cet e-mail a été envoyé automatiquement. Merci de ne pas y répondre.\n      </td>\n    </tr>\n  </table>\n</div>",
+        "options": {}
+      },
+      "id": "76e4d1ad-2304-4345-9f8a-1fa10a83cf0a",
+      "name": "E-mail client",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        448,
+        0
+      ],
+      "webhookId": "e6b3ec5b-5bbc-4aa2-9688-0d935ef9044d",
+      "credentials": {
+        "smtp": {
+          "id": "mXLSKFcgTUXitKSa",
+          "name": "LIMS SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Repondre 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repondre 200": {
+      "main": [
+        [
+          {
+            "node": "E-mail client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "6c9f9197-54b3-40e0-a6b8-e6ff49ac76d6",
+  "activeVersionId": "6c9f9197-54b3-40e0-a6b8-e6ff49ac76d6",
+  "versionCounter": 2,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-11-21T22:07:41.102Z",
+      "createdAt": "2026-11-21T22:07:41.102Z",
+      "role": "workflow:owner",
+      "workflowId": "JJyQkCxwso4naAcC",
+      "projectId": "ZEnGcqU1t6ecfvab",
+      "project": {
+        "updatedAt": "2026-11-20T22:42:56.230Z",
+        "createdAt": "2026-06-05T10:23:16.200Z",
+        "id": "ZEnGcqU1t6ecfvab",
+        "name": "douae rohand <rohand.douae@etu.uae.ac.ma>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "263edc04-e1c0-4ec2-826b-a433682d60a8"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": "Version 1",
+    "description": ""
+  }
+}

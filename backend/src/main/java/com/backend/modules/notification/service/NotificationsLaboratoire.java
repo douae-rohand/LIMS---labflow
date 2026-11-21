@@ -44,4 +44,20 @@ public class NotificationsLaboratoire {
             }
         });
     }
+
+    /** Notification à un compte précis après validation de l'action métier. */
+    public void notifierUtilisateurApresCommit(Long utilisateurId, String type, String titre,
+                                                String corps, String lien) {
+        if (utilisateurId == null) return;
+        ApresCommit.executer(() -> {
+            try {
+                tenantExecutor.inCentral(() -> {
+                    notificationService.notifierUtilisateurs(List.of(utilisateurId), type, titre, corps, lien);
+                    return null;
+                });
+            } catch (RuntimeException ex) {
+                log.warn("Notification « {} » non envoyée à l'utilisateur {} : {}", titre, utilisateurId, ex.getMessage());
+            }
+        });
+    }
 }

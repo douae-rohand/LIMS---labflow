@@ -165,6 +165,28 @@ export async function mesDomaines(): Promise<DomaineTechnicienDto[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Activité récente
+// ---------------------------------------------------------------------------
+
+export interface ActiviteRecenteDto {
+  ligneEssaiId: number | null;
+  codeLigne: string | null;
+  essaiCode: string | null;
+  essaiDesignation: string | null;
+  action: string;
+  dateAction: string;
+  motif: string | null;
+}
+
+export async function activiteRecente(limit = 10): Promise<ActiviteRecenteDto[]> {
+  const res = await apiClient.get<ApiResponse<ActiviteRecenteDto[]>>(
+    "/technicien/activite-recente",
+    { params: { limit } },
+  );
+  return res.data;
+}
+
+// ---------------------------------------------------------------------------
 // Écriture
 // ---------------------------------------------------------------------------
 

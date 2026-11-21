@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -52,6 +53,27 @@ public interface FactureRepository extends JpaRepository<Facture, Long> {
     boolean existsByDemandeId(Long demandeId);
 
     List<Facture> findByDemande_Id(Long demandeId);
+
+    @Query("""
+            SELECT f FROM Facture f
+            JOIN FETCH f.demande d
+            LEFT JOIN FETCH d.client c
+            WHERE f.statut IN ('EN_RETARD', 'IMPAYEE', 'EMISE')
+              AND f.dateEcheance < :aujourdHui
+              AND f.montantHt > COALESCE((SELECT SUM(p.montant) FROM Paiement p WHERE p.facture = f), 0)
+              AND (f.dateDerniereRelance IS NULL OR f.dateDerniereRelance < :limiteRelance)
+            ORDER BY f.dateEcheance ASC
+            """)
+    List<Facture> listerEchuesPourRelance(@Param("aujourdHui") java.time.LocalDate aujourdHui,
+                                         @Param("limiteRelance") java.time.LocalDate limiteRelance);
+
+    @Query("SELECT COALESCE(SUM(p.montant), 0) FROM Paiement p WHERE p.facture.id = :factureId")
+    java.math.BigDecimal montantPaye(@Param("factureId") Long factureId);
+
+    @Modifying
+    @Query(value = "UPDATE facture SET date_derniere_relance = CURDATE() WHERE id_facture = :factureId",
+            nativeQuery = true)
+    int marquerRelanceEnvoyee(@Param("factureId") Long factureId);
 
     @Query("""
             SELECT new com.backend.modules.facturation.dto.DemandeFacturableDto(

@@ -253,13 +253,10 @@ export function DetailEssaiTechnicien({ id }: { id: number }) {
           )}
         </div>
 
-        {/* Colonne droite : Temps + Historique + Validation technique + Non réalisable */}
+          {/* Colonne droite : Temps + Historique + Validation technique + Non réalisable */}
         <aside aria-label="Informations complémentaires" className="space-y-5 lg:col-span-5">
 
-          {/* 3. Temps passé */}
           <BlocTemps id={id} dureeMinutes={ligne.dureeMinutes} />
-
-          {/* 4. Historique */}
           <HistoriqueEssai ligne={ligne} />
 
           {/* 5. Validation technique */}

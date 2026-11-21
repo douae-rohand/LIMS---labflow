@@ -19,6 +19,23 @@ public interface JournalAuditRepository extends JpaRepository<JournalAudit, Long
 
     List<JournalAudit> findByDateActionBetween(Instant debut, Instant fin);
 
+    /**
+     * Derniers événements liés aux essais du technicien donné,
+     * filtrés sur les actions métier de l'espace technicien.
+     * La requête porte sur le schéma CENTRAL (journal_audit + utilisateur y sont).
+     */
+    @Query("""
+            SELECT j FROM JournalAudit j
+            JOIN FETCH j.utilisateur u
+            WHERE u.email = :email
+              AND j.action IN :actions
+            ORDER BY j.dateAction DESC
+            """)
+    List<JournalAudit> findActiviteRecente(
+            @Param("email") String email,
+            @Param("actions") java.util.Collection<String> actions,
+            Pageable pageable);
+
     Page<JournalAudit> findByAction(String action, Pageable pageable);
 
     @Query("SELECT DISTINCT j.action FROM JournalAudit j WHERE j.action IS NOT NULL ORDER BY j.action")

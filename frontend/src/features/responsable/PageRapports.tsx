@@ -37,7 +37,9 @@ function dateRapport(rapport: RapportTravail): number {
 }
 
 function estASigner(rapport: RapportTravail): boolean {
-  return rapport.statut === "GENERE" || rapport.statut === "BROUILLON";
+  // Une demande devient prête au rapport après validation, avant la génération du rapport.
+  // Dans ce cas le backend renvoie statut=null : elle doit rester « À signer », jamais « Envoyé ».
+  return rapport.statut == null || rapport.statut === "GENERE" || rapport.statut === "BROUILLON";
 }
 
 function estAEnvoyer(rapport: RapportTravail): boolean {
@@ -320,7 +322,7 @@ function BoutonRenvoi({ rapportId }: { rapportId: number }) {
   const renvoi = useMutation({
     mutationFn: () => renvoyerRapport(rapportId),
     onSuccess: () => {
-      toast.success("E-mail renvoyé au client.");
+      toast.success("Demande de renvoi transmise à n8n.");
       setConfirmer(false);
     },
     onError: (erreur) => toast.error(messageErreur(erreur, "Le renvoi a échoué.")),

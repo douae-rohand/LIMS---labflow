@@ -142,6 +142,8 @@ minio:
 # ============================================================
 n8n:
   webhook-base-url: ${N8N_WEBHOOK_BASE_URL:http://localhost:5678/webhook}
+  webhook-secret: ${N8N_WEBHOOK_SECRET:}
+  timeout-ms: ${N8N_TIMEOUT_MS:5000}
 
 # ============================================================
 # SendGrid — API v3 (e-mails transactionnels)

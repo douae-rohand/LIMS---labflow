@@ -51,3 +51,5 @@ logs/
 .claude/
 backend/seed
 .agents/tasks/
+
+data/modeles/

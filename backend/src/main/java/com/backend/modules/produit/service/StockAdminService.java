@@ -31,6 +31,7 @@ public class StockAdminService {
     private final ProduitRepository produitRepository;
     private final LotRepository lotRepository;
     private final JournalAuditService journalAuditService;
+    private final com.backend.modules.notification.service.NotificationsLaboratoire notificationsLaboratoire;
 
     private static final int DELAI_PEREMPTION_DEFAUT = 30;
 
@@ -75,6 +76,7 @@ public class StockAdminService {
     public ProduitDto modifierProduit(Long id, ModifierProduitRequest request) {
         Produit produit = produitRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Produit", "id", id));
+        boolean dejaSousSeuil = estSousSeuil(produit);
 
         if (request.getNom() != null) produit.setNom(request.getNom());
         if (request.getUnite() != null) produit.setUnite(request.getUnite());
@@ -83,6 +85,7 @@ public class StockAdminService {
         if (request.getActif() != null) produit.setActif(request.getActif());
 
         produit = produitRepository.save(produit);
+        notifierFranchissementSeuil(produit, dejaSousSeuil);
 
         journalAuditService.enregistrer("MODIFICATION_PRODUIT", "Produit", produit.getId(),
                 SecurityUtils.principalCourant().getEmail(), null, null, null);
@@ -117,6 +120,7 @@ public class StockAdminService {
     public LotDto creerLot(CreerLotRequest request) {
         Produit produit = produitRepository.findById(request.getProduitId())
                 .orElseThrow(() -> new ResourceNotFoundException("Produit", "id", request.getProduitId()));
+        boolean dejaSousSeuil = estSousSeuil(produit);
 
         if (lotRepository.existsByProduitIdAndNumero(request.getProduitId(), request.getNumero())) {
             throw new BusinessRuleException("LOT_DEJA_EXISTANT",
@@ -132,6 +136,7 @@ public class StockAdminService {
                 .build();
 
         lot = lotRepository.save(lot);
+        notifierFranchissementSeuil(produit, dejaSousSeuil);
 
         journalAuditService.enregistrer("ENTREE_LOT", "Lot", lot.getId(),
                 SecurityUtils.principalCourant().getEmail(), "{\"quantite\": 0}",
@@ -144,6 +149,8 @@ public class StockAdminService {
     public LotDto ajusterStock(Long lotId, AjusterStockRequest request) {
         Lot lot = lotRepository.findById(lotId)
                 .orElseThrow(() -> new ResourceNotFoundException("Lot", "id", lotId));
+        Produit produit = lot.getProduit();
+        boolean dejaSousSeuil = produit != null && estSousSeuil(produit);
 
         BigDecimal quantiteAvant = lot.getQuantite();
         BigDecimal nouvelleQuantite;
@@ -163,6 +170,7 @@ public class StockAdminService {
 
         lot.setQuantite(nouvelleQuantite);
         lot = lotRepository.save(lot);
+        if (produit != null) notifierFranchissementSeuil(produit, dejaSousSeuil);
 
         journalAuditService.enregistrer("AJUSTEMENT_STOCK", "Lot", lot.getId(),
                 SecurityUtils.principalCourant().getEmail(),
@@ -197,6 +205,24 @@ public class StockAdminService {
     @Transactional(readOnly = true)
     public Page<Object[]> tousEmployes(Pageable pageable) {
         return produitRepository.listeEmployes(pageable);
+    }
+
+    private boolean estSousSeuil(Produit produit) {
+        BigDecimal stockDisponible = lotRepository.sumQuantiteByProduitId(produit.getId());
+        if (stockDisponible == null) stockDisponible = BigDecimal.ZERO;
+        BigDecimal seuil = produit.getSeuilMinimal() == null ? BigDecimal.ZERO : produit.getSeuilMinimal();
+        return stockDisponible.compareTo(seuil) < 0;
+    }
+
+    private void notifierFranchissementSeuil(Produit produit, boolean dejaSousSeuil) {
+        if (!dejaSousSeuil && estSousSeuil(produit)) {
+            Long laboratoireId = SecurityUtils.principalCourant().getLaboratoireId();
+            notificationsLaboratoire.notifierApresCommit(
+                    com.backend.modules.utilisateur.entity.RoleUtilisateur.ADMINISTRATEUR,
+                    laboratoireId, "STOCK_SOUS_SEUIL", "Stock sous le seuil minimal",
+                    "Le stock disponible de « " + produit.getNom() + " » est passé sous le seuil configuré.",
+                    "/app/stock");
+        }
     }
 
     private ProduitDto toProduitDto(Produit produit) {

@@ -16,6 +16,8 @@ public interface EnqueteSatisfactionRepository extends JpaRepository<EnqueteSati
 
     boolean existsByDemande_Id(Long demandeId);
 
+    Optional<EnqueteSatisfaction> findByDemande_Id(Long demandeId);
+
     @Query("SELECT AVG(e.noteGlobale) FROM EnqueteSatisfaction e")
     Double calculerMoyenneGlobale();
 
