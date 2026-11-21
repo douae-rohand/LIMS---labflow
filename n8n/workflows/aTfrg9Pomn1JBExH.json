@@ -1,0 +1,134 @@
+{
+  "updatedAt": "2026-11-21T22:43:22.577Z",
+  "createdAt": "2026-11-21T22:09:39.665Z",
+  "id": "aTfrg9Pomn1JBExH",
+  "name": "W8 essai-affecte",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "essai-affecte",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "64ee4473-9db5-4c7d-8f4d-b634c8a4bd49",
+      "name": "Webhook1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        144,
+        144
+      ],
+      "webhookId": "a39d2d4b-dc69-470c-a764-e973771d646e",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "tluIM8zoebtaqQes",
+          "name": "LIMS Webhook Authentication"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true } }}",
+        "options": {}
+      },
+      "id": "f464013c-87d7-4cd1-a5a2-f5e9147a2729",
+      "name": "Repondre ",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        368,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "LabFlow LIMS <tafraouti.sanae1@gmail.com>",
+        "toEmail": "={{ ($json.body.technicienEmail || $json.body.email) }}",
+        "subject": "={{ 'Nouvel essai affecté' + ($json.body.reaffectation ? ' (réaffectation)' : '') }}",
+        "html": "=<div style=\"margin:0;padding:24px 12px;background:#F4F7F6;font-family:Arial,Helvetica,sans-serif;color:#1A2A2E\">\n  <div style=\"display:none;max-height:0;overflow:hidden;opacity:0\">\n    Un nouvel essai vous a été affecté.\n  </div>\n\n  <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"max-width:600px;margin:0 auto;background:#FFFFFF;border-radius:16px;overflow:hidden\">\n    <tr>\n      <td style=\"padding:22px 28px;background:#1A4A54\">\n        <p style=\"margin:0;color:#C8E86A;font-size:13px;font-weight:bold;letter-spacing:1px\">LABFLOW LIMS</p>\n        <h1 style=\"margin:8px 0 0;color:#FFFFFF;font-size:22px;line-height:1.3\">Un essai vous a été affecté</h1>\n      </td>\n    </tr>\n\n    <tr>\n      <td style=\"padding:28px;background:#FFFFFF;color:#1A2A2E;font-size:15px;line-height:1.6\">\n        <p style=\"margin:0 0 12px;color:#1A2A2E\">\n          {{ 'Bonjour ' + $json.body.nom + ',' }}\n        </p>\n\n        <p style=\"margin:0 0 16px;color:#1A2A2E\">\n          Un essai nécessite votre prise en charge. Voici les informations associées :\n        </p>\n\n        <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"margin:16px 0;border:1px solid #D7E4E2;border-radius:12px;background:#FFFFFF\">\n          <tr>\n            <td style=\"width:35%;padding:11px 14px;color:#5B6B70;font-size:14px;border-bottom:1px solid #EEF3F2\">Essai</td>\n            <td style=\"padding:11px 14px;background:#FFFFFF;color:#1A2A2E;font-size:14px;font-weight:bold;border-bottom:1px solid #EEF3F2\">\n              {{ $json.body.designationEssai || 'Non renseigné' }}\n              {{ $json.body.reaffectation ? '(réaffectation)' : '' }}\n            </td>\n          </tr>\n          <tr>\n            <td style=\"padding:11px 14px;color:#5B6B70;font-size:14px;border-bottom:1px solid #EEF3F2\">Échantillon</td>\n            <td style=\"padding:11px 14px;background:#FFFFFF;color:#1A2A2E;font-size:14px;font-weight:bold;border-bottom:1px solid #EEF3F2\">\n              {{ $json.body.referenceEchantillon || 'Non renseigné' }}\n            </td>\n          </tr>\n          <tr>\n            <td style=\"padding:11px 14px;color:#5B6B70;font-size:14px;border-bottom:1px solid #EEF3F2\">Demande</td>\n            <td style=\"padding:11px 14px;background:#FFFFFF;color:#1A2A2E;font-size:14px;font-weight:bold;border-bottom:1px solid #EEF3F2\">\n              {{ $json.body.referenceDemande || 'Non renseignée' }}\n            </td>\n          </tr>\n          <tr>\n            <td style=\"padding:11px 14px;color:#5B6B70;font-size:14px;border-bottom:1px solid #EEF3F2\">Code de l’essai</td>\n            <td style=\"padding:11px 14px;background:#FFFFFF;color:#1A2A2E;font-size:14px;font-weight:bold;border-bottom:1px solid #EEF3F2\">\n              {{ $json.body.codeLigne || 'Non renseigné' }}\n            </td>\n          </tr>\n          <tr>\n            <td style=\"padding:11px 14px;color:#5B6B70;font-size:14px\">Date prévue</td>\n            <td style=\"padding:11px 14px;background:#FFFFFF;color:#1A2A2E;font-size:14px;font-weight:bold\">\n              {{ $json.body.datePrevue || 'À définir' }}\n            </td>\n          </tr>\n        </table>\n\n        <p style=\"margin:0 0 12px;color:#1A2A2E\">\n          Laboratoire : <strong>{{ $json.body.nomLaboratoire || 'Non renseigné' }}</strong>\n        </p>\n\n        <p style=\"margin:0 0 12px;color:#1A2A2E\">\n          Consultez votre espace technicien pour prendre en charge cet essai.\n        </p>\n\n        <p style=\"margin:24px 0 0;color:#5B6B70;font-size:13px\">L’équipe LabFlow</p>\n      </td>\n    </tr>\n\n    <tr>\n      <td style=\"padding:16px 28px 24px;background:#FFFFFF;color:#7A8A8E;font-size:12px\">\n        Cet e-mail a été envoyé automatiquement. Merci de ne pas y répondre.\n      </td>\n    </tr>\n  </table>\n</div>",
+        "options": {}
+      },
+      "id": "f1fd5740-ea86-4f84-a1dd-d99a838e0e77",
+      "name": "E-mail technicien1",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        592,
+        144
+      ],
+      "webhookId": "c5b09382-2fab-4610-ae7f-f5348c298d76",
+      "credentials": {
+        "smtp": {
+          "id": "mXLSKFcgTUXitKSa",
+          "name": "LIMS SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Repondre ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repondre ": {
+      "main": [
+        [
+          {
+            "node": "E-mail technicien1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "e0840661-d303-4403-a463-021dde131d53",
+  "activeVersionId": "e0840661-d303-4403-a463-021dde131d53",
+  "versionCounter": 8,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-11-21T22:09:39.667Z",
+      "createdAt": "2026-11-21T22:09:39.667Z",
+      "role": "workflow:owner",
+      "workflowId": "aTfrg9Pomn1JBExH",
+      "projectId": "ZEnGcqU1t6ecfvab",
+      "project": {
+        "updatedAt": "2026-11-20T22:42:56.230Z",
+        "createdAt": "2026-06-05T10:23:16.200Z",
+        "id": "ZEnGcqU1t6ecfvab",
+        "name": "douae rohand <rohand.douae@etu.uae.ac.ma>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "263edc04-e1c0-4ec2-826b-a433682d60a8"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": "Version 3",
+    "description": ""
+  }
+}

@@ -13,6 +13,7 @@ import type { SessionUser } from "@/api/session";
 import { EspaceShell, type EntreeNavigation } from "@/features/shell/EspaceShell";
 import { nombreTotalEssais, usePaniers } from "@/hooks/usePanier";
 import { useSyntheseClient } from "@/hooks/useSyntheseClient";
+import { CloNotifications } from "@/features/super-admin/CloNotifications";
 
 /**
  * Espace client isolé : sidebar dédiée, sans Navbar/Footer publics.
@@ -92,6 +93,7 @@ export function ClientShell({
       titreSection="Mon espace"
       navigation={navigation}
       onLogout={onLogout}
+      actions={<CloNotifications />}
     >
       {children}
     </EspaceShell>

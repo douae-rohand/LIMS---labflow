@@ -35,6 +35,9 @@ public class Facture {
     @Column(name = "date_echeance")
     private LocalDate dateEcheance;
 
+    @Column(name = "date_derniere_relance")
+    private LocalDate dateDerniereRelance;
+
     @Column(name = "montant_ht", nullable = false, precision = 12, scale = 2)
     private BigDecimal montantHt;
 

@@ -33,6 +33,7 @@ public class ActivationCompteService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final com.backend.modules.plateforme.service.ParametrePlateformeService parametrePlateformeService;
+    private final com.backend.modules.notification.service.NotificationsLaboratoire notificationsLaboratoire;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -130,6 +131,14 @@ public class ActivationCompteService {
         }
         token.setUtilise(true);
         log.info("Compte activé : userId={}", utilisateur.getId());
+        if (utilisateur.getLaboratoire() != null && utilisateur.getRole() != null
+                && !"ADMINISTRATEUR".equals(utilisateur.getRole().getCode())) {
+            notificationsLaboratoire.notifierApresCommit(
+                    com.backend.modules.utilisateur.entity.RoleUtilisateur.ADMINISTRATEUR,
+                    utilisateur.getLaboratoire().getId(), "COMPTE_UTILISATEUR_ACTIVE",
+                    "Compte utilisateur activé",
+                    utilisateur.getNomComplet() + " a activé son compte.", "/app/employes");
+        }
     }
 
     private TokenActivation chargerTokenValide(String tokenBrut) {

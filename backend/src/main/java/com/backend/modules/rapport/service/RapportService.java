@@ -9,7 +9,7 @@ import com.backend.common.tenant.TenantContext;
 import com.backend.common.tenant.TenantExecutor;
 import com.backend.common.util.ApresCommit;
 import com.backend.integration.minio.StockageFichierService;
-import com.backend.integration.sendgrid.EmailService;
+import com.backend.integration.n8n.NotificationN8nService;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
 import com.backend.modules.demande.entity.Demande;
 import com.backend.modules.demande.entity.StatutDemande;
@@ -29,6 +29,8 @@ import com.backend.modules.rapport.repository.RapportLigneRepository;
 import com.backend.modules.rapport.repository.RapportRepository;
 import com.backend.modules.rapport.service.RapportPdfService.DonneesRapport;
 import com.backend.modules.rapport.service.RapportPdfService.LigneRapport;
+import com.backend.modules.satisfaction.entity.EnqueteSatisfaction;
+import com.backend.modules.satisfaction.repository.EnqueteSatisfactionRepository;
 import com.backend.modules.utilisateur.entity.Utilisateur;
 import com.backend.modules.utilisateur.repository.UtilisateurRepository;
 import com.backend.modules.validation.entity.StatutValidation;
@@ -56,7 +58,7 @@ import java.util.stream.Collectors;
 /**
  * Rapports d'analyse : génération d'un projet à partir des résultats validés,
  * puis signature et libération par le responsable (PDF figé, empreinte SHA-256,
- * rapport visible du client et e-mail d'information).
+ * rapport visible du client et notification d'information.
  */
 @Slf4j
 @Service
@@ -76,7 +78,8 @@ public class RapportService {
     private final LaboratoireRepository laboratoireRepository;
     private final UtilisateurRepository utilisateurRepository;
     private final JournalAuditService journalAuditService;
-    private final EmailService emailService;
+    private final NotificationN8nService notificationN8nService;
+    private final EnqueteSatisfactionRepository enqueteSatisfactionRepository;
     private final com.backend.modules.rapport.signature.SignatureNumeriqueService signatureNumeriqueService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final com.backend.modules.rapport.signature.SignatureManuscriteService signatureManuscriteService;
@@ -225,7 +228,7 @@ public class RapportService {
     /**
      * Signe le rapport d'une demande en une seule action : le rapport est créé s'il n'existe pas,
      * le PDF est produit avec le cadre de signature, signé numériquement (PAdES), enregistré
-     * et rendu visible au client, qui est prévenu par e-mail.
+     * et rendu visible au client, qui est notifié après commit.
      */
     @Transactional
     public RapportTravailDto signerDemande(Long demandeId, String motDePasse) {
@@ -291,7 +294,7 @@ public class RapportService {
 
     /**
      * Envoie un rapport signé au client : le rapport passe à ENVOYE, la demande est clôturée,
-     * le client est notifié par e-mail.
+     * le client est notifié via le webhook n8n après commit.
      */
     @Transactional
     public RapportTravailDto envoyerRapport(Long rapportId) {
@@ -317,6 +320,16 @@ public class RapportService {
                 null, "{\"numero\":\"" + rapport.getNumero() + "\",\"statut\":\"ENVOYE\"}",
                 null, acteur.getLaboratoireId());
 
+        Instant dateEnvoiEnquete = Instant.now();
+        EnqueteSatisfaction enquete = enqueteSatisfactionRepository.findByDemande_Id(demande.getId())
+                .orElseGet(() -> enqueteSatisfactionRepository.save(EnqueteSatisfaction.builder()
+                        .code("ENQ-" + UUID.randomUUID().toString().substring(0, 12).toUpperCase())
+                        .dateEnvoi(dateEnvoiEnquete)
+                        .dateReponse(null)
+                        .relanceEnvoyee(false)
+                        .demande(demande)
+                        .build()));
+
         // Rapport diffusé mais facture pas encore réglée : l'accueil relance le client au guichet.
         java.math.BigDecimal resteDu = factureRepository.findByDemande_Id(demande.getId()).stream()
                 .filter(f -> !"PAYEE".equals(f.getStatut()) && !"ANNULEE".equals(f.getStatut()))
@@ -332,20 +345,27 @@ public class RapportService {
 
         Long clientId = demande.getClient() == null ? null : demande.getClient().getUtilisateurId();
         String numero = rapport.getNumero();
-        String lien = frontendUrl.replaceAll("/$", "") + "/app/rapports";
-        ApresCommit.executer(() -> {
-            if (clientId == null) {
-                return;
-            }
-            try {
-                Utilisateur client = tenantExecutor.inCentral(() -> utilisateurRepository.findById(clientId).orElse(null));
-                if (client != null && StringUtils.hasText(client.getEmail())) {
-                    emailService.envoyerRapportDisponible(client.getEmail(), nomComplet(client), numero, lien);
-                }
-            } catch (Exception ex) {
-                log.error("E-mail « rapport disponible » non envoyé pour {} : {}", numero, ex.getMessage());
-            }
-        });
+        notificationsLaboratoire.notifierUtilisateurApresCommit(clientId, "RAPPORT_DISPONIBLE",
+                "Votre rapport est disponible", "Le rapport " + numero + " est disponible dans votre espace.",
+                "/app/rapports");
+        String nomSchema = TenantContext.getCurrentTenant();
+        String baseUrl = frontendUrl.replaceAll("/$", "");
+        Long laboratoireId = acteur.getLaboratoireId();
+        Map<String, Object> champsRapport = new HashMap<>();
+        champsRapport.put("rapportId", rapport.getId());
+        champsRapport.put("rapportNumero", numero);
+        champsRapport.put("demandeId", demande.getId());
+        champsRapport.put("demandeReference", demande.getNumero());
+        champsRapport.put("laboratoireId", laboratoireId);
+        champsRapport.put("lienRapport", baseUrl + "/app/rapports");
+        Map<String, Object> champsEnquete = new HashMap<>();
+        champsEnquete.put("demandeId", demande.getId());
+        champsEnquete.put("demandeReference", demande.getNumero());
+        champsEnquete.put("laboratoireId", laboratoireId);
+        champsEnquete.put("enqueteId", enquete.getId());
+        champsEnquete.put("lienEnquete", baseUrl + "/app/enquetes/" + laboratoireId + "/" + enquete.getId());
+        notificationN8nService.notifierClientApresCommit("rapport-signe", nomSchema, clientId, champsRapport);
+        notificationN8nService.notifierClientApresCommit("demande-terminee", nomSchema, clientId, champsEnquete);
         Map<Long, String> noms = assembleur.nomsUtilisateurs(
                 clientId == null ? List.of(acteur.getId()) : List.of(acteur.getId(), clientId));
         return new RapportTravailDto(demande.getId(), demande.getNumero(), demande.getTitre(), nomClient(demande, noms),
@@ -354,7 +374,7 @@ public class RapportService {
     }
 
     /**
-     * Renvoie au client l'e-mail « rapport disponible » d'un rapport déjà signé (CDC M07 :
+     * Republie l'événement « rapport disponible » d'un rapport déjà envoyé (CDC M07 :
      * renvoi sécurisé). Le PDF n'est jamais joint : le lien mène au portail, derrière la connexion.
      */
     @Transactional(readOnly = true)
@@ -366,21 +386,18 @@ public class RapportService {
         }
         Demande demande = rapport.getDemande();
         Long clientId = demande.getClient() == null ? null : demande.getClient().getUtilisateurId();
-        Utilisateur client = clientId == null ? null
-                : tenantExecutor.inCentral(() -> utilisateurRepository.findById(clientId).orElse(null));
-        if (client == null || !StringUtils.hasText(client.getEmail())) {
-            throw new BusinessRuleException("CLIENT_SANS_EMAIL", "Ce client n'a pas d'adresse e-mail : renvoi impossible.");
-        }
-        String lien = frontendUrl.replaceAll("/$", "") + "/app/rapports";
-        var resultat = emailService.envoyerHtml(client.getEmail(),
-                "[LabFlow] Votre rapport " + rapport.getNumero() + " est disponible",
-                com.backend.integration.sendgrid.EmailTemplates.rapportDisponible(nomComplet(client), rapport.getNumero(), lien));
+        String nomSchema = TenantContext.getCurrentTenant();
+        Map<String, Object> champs = new HashMap<>();
+        champs.put("rapportId", rapport.getId());
+        champs.put("rapportNumero", rapport.getNumero());
+        champs.put("demandeId", demande.getId());
+        champs.put("demandeReference", demande.getNumero());
+        champs.put("laboratoireId", acteur.getLaboratoireId());
+        champs.put("lienRapport", frontendUrl.replaceAll("/$", "") + "/app/rapports");
+        notificationN8nService.notifierClientApresCommit("rapport-signe", nomSchema, clientId, champs);
         journalAuditService.enregistrer("RENVOYER_RAPPORT", "Rapport", rapport.getId(), acteur.getEmail(), null,
-                "{\"numero\":\"" + rapport.getNumero() + "\",\"accepte\":" + resultat.accepte() + "}",
+                "{\"numero\":\"" + rapport.getNumero() + "\",\"canal\":\"N8N\"}",
                 null, acteur.getLaboratoireId());
-        if (!resultat.accepte()) {
-            throw new BusinessRuleException("ENVOI_ECHOUE", "L'e-mail n'a pas pu être envoyé. Réessayez plus tard.");
-        }
     }
 
     private Demande demandeTerminee(Long demandeId) {
@@ -553,11 +570,6 @@ public class RapportService {
     private static String joindre(String separateur, String... valeurs) {
         String resultat = Arrays.stream(valeurs).filter(StringUtils::hasText).collect(Collectors.joining(separateur));
         return resultat.isEmpty() ? null : resultat;
-    }
-
-    private static String nomComplet(Utilisateur u) {
-        String prenom = u.getPrenom() == null ? "" : u.getPrenom().trim();
-        return (prenom + " " + (u.getNom() == null ? "" : u.getNom().trim())).trim();
     }
 
     private Rapport charger(Long id) {

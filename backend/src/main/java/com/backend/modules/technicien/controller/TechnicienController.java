@@ -76,7 +76,7 @@ public class TechnicienController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "dateAttribution") String tri,
-            @RequestParam(defaultValue = "asc") String direction,
+            @RequestParam(defaultValue = "desc") String direction,
             @RequestParam(required = false) StatutEssai statut,
             @RequestParam(required = false) Long domaineId,
             @RequestParam(required = false) Long demandeId,
@@ -131,6 +131,19 @@ public class TechnicienController {
     @Operation(summary = "Tableau de bord du technicien")
     public ApiResponse<SyntheseTechnicienDto> synthese() {
         return ApiResponse.success(technicienService.synthese());
+    }
+
+    /**
+     * GET /api/technicien/activite-recente?limit=10
+     * Derniers événements (essai démarré, résultat saisi, validation technique…)
+     * du technicien courant, triés du plus récent au plus ancien.
+     */
+    @GetMapping("/activite-recente")
+    @PreAuthorize("hasAuthority('PERM_PLANIFICATION_STATUT')")
+    @Operation(summary = "Activité récente du technicien (journal d'audit)")
+    public ApiResponse<List<com.backend.modules.technicien.dto.ActiviteRecenteDto>> activiteRecente(
+            @RequestParam(defaultValue = "10") int limit) {
+        return ApiResponse.success(technicienService.activiteRecente(limit));
     }
 
     // =========================================================================

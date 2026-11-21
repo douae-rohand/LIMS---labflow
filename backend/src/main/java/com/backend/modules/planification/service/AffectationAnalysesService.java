@@ -4,7 +4,9 @@ import com.backend.common.audit.JournalAuditService;
 import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.common.security.SecurityUtils;
+import com.backend.common.tenant.TenantContext;
 import com.backend.common.tenant.TenantExecutor;
+import com.backend.integration.n8n.NotificationN8nService;
 import com.backend.modules.auth.security.UtilisateurPrincipal;
 import com.backend.modules.demande.entity.Demande;
 import com.backend.modules.demande.entity.StatutDemande;
@@ -41,6 +43,8 @@ public class AffectationAnalysesService {
     private final JournalAuditService journalAuditService;
     private final TechnicienDomaineService technicienDomaineService;
     private final EtatPaiementService etatPaiementService;
+    private final com.backend.modules.notification.service.NotificationsLaboratoire notificationsLaboratoire;
+    private final NotificationN8nService notificationN8nService;
 
     @Transactional
     public List<LigneTravailDto> affecter(AffecterAnalysesRequest request) {
@@ -82,6 +86,7 @@ public class AffectationAnalysesService {
             throw new BusinessRuleException("DATE_PREVUE_PASSEE", "La date prévue ne peut pas être dans le passé.");
         }
         Set<Demande> demandes = new HashSet<>();
+        String nomSchema = TenantContext.getCurrentTenant();
         Map<Long, String> paiements = etatPaiementService.etatsPaiement(
                 lignes.stream().map(ligne -> ligne.getDemande().getId()).toList());
         for (LigneEssai ligne : lignes) {
@@ -126,6 +131,17 @@ public class AffectationAnalysesService {
                 ligne.setDateDebut(datePrevue);
             }
             ligneEssaiRepository.save(ligne);
+            Map<String, Object> evenementAffectation = new java.util.HashMap<>();
+            evenementAffectation.put("ligneEssaiId", ligne.getId());
+            evenementAffectation.put("codeLigne", ligne.getCode());
+            evenementAffectation.put("designationEssai", ligne.getEssai().getDesignation());
+            evenementAffectation.put("referenceDemande", demande.getNumero());
+            evenementAffectation.put("referenceEchantillon",
+                    ligne.getEchantillon() == null ? null : ligne.getEchantillon().getReference());
+            evenementAffectation.put("datePrevue", request.datePrevue());
+            evenementAffectation.put("reaffectation", avant != null);
+            notificationN8nService.notifierTechnicienApresCommit("essai-affecte", nomSchema,
+                    technicien.getId(), evenementAffectation);
             demandes.add(demande);
             journalAuditService.enregistrer(reaffectation ? "REAFFECTER_ANALYSE" : "AFFECTER_ANALYSE",
                     "LigneEssai", ligne.getId(), acteur.getEmail(),
@@ -138,6 +154,9 @@ public class AffectationAnalysesService {
                 demandeRepository.save(demande);
             }
         }
+        notificationsLaboratoire.notifierUtilisateurApresCommit(technicien.getId(), "ESSAIS_ATTRIBUES",
+                "De nouveaux essais vous sont attribués",
+                lignes.size() + " essai(s) vous ont été attribués. Consultez votre liste d'essais.", "/app/essais");
         return assembleur.assembler(ligneEssaiRepository.findAvecDetails(ligneIds));
     }
 }

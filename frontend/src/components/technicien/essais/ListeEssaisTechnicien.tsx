@@ -62,7 +62,7 @@ export function ListeEssaisTechnicien({ search }: { search: EssaisSearch }) {
     page: page0,
     size: PAGE_SIZE,
     tri: search.tri ?? "dateAttribution",
-    direction: search.direction ?? "asc",
+    direction: search.direction ?? "desc",
     statut: search.statut as ListerEssaisParams["statut"],
     domaineId: search.domaineId,
     debut: search.debut,

@@ -168,6 +168,15 @@ public class ValidationService {
         journalAuditService.enregistrer("DECISION_RESULTAT_" + request.decision().name(), "LigneEssai", ligneId,
                 acteur.getEmail(), valeurAvant == null ? null : "{\"valeur\":\"" + valeurAvant.replace("\"", "") + "\"}",
                 "{\"decision\":\"" + request.decision().name() + "\"}", motif, acteur.getLaboratoireId());
+        if (request.decision() == DecisionValidationRequest.Decision.RETOURNER
+                || request.decision() == DecisionValidationRequest.Decision.REJETER) {
+            String designation = ligne.getEssai() == null ? "Essai" : ligne.getEssai().getDesignation();
+            notificationsLaboratoire.notifierUtilisateurApresCommit(ligne.getTechnicienId(),
+                    "RESULTAT_RETOURNE", "Résultat à corriger : " + demande.getNumero(),
+                    designation + " a été " + (request.decision() == DecisionValidationRequest.Decision.RETOURNER
+                            ? "retourné pour correction" : "rejeté") + ". Motif : " + motif,
+                    "/app/essais");
+        }
         return assembleur.assembler(ligneEssaiRepository.findAvecDetails(List.of(ligneId))).getFirst();
     }
 

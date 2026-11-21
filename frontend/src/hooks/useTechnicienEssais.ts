@@ -33,7 +33,9 @@ import {
   saisirResultat,
   synthese as syntheseApi,
   validerTechniquement,
+  activiteRecente as activiteRecenteApi,
 } from "@/api/technicien";
+import type { ActiviteRecenteDto } from "@/api/technicien";
 import type {
   ImportApercuResponse,
   ImportConfirmerResponse,
@@ -238,5 +240,18 @@ export function useImportConfirmer(
     },
     onError: (error) => toast.error(messageErreurTechnicien(error)),
     ...opts,
+  });
+}
+
+export function useTechnicienActiviteRecente(limit = 10) {
+  const session = getSession();
+  const role = session?.user.role;
+  const estAutorise = role === "TECHNICIEN" || role === "RESPONSABLE" || role === "ADMINISTRATEUR";
+  return useQuery<ActiviteRecenteDto[]>({
+    queryKey: ["technicien", "activite-recente", limit],
+    queryFn: () => activiteRecenteApi(limit),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    enabled: estAutorise,
   });
 }

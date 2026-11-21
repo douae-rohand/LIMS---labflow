@@ -2,6 +2,7 @@ package com.backend.config;
 
 import com.backend.common.security.CustomAccessDeniedHandler;
 import com.backend.common.security.CustomAuthenticationEntryPoint;
+import com.backend.integration.n8n.N8nSecretFilter;
 import com.backend.modules.auth.security.JwtAuthenticationFilter;
 import com.backend.modules.auth.security.MustChangePasswordFilter;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final N8nSecretFilter n8nSecretFilter;
     private final MustChangePasswordFilter mustChangePasswordFilter;
     private final OriginValidationFilter originValidationFilter;
     private final UserDetailsService userDetailsService;
@@ -94,6 +96,7 @@ public class SecurityConfig {
                 ).permitAll()
                 // Landing page : lecture seule des données publiques (rôles, labs actifs, stats)
                 .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
+                .requestMatchers("/api/n8n/**").permitAll()
                 // Logout exige explicitement une authentification (access token)
                 .requestMatchers("/api/auth/logout").authenticated()
                 // Formulaire de demande d'intégration laboratoire (landing publique)
@@ -116,8 +119,10 @@ public class SecurityConfig {
             .authenticationProvider(authenticationProvider())
             // Defense-in-depth Origin check
             .addFilterBefore(originValidationFilter, UsernamePasswordAuthenticationFilter.class)
+            // Les endpoints n8n sont authentifiés exclusivement par le secret partagé.
             // Filtre JWT avant le filtre Spring par défaut
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(n8nSecretFilter, JwtAuthenticationFilter.class)
             // Filtre must_change_password — après JWT (principal déjà chargé), avant @PreAuthorize
             .addFilterAfter(mustChangePasswordFilter, JwtAuthenticationFilter.class);
 

@@ -4,6 +4,8 @@ import com.backend.common.exception.BusinessRuleException;
 import com.backend.common.exception.ResourceNotFoundException;
 import com.backend.common.security.ProprieteClient;
 import com.backend.common.security.SecurityUtils;
+import com.backend.common.tenant.TenantContext;
+import com.backend.integration.n8n.NotificationN8nService;
 import com.backend.modules.demande.entity.Demande;
 import com.backend.modules.demande.repository.DemandeRepository;
 import com.backend.modules.echantillon.dto.EchantillonDto;
@@ -25,6 +27,7 @@ public class EchantillonService {
     private final EchantillonRepository echantillonRepository;
     private final DemandeRepository demandeRepository;
     private final ProprieteClient proprieteClient;
+    private final NotificationN8nService notificationN8nService;
 
     @Transactional(readOnly = true)
     public EchantillonDto trouverParId(Long id) {
@@ -67,7 +70,21 @@ public class EchantillonService {
                 .demande(demande)
                 .receptionneurId(SecurityUtils.principalCourant().getId())
                 .build();
-        return toDto(echantillonRepository.save(echantillon));
+        Echantillon enregistre = echantillonRepository.save(echantillon);
+        String nomSchema = TenantContext.getCurrentTenant();
+        Long clientUtilisateurId = demande.getClient() == null
+                ? null : demande.getClient().getUtilisateurId();
+        java.util.Map<String, Object> evenement = new java.util.HashMap<>();
+        evenement.put("demandeId", demande.getId());
+        evenement.put("referenceDemande", demande.getNumero());
+        evenement.put("referenceEchantillon", enregistre.getReference());
+        evenement.put("nature", enregistre.getNature());
+        evenement.put("dateReception", enregistre.getDateReception());
+        evenement.put("conforme", enregistre.getConformite());
+        evenement.put("motif", enregistre.getMotif());
+        notificationN8nService.notifierClientApresCommit(
+                "echantillon-recu", nomSchema, clientUtilisateurId, evenement);
+        return toDto(enregistre);
     }
 
     private Echantillon charger(Long id) {

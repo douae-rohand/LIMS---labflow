@@ -253,7 +253,7 @@ export function AdminShell({
       titreSection="Laboratoire"
       navigation={navigation}
       onLogout={onLogout}
-      actions={utilisateur.role === "RESPONSABLE" || utilisateur.role === "ACCUEIL" ? <CloNotifications /> : undefined}
+      actions={<CloNotifications />}
     >
       {children}
     </EspaceShell>

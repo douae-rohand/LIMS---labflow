@@ -104,6 +104,7 @@ public class DemandeService {
     private final FacturationAdminService facturationAdminService;
     private final com.backend.integration.sendgrid.EmailService emailService;
     private final com.backend.modules.notification.service.NotificationsLaboratoire notificationsLaboratoire;
+    private final com.backend.integration.n8n.NotificationN8nService notificationN8nService;
     private final com.backend.integration.minio.StockageFichierService stockageFichierService;
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager entityManager;
@@ -192,6 +193,13 @@ public class DemandeService {
         notificationsLaboratoire.notifierApresCommit(com.backend.modules.utilisateur.entity.RoleUtilisateur.RESPONSABLE, laboratoireId,
                 "DEMANDE_SOUMISE", "Nouvelle demande " + demande.getNumero(),
                 "Un client a soumis une demande : elle attend votre décision.", "/app/demandes-clients");
+
+        Map<String, Object> evenementDemande = new HashMap<>();
+        evenementDemande.put("demandeId", demande.getId());
+        evenementDemande.put("referenceDemande", demande.getNumero());
+        evenementDemande.put("titre", demande.getTitre());
+        notificationN8nService.notifierClientApresCommit("demande-soumise", nomSchema, utilisateurId,
+                evenementDemande);
 
         return obtenirDetailClient(utilisateurId, laboratoireId, demande.getId());
     }
@@ -656,6 +664,9 @@ public class DemandeService {
             return;
         }
         String reference = demande.getNumero();
+        notificationsLaboratoire.notifierUtilisateurApresCommit(utilisateurId, "DEMANDE_STATUT_MODIFIE",
+                "Mise à jour de votre demande " + reference,
+                "Votre demande est maintenant « " + libelleStatut + " ».", "/app/demandes");
         com.backend.common.util.ApresCommit.executer(() -> {
             try {
                 Utilisateur client = tenantExecutor.inCentral(() ->

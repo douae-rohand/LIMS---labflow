@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { SessionUser } from "@/api/session";
 import { EspaceShell, type EntreeNavigation } from "@/features/shell/EspaceShell";
 import { useTechnicienSynthese } from "@/hooks/useTechnicienEssais";
+import { CloNotifications } from "@/features/super-admin/CloNotifications";
 
 /**
  * Shell de l'espace Technicien : sidebar EspaceShell avec 4 entrées.
@@ -35,6 +36,7 @@ export function TechnicienShell({
       titreSection="Mon espace"
       navigation={navigation}
       onLogout={onLogout}
+      actions={<CloNotifications />}
     >
       {children}
     </EspaceShell>

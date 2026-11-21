@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.backend.modules.technicien.dto.ActiviteRecenteDto;
 
 /**
  * Service de l'espace technicien.
@@ -95,6 +96,8 @@ public class TechnicienService {
     private final ExigenceEchantillonRepository exigenceEchantillonRepository;
     private final DemandeRepository demandeRepository;
     private final JournalAuditService journalAuditService;
+    private final com.backend.common.audit.JournalAuditRepository journalAuditRepository;
+    private final com.backend.common.tenant.TenantExecutor tenantExecutor;
 
     // =========================================================================
     // LOT A — Lecture
@@ -315,6 +318,75 @@ public class TechnicienService {
                 .build();
     }
 
+    /** Actions métier de l'espace technicien à inclure dans l'activité récente. */
+    private static final List<String> ACTIONS_ACTIVITE = List.of(
+            "ESSAI_DEMARRE", "RESULTAT_SAISI", "VALIDATION_TECHNIQUE",
+            "ESSAI_NON_REALISABLE", "TEMPS_DECLARE"
+    );
+
+    /**
+     * Retourne les {@code limit} derniers événements liés aux essais du technicien courant.
+     * Les entrées du journal ne contiennent pas de référence directe à la ligne d'essai ;
+     * on décode l'identifiant depuis le champ {@code objet} (format "LigneEssai#<id>").
+     */
+    @Transactional(readOnly = true)
+    public List<ActiviteRecenteDto> activiteRecente(int limit) {
+        var principal = SecurityUtils.principalCourant();
+        String email = principal.getEmail();
+        int taille = Math.min(Math.max(1, limit), 50);
+
+        // journal_audit est dans le schéma CENTRAL — exécuter hors contexte tenant
+        List<com.backend.common.audit.JournalAudit> entrees = tenantExecutor.inCentral(() ->
+                journalAuditRepository.findActiviteRecente(
+                        email, ACTIONS_ACTIVITE,
+                        org.springframework.data.domain.PageRequest.of(0, taille))
+        );
+
+        List<Long> ligneIds = entrees.stream()
+                .map(e -> parseIdObjet(e.getObjet(), "LigneEssai"))
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<Long, com.backend.modules.essai.entity.LigneEssai> lignes = ligneIds.isEmpty()
+                ? Map.of()
+                : ligneEssaiRepository.findAllById(ligneIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                com.backend.modules.essai.entity.LigneEssai::getId,
+                                l -> l));
+
+        return entrees.stream().map(e -> {
+            Long ligneId = parseIdObjet(e.getObjet(), "LigneEssai");
+            com.backend.modules.essai.entity.LigneEssai ligne = ligneId != null ? lignes.get(ligneId) : null;
+            return ActiviteRecenteDto.builder()
+                    .ligneEssaiId(ligneId)
+                    .codeLigne(ligne != null ? ligne.getCode() : null)
+                    .essaiCode(ligne != null && ligne.getEssai() != null ? ligne.getEssai().getCode() : null)
+                    .essaiDesignation(ligne != null && ligne.getEssai() != null ? ligne.getEssai().getDesignation() : null)
+                    .action(e.getAction())
+                    .dateAction(e.getDateAction())
+                    .motif(e.getMotif())
+                    .build();
+        }).toList();
+    }
+
+    /**
+     * Extrait l'identifiant numérique depuis un champ objet de la forme "TypeObjet#<id>"
+     * ou "schema/TypeObjet#<id>". Retourne null si le format ne correspond pas.
+     */
+    private static Long parseIdObjet(String objet, String type) {
+        if (objet == null) return null;
+        // Supporte "LigneEssai#42" et "schema/LigneEssai#42"
+        int idx = objet.lastIndexOf(type + "#");
+        if (idx < 0) return null;
+        String apres = objet.substring(idx + type.length() + 1);
+        try {
+            return Long.parseLong(apres.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private long compterPrioritesUniques(Long technicienId) {
         Set<Long> ids = new java.util.HashSet<>();
         ids.addAll(ligneEssaiRepository.findIdsEnRetardPourTechnicien(technicienId));
@@ -392,7 +464,7 @@ public class TechnicienService {
             throw new BusinessRuleException("TRI_INVALIDE",
                     "Champ de tri invalide. Valeurs autorisées : " + CHAMPS_TRI_AUTORISES);
         }
-        String dir = (direction == null || direction.isBlank()) ? "asc" : direction.trim().toLowerCase();
+        String dir = (direction == null || direction.isBlank()) ? "desc" : direction.trim().toLowerCase();
         Sort.Direction sortDir = switch (dir) {
             case "asc" -> Sort.Direction.ASC;
             case "desc" -> Sort.Direction.DESC;
