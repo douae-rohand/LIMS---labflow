@@ -1,0 +1,196 @@
+{
+  "name": "W6 rappel-validation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "81122c3b-77ab-40db-ac6c-afac0f974d9a",
+      "name": "Toutes les heures",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8081/api/n8n/resultats-en-attente",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "heures",
+              "value": "24"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7b7f7a18-1343-4a85-a7a8-45e2361ddcb2",
+      "name": "Resultats en attente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "tluIM8zoebtaqQes",
+          "name": "LIMS Webhook Authentication"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "604919a6-060b-417b-b286-cff7e244dfa6",
+              "leftValue": "={{ $json.total }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2245f687-a5e8-420b-bc7e-6def63d4e1dd",
+      "name": "Liste non vide ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Un e-mail récapitulatif par Responsable : regroupe les résultats en attente par adresse.\nconst lignes = $('Resultats en attente').first().json.resultats || [];\nconst parResponsable = {};\nfor (const r of lignes) {\n  const cle = r.responsableEmail;\n  if (!parResponsable[cle]) parResponsable[cle] = { email: cle, nom: r.responsableNom, lien: r.lienValidation, resultats: [] };\n  parResponsable[cle].resultats.push(r);\n}\nconst ligneHtml = (r) => '<tr>'\n  + '<td style=\"padding:8px;border-bottom:1px solid #E3E9E7\">' + (r.critique ? '<b style=\"color:#B3261E\">Critique</b> ' : '') + r.analyse + '</td>'\n  + '<td style=\"padding:8px;border-bottom:1px solid #E3E9E7\">' + r.demandeReference + '</td>'\n  + '<td style=\"padding:8px;border-bottom:1px solid #E3E9E7\">' + (r.nomLaboratoire || '') + '</td>'\n  + '<td style=\"padding:8px;border-bottom:1px solid #E3E9E7;text-align:right\">' + r.heuresAttente + ' h</td></tr>';\nreturn Object.values(parResponsable).map(g => {\n  const n = g.resultats.length;\n  const critiques = g.resultats.filter(r => r.critique).length;\n  const html = '<div style=\"margin:0;padding:24px 12px;background:#F4F7F6;font-family:Arial,Helvetica,sans-serif;color:#1A2A2E\">'\n    + '<table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"max-width:600px;margin:0 auto;background:#FFFFFF;border-radius:16px;overflow:hidden\">'\n    + '<tr><td style=\"padding:22px 28px;background:#1A4A54\"><p style=\"margin:0;color:#C8E86A;font-size:13px;font-weight:bold;letter-spacing:1px\">LABFLOW LIMS</p>'\n    + '<h1 style=\"margin:8px 0 0;color:#FFFFFF;font-size:22px;line-height:1.3\">Résultats en attente de validation</h1></td></tr>'\n    + '<tr><td style=\"padding:28px;font-size:15px;line-height:1.6\">'\n    + '<p style=\"margin:0 0 12px\">Bonjour ' + (g.nom || '') + ',</p>'\n    + '<p style=\"margin:0 0 12px\">' + n + ' résultat(s) validé(s) par les techniciens attendent votre décision'\n    + (critiques ? ', dont <b style=\"color:#B3261E\">' + critiques + ' critique(s)</b>' : '') + '.</p>'\n    + '<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"font-size:14px;border-collapse:collapse\">'\n    + '<tr style=\"background:#F4F7F6\"><th align=\"left\" style=\"padding:8px\">Analyse</th><th align=\"left\" style=\"padding:8px\">Demande</th>'\n    + '<th align=\"left\" style=\"padding:8px\">Laboratoire</th><th align=\"right\" style=\"padding:8px\">Attente</th></tr>'\n    + g.resultats.map(ligneHtml).join('') + '</table>'\n    + '<a href=\"' + g.lien + '\" style=\"display:inline-block;margin:20px 0 8px;padding:12px 22px;border-radius:999px;background:#1A4A54;color:#FFFFFF;font-size:14px;font-weight:bold;text-decoration:none\">Valider les résultats</a>'\n    + '<p style=\"margin:24px 0 0;color:#5B6B70;font-size:13px\">L’équipe LabFlow</p></td></tr>'\n    + '<tr><td style=\"padding:16px 28px 24px;color:#7A8A8E;font-size:12px\">Cet e-mail a été envoyé automatiquement. Merci de ne pas y répondre.</td></tr></table></div>';\n  return { json: { to: g.email, subject: n + ' résultat(s) en attente de votre validation' + (critiques ? ' (' + critiques + ' critique(s))' : ''), html } };\n});"
+      },
+      "id": "468f5c9a-20e4-473c-a6f9-956f60548275",
+      "name": "Regrouper par Responsable",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "LabFlow LIMS <tafraouti.sanae1@gmail.com>",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "909e3522-1d77-4bbd-b10e-65c033281be4",
+      "name": "E-mail recapitulatif",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        896,
+        -96
+      ],
+      "webhookId": "feda611b-80bf-4d54-a93f-018503044f1f",
+      "credentials": {
+        "smtp": {
+          "id": "mXLSKFcgTUXitKSa",
+          "name": "LIMS SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "971da49e-f5bd-4112-a1c3-e77a32d30d14",
+      "name": "Rien a rappeler",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        672,
+        96
+      ]
+    }
+  ],
+  "connections": {
+    "Toutes les heures": {
+      "main": [
+        [
+          {
+            "node": "Resultats en attente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resultats en attente": {
+      "main": [
+        [
+          {
+            "node": "Liste non vide ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Liste non vide ?": {
+      "main": [
+        [
+          {
+            "node": "Regrouper par Responsable",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rien a rappeler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Regrouper par Responsable": {
+      "main": [
+        [
+          {
+            "node": "E-mail recapitulatif",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}
