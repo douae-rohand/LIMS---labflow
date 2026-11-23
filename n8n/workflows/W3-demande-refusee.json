@@ -1,0 +1,98 @@
+{
+  "name": "W3 demande-refusee",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "demande-refusee",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "997cef07-e317-4513-a6fb-cf0d847d947e",
+      "name": "Webhook (signature)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "1ba51c84-e64a-46b0-a561-7429de6b39f6",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "tluIM8zoebtaqQes",
+          "name": "LIMS Webhook Authentication"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true } }}",
+        "options": {}
+      },
+      "id": "08fcab90-59f1-4a3a-8df0-3e7faa4e6fbf",
+      "name": "Repondre 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "LabFlow LIMS <tafraouti.sanae1@gmail.com>",
+        "toEmail": "={{ $json.body.email }}",
+        "subject": "={{ 'Demande ' + $json.body.referenceDemande + ' refusée' }}",
+        "html": "=<div style=\"margin:0;padding:24px 12px;background:#F4F7F6;font-family:Arial,Helvetica,sans-serif;color:#1A2A2E\"><div style=\"display:none;max-height:0;overflow:hidden;opacity:0\">Le laboratoire a refusé votre demande.</div><table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"max-width:600px;margin:0 auto;background:#FFFFFF;border-radius:16px;overflow:hidden\"><tr><td style=\"padding:22px 28px;background:#1A4A54\"><p style=\"margin:0;color:#C8E86A;font-size:13px;font-weight:bold;letter-spacing:1px\">LABFLOW LIMS</p><h1 style=\"margin:8px 0 0;color:#FFFFFF;font-size:22px;line-height:1.3\">Votre demande n’a pas été acceptée</h1></td></tr><tr><td style=\"padding:28px;font-size:15px;line-height:1.6\"><p style=\"margin:0 0 12px\">{{ 'Bonjour ' + $json.body.nom + ',' }}</p><p style=\"margin:0 0 12px\">{{ $json.body.nomLaboratoire + ' ne peut pas donner suite à votre demande ' + $json.body.referenceDemande + ' (« ' + $json.body.titre + ' »).' }}</p><p style=\"margin:0 0 6px;font-weight:bold\">Motif du refus</p><p style=\"margin:0 0 12px;padding:12px 16px;background:#FDF2F1;border-left:4px solid #B3261E;border-radius:8px\">{{ $json.body.motif || 'Non précisé' }}</p><p style=\"margin:0 0 12px\">Aucun montant ne vous est facturé pour cette demande. Vous pouvez soumettre une nouvelle demande, auprès de ce laboratoire ou d’un autre.</p><a href=\"{{ $json.body.lienCatalogue }}\" style=\"display:inline-block;margin:16px 0 8px;padding:12px 22px;border-radius:999px;background:#1A4A54;color:#FFFFFF;font-size:14px;font-weight:bold;text-decoration:none\">Voir les laboratoires</a><p style=\"margin:24px 0 0;color:#5B6B70;font-size:13px\">L’équipe LabFlow</p></td></tr><tr><td style=\"padding:16px 28px 24px;color:#7A8A8E;font-size:12px\">Cet e-mail a été envoyé automatiquement. Merci de ne pas y répondre.</td></tr></table></div>",
+        "options": {}
+      },
+      "id": "66292904-4b95-4c83-ac62-a02e8345823d",
+      "name": "E-mail client",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        448,
+        0
+      ],
+      "webhookId": "1b992b75-405e-4628-95f0-5e0d290dda62",
+      "credentials": {
+        "smtp": {
+          "id": "mXLSKFcgTUXitKSa",
+          "name": "LIMS SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook (signature)": {
+      "main": [
+        [
+          {
+            "node": "Repondre 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repondre 200": {
+      "main": [
+        [
+          {
+            "node": "E-mail client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

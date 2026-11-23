@@ -35,32 +35,44 @@ public class NotificationN8nService {
         notifierApresCommit(type, nomSchema, utilisateurId, champs);
     }
 
+    /**
+     * Publie tout de suite, pour un appelant qui s'exécute déjà après le commit (par exemple après
+     * l'émission automatique de la facture) : une synchronisation enregistrée à ce moment-là ne
+     * serait jamais déclenchée.
+     */
+    public void notifierClientMaintenant(String type, String nomSchema, Long utilisateurId,
+                                         Map<String, Object> champs) {
+        publier(type, nomSchema, utilisateurId, new HashMap<>(champs));
+    }
+
     private void notifierApresCommit(String type, String nomSchema, Long utilisateurId,
                                      Map<String, Object> champs) {
         Map<String, Object> champsCaptures = new HashMap<>(champs);
-        ApresCommit.executer(() -> {
-            try {
-                Destinataire destinataire = utilisateurId == null ? null
-                        : tenantExecutor.inCentral(() -> utilisateurRepository.findById(utilisateurId)
-                                .map(utilisateur -> versDestinataire(utilisateur, nomSchema))
-                                .orElse(null));
-                if (destinataire == null || !StringUtils.hasText(destinataire.email())) {
-                    log.warn("Publication n8n ignorée : destinataire sans e-mail (type={})", type);
-                    return;
-                }
+        ApresCommit.executer(() -> publier(type, nomSchema, utilisateurId, champsCaptures));
+    }
 
-                Map<String, Object> payload = new HashMap<>(champsCaptures);
-                payload.put("email", destinataire.email());
-                payload.put("nom", destinataire.nom());
-                if (StringUtils.hasText(destinataire.nomLaboratoire())) {
-                    payload.put("nomLaboratoire", destinataire.nomLaboratoire());
-                }
-                publisher.publier(type, nomSchema, payload);
-            } catch (RuntimeException ex) {
-                log.warn("Publication n8n ignorée : type={}, erreur={}", type,
-                        ex.getClass().getSimpleName());
+    private void publier(String type, String nomSchema, Long utilisateurId, Map<String, Object> champsCaptures) {
+        try {
+            Destinataire destinataire = utilisateurId == null ? null
+                    : tenantExecutor.inCentral(() -> utilisateurRepository.findById(utilisateurId)
+                            .map(utilisateur -> versDestinataire(utilisateur, nomSchema))
+                            .orElse(null));
+            if (destinataire == null || !StringUtils.hasText(destinataire.email())) {
+                log.warn("Publication n8n ignorée : destinataire sans e-mail (type={})", type);
+                return;
             }
-        });
+
+            Map<String, Object> payload = new HashMap<>(champsCaptures);
+            payload.put("email", destinataire.email());
+            payload.put("nom", destinataire.nom());
+            if (StringUtils.hasText(destinataire.nomLaboratoire())) {
+                payload.put("nomLaboratoire", destinataire.nomLaboratoire());
+            }
+            publisher.publier(type, nomSchema, payload);
+        } catch (RuntimeException ex) {
+            log.warn("Publication n8n ignorée : type={}, erreur={}", type,
+                    ex.getClass().getSimpleName());
+        }
     }
 
     private Destinataire versDestinataire(Utilisateur utilisateur, String nomSchema) {

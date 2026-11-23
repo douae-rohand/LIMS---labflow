@@ -73,12 +73,12 @@ public class ReceptionService {
      * elle peut déjà être « en validation » alors que des échantillons manquent encore.
      * Seules les analyses sans échantillon conforme peuvent être couvertes (voir {@code aRecevoir}).
      */
-    static final List<String> STATUTS_RECEVABLES = List.of(StatutDemande.ACCEPTEE.name(), StatutDemande.EN_COURS.name(),
-            StatutDemande.EN_VALIDATION.name());
+    static final List<String> STATUTS_RECEVABLES = StatutDemande.noms(StatutDemande.EN_TRAITEMENT);
     private static final ZoneId FUSEAU = ZoneId.of("Africa/Casablanca");
     private static final DateTimeFormatter MOIS = DateTimeFormatter.ofPattern("yyyyMM");
 
     private final ReceptionRepository receptionRepository;
+    private final com.backend.modules.demande.service.AvancementDemandeService avancementDemande;
     private final ExigenceEchantillonRepository exigenceEchantillonRepository;
     private final LigneTravailAssembleur assembleur;
     private final UtilisateurRepository utilisateurRepository;
@@ -271,6 +271,8 @@ public class ReceptionService {
                             + "\",\"conforme\":" + recu.conforme() + ",\"analyses\":\"" + String.join(",", codes) + "\"}",
                     echantillon.getMotif(), acteur.getLaboratoireId());
         }
+        // ECHANTILLONS_RECUS (ou PLANIFIEE) quand toutes les analyses ont un échantillon conforme
+        avancementDemande.recalculer(demande, acteur.getEmail(), acteur.getLaboratoireId());
         prevenir(demande, acteur, recus, nonConformes, techniciens);
         return detail(demandeId);
     }

@@ -12,8 +12,10 @@ Le responsable du laboratoire étudie chaque nouvelle demande. Il peut l'accepte
 
 ## Les statuts d'une demande
 - Nouveau : la demande est envoyée et attend l'étude du laboratoire.
-- Acceptée : le laboratoire a accepté la demande ; il attend votre échantillon et votre paiement.
-- En cours : les analyses sont en cours de réalisation.
+- Acceptée : le laboratoire a accepté la demande ; il attend votre échantillon et votre paiement. Si un échantillon est non conforme, la demande reste « Acceptée » jusqu'à la réception d'un nouvel échantillon.
+- Échantillons reçus : tous vos échantillons sont arrivés au laboratoire et sont conformes.
+- Planifiée : chaque analyse est confiée à un technicien du laboratoire.
+- En cours : un technicien a commencé les analyses.
 - En validation : les résultats sont en cours de vérification par le laboratoire.
 - Terminée : le rapport est signé et disponible dans votre espace.
 - Refusée : le laboratoire a refusé la demande (voir le motif).

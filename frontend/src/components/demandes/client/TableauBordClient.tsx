@@ -42,7 +42,7 @@ import type { FactureResumeClient } from "@/api/facturesClient";
 import { cn } from "@/lib/utils";
 
 /** Statuts regroupés sous « en cours » dans le tableau de bord. */
-const STATUTS_EN_COURS: StatutDemande[] = ["ACCEPTEE", "EN_COURS", "EN_VALIDATION"];
+const STATUTS_EN_COURS: StatutDemande[] = ["ACCEPTEE", "ECHANTILLONS_RECUS", "PLANIFIEE", "EN_COURS", "EN_VALIDATION"];
 
 export function TableauBordClient() {
   const profilQuery = useProfilClient();

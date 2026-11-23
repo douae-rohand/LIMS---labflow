@@ -105,6 +105,11 @@ public class DemandeService {
     private final com.backend.integration.sendgrid.EmailService emailService;
     private final com.backend.modules.notification.service.NotificationsLaboratoire notificationsLaboratoire;
     private final com.backend.integration.n8n.NotificationN8nService notificationN8nService;
+    private final com.backend.integration.n8n.NotificationEventPublisher n8nPublisher;
+    private final com.backend.modules.essai.repository.ExigenceEchantillonRepository exigenceEchantillonRepository;
+
+    @org.springframework.beans.factory.annotation.Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
     private final com.backend.integration.minio.StockageFichierService stockageFichierService;
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager entityManager;
@@ -371,7 +376,7 @@ public class DemandeService {
             enregistrerAuditDemande("ACCEPTATION_DEMANDE", nomSchema, demandeId, StatutDemande.NOUVEAU.name(),
                     StatutDemande.ACCEPTEE.name(), "Patient sur site : acceptée d'office, échantillons attendus sous 48 h");
             tenantExecutor.inTenant(nomSchema, () -> {
-                planifierFacturationAutomatique(demandeId);
+                planifierFacturationAutomatique(demandeId, false);
                 return null;
             });
             notificationsLaboratoire.notifierApresCommit(com.backend.modules.utilisateur.entity.RoleUtilisateur.RESPONSABLE,
@@ -572,7 +577,8 @@ public class DemandeService {
             enregistrerAuditDemande("ACCEPTATION_DEMANDE",
                     TenantContext.getCurrentTenant(), id,
                     StatutDemande.NOUVEAU.name(), StatutDemande.ACCEPTEE.name(), null);
-            planifierFacturationAutomatique(id);
+            planifierFacturationAutomatique(id, true);
+            informerClientDecision(acceptee, "Acceptée");
             return toDto(acceptee, TenantContext.getCurrentTenant(), null, null, null);
         }
         if (statut == StatutDemande.REFUSEE) {
@@ -580,8 +586,9 @@ public class DemandeService {
                     "Le refus d'une demande exige un motif.");
         }
         // Les autres statuts suivent le workflow (CDC 2.2.1) et ne se forcent jamais à la main :
-        // EN_COURS à l'affectation, EN_VALIDATION à la validation technique, TERMINEE à la signature
-        // du rapport, ANNULEE par le client (avec motif), NOUVEAU à la création.
+        // ECHANTILLONS_RECUS à la réception complète, PLANIFIEE quand tout est affecté, EN_COURS au premier
+        // « Démarrer », EN_VALIDATION quand toutes les analyses sont closes, TERMINEE à l'envoi du rapport
+        // signé, ANNULEE par le client (avec motif), NOUVEAU à la création.
         throw new BusinessRuleException("STATUT_AUTOMATIQUE",
                 "Le statut « " + statut.name() + " » est fixé automatiquement par le workflow : "
                         + "il ne peut pas être modifié directement.");
@@ -633,7 +640,7 @@ public class DemandeService {
         enregistrerAuditDemande("ACCEPTATION_DEMANDE",
                 TenantContext.getCurrentTenant(), id,
                 StatutDemande.NOUVEAU.name(), StatutDemande.ACCEPTEE.name(), null);
-        planifierFacturationAutomatique(id);
+        planifierFacturationAutomatique(id, true);
         Demande acceptee = demandeRepository.save(demande);
         informerClientDecision(acceptee, "Acceptée");
         notificationsLaboratoire.notifierApresCommit(com.backend.modules.utilisateur.entity.RoleUtilisateur.ACCUEIL,
@@ -654,6 +661,7 @@ public class DemandeService {
                 TenantContext.getCurrentTenant(), id,
                 StatutDemande.NOUVEAU.name(), StatutDemande.REFUSEE.name(), sauvegardee.getMotif());
         informerClientDecision(sauvegardee, "Refusée");
+        publierDemandeRefusee(sauvegardee);
         return construireDetail(sauvegardee);
     }
 
@@ -667,6 +675,10 @@ public class DemandeService {
         notificationsLaboratoire.notifierUtilisateurApresCommit(utilisateurId, "DEMANDE_STATUT_MODIFIE",
                 "Mise à jour de votre demande " + reference,
                 "Votre demande est maintenant « " + libelleStatut + " ».", "/app/demandes");
+        if (n8nPublisher.estConfigure()) {
+            // L'e-mail détaillé part par n8n : W2 demande-acceptee ou W3 demande-refusee.
+            return;
+        }
         com.backend.common.util.ApresCommit.executer(() -> {
             try {
                 Utilisateur client = tenantExecutor.inCentral(() ->
@@ -689,21 +701,28 @@ public class DemandeService {
         return demandeRepository.save(demande);
     }
 
-    private void planifierFacturationAutomatique(Long demandeId) {
+    /**
+     * Émet la facture après le commit de l'acceptation ; si {@code informerClient}, publie ensuite
+     * l'événement n8n {@code demande-acceptee} (W2), qui a besoin du numéro de facture.
+     */
+    private void planifierFacturationAutomatique(Long demandeId, boolean informerClient) {
         UtilisateurPrincipal acteur = SecurityUtils.principalCourant();
         String nomSchema = TenantContext.getCurrentTenant();
         Runnable emission = () -> {
+            com.backend.modules.facturation.dto.FactureAdminDto facture = null;
             try {
-                facturationAdminService.emettrePourDemande(
+                facture = facturationAdminService.emettrePourDemande(
                         demandeId, null, acteur, nomSchema, true);
             } catch (BusinessRuleException ex) {
-                if ("FACTURE_DEJA_EMISE".equals(ex.getCode())
-                        || "DEMANDE_SANS_MONTANT".equals(ex.getCode())) {
-                    return;
+                if (!"FACTURE_DEJA_EMISE".equals(ex.getCode())
+                        && !"DEMANDE_SANS_MONTANT".equals(ex.getCode())) {
+                    log.warn("Émission automatique ignorée demandeId={} code={}", demandeId, ex.getCode());
                 }
-                log.warn("Émission automatique ignorée demandeId={} code={}", demandeId, ex.getCode());
             } catch (Exception ex) {
                 log.warn("Émission automatique ignorée demandeId={} code=ERREUR_TECHNIQUE", demandeId);
+            }
+            if (informerClient) {
+                publierDemandeAcceptee(demandeId, nomSchema, facture);
             }
         };
 
@@ -717,6 +736,87 @@ public class DemandeService {
         } else {
             emission.run();
         }
+    }
+
+    /** W2 : e-mail au client (n8n) avec la facture et les échantillons à déposer. */
+    private void publierDemandeAcceptee(Long demandeId, String nomSchema,
+                                        com.backend.modules.facturation.dto.FactureAdminDto facture) {
+        try {
+            Map<String, Object> champs = new HashMap<>();
+            Long utilisateurId = tenantExecutor.inTenant(nomSchema, () -> {
+                Demande demande = charger(demandeId);
+                champs.put("demandeId", demande.getId());
+                champs.put("referenceDemande", demande.getNumero());
+                champs.put("titre", demande.getTitre());
+                List<LigneEssai> lignes = ligneEssaiRepository.findByDemande_Id(demandeId);
+                champs.put("analyses", lignes.stream()
+                        .map(l -> l.getEssai() == null ? l.getCode() : l.getEssai().getDesignation())
+                        .distinct().toList());
+                List<Long> essaiIds = lignes.stream().filter(l -> l.getEssai() != null)
+                        .map(l -> l.getEssai().getId()).distinct().toList();
+                champs.put("echantillons", essaiIds.isEmpty() ? List.of()
+                        : exigenceEchantillonRepository.findByEssai_IdIn(essaiIds).stream()
+                        .map(DemandeService::decrireEchantillon).distinct().toList());
+                return demande.getClient() == null ? null : demande.getClient().getUtilisateurId();
+            });
+            if (utilisateurId == null) {
+                return;
+            }
+            if (facture != null) {
+                champs.put("numeroFacture", facture.getNumero());
+                champs.put("montant", facture.getMontantHt() == null ? null
+                        : facture.getMontantHt().setScale(2, java.math.RoundingMode.HALF_UP).toPlainString().replace('.', ','));
+                champs.put("dateEcheance", facture.getDateEcheance() == null ? null
+                        : facture.getDateEcheance().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+            }
+            tenantExecutor.inCentral(() -> laboratoireRepository.findByNomSchema(nomSchema)).ifPresent(labo -> {
+                String adresse = java.util.stream.Stream.of(labo.getAdresse(), labo.getCodePostal(), labo.getVille())
+                        .filter(v -> v != null && !v.isBlank()).collect(java.util.stream.Collectors.joining(", "));
+                champs.put("adresseLaboratoire", adresse.isBlank() ? null : adresse);
+                champs.put("telephoneLaboratoire", labo.getTelephone());
+            });
+            champs.put("lienDemande", lienFrontend("/app/demandes"));
+            notificationN8nService.notifierClientMaintenant("demande-acceptee", nomSchema, utilisateurId, champs);
+        } catch (RuntimeException ex) {
+            log.warn("Publication n8n demande-acceptee ignorée demandeId={} : {}", demandeId,
+                    ex.getClass().getSimpleName());
+        }
+    }
+
+    /** W3 : e-mail au client (n8n) avec le motif du refus. */
+    private void publierDemandeRefusee(Demande demande) {
+        Long utilisateurId = demande.getClient() == null ? null : demande.getClient().getUtilisateurId();
+        if (utilisateurId == null) {
+            return;
+        }
+        Map<String, Object> champs = new HashMap<>();
+        champs.put("demandeId", demande.getId());
+        champs.put("referenceDemande", demande.getNumero());
+        champs.put("titre", demande.getTitre());
+        champs.put("motif", demande.getMotif());
+        champs.put("lienDemande", lienFrontend("/app/demandes"));
+        champs.put("lienCatalogue", lienFrontend("/laboratoires"));
+        notificationN8nService.notifierClientApresCommit("demande-refusee", TenantContext.getCurrentTenant(),
+                utilisateurId, champs);
+    }
+
+    private static String decrireEchantillon(com.backend.modules.essai.entity.ExigenceEchantillon e) {
+        StringBuilder texte = new StringBuilder(e.getNature() == null ? "Échantillon" : e.getNature());
+        if (e.getQuantiteMinimale() != null) {
+            texte.append(" : ").append(e.getQuantiteMinimale().stripTrailingZeros().toPlainString().replace('.', ','));
+            if (e.getUnite() != null) {
+                texte.append(' ').append(e.getUnite());
+            }
+            texte.append(" minimum");
+        }
+        if (e.getEtatConservation() != null && !e.getEtatConservation().isBlank()) {
+            texte.append(" (").append(e.getEtatConservation().trim()).append(')');
+        }
+        return texte.toString();
+    }
+
+    private String lienFrontend(String chemin) {
+        return frontendUrl.replaceAll("/$", "") + chemin;
     }
 
     private void exigerNouvelle(Demande demande) {

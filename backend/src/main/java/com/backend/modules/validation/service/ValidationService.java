@@ -109,11 +109,13 @@ public class ValidationService {
                 acteur.getLaboratoireId(), "RESULTAT_A_VALIDER",
                 "Résultat à valider : " + ligne.getDemande().getNumero(),
                 analyse + " — validé techniquement par " + acteur.getNomComplet() + ".", "/app/validation-resultats");
+        // Même règle que l'espace Technicien : la demande passe EN_VALIDATION seulement quand
+        // toutes ses analyses sont terminées ou non réalisables.
         Demande demande = ligne.getDemande();
-        if (StatutDemande.depuis(demande.getStatut()) == StatutDemande.EN_COURS
-                || StatutDemande.depuis(demande.getStatut()) == StatutDemande.ACCEPTEE) {
-            demande.setStatut(StatutDemande.EN_VALIDATION.name());
-            demandeRepository.save(demande);
+        boolean toutesCloses = ligneEssaiRepository.findByDemande_Id(demande.getId()).stream()
+                .allMatch(l -> l.getStatut() == StatutEssai.TERMINE || l.getStatut() == StatutEssai.NON_REALISABLE);
+        if (toutesCloses) {
+            demandeRepository.passerEnValidationSiEnCours(demande.getId());
         }
         return toDto(validation, acteur.getNomComplet());
     }
@@ -200,8 +202,10 @@ public class ValidationService {
             }
             return;
         }
-        boolean enAttente = etats.values().stream().anyMatch(LigneTravailAssembleur.TECHNIQUE_VALIDEE::equals);
-        if (actuel == StatutDemande.EN_VALIDATION && !enAttente) {
+        // Même règle que le passage en validation : une analyse renvoyée au technicien (retour ou rejet)
+        // n'est plus close, la demande repasse donc « en cours ».
+        boolean analyseRouverte = lignes.stream().anyMatch(l -> l.getStatut() != StatutEssai.TERMINE);
+        if (actuel == StatutDemande.EN_VALIDATION && analyseRouverte) {
             demande.setStatut(StatutDemande.EN_COURS.name());
             demandeRepository.save(demande);
         }
@@ -229,11 +233,7 @@ public class ValidationService {
     }
 
     private static List<String> statutsDemandesSuivies() {
-        List<String> statuts = new ArrayList<>();
-        statuts.addAll(StatutDemande.EN_COURS.aliasesPersistés());
-        statuts.addAll(StatutDemande.EN_VALIDATION.aliasesPersistés());
-        statuts.addAll(StatutDemande.ACCEPTEE.aliasesPersistés());
-        return statuts;
+        return StatutDemande.noms(StatutDemande.EN_TRAITEMENT);
     }
 
     private LigneEssai charger(Long id) {

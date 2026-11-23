@@ -27,6 +27,11 @@ public class NotificationEventPublisher {
         this.restClient = restClient;
     }
 
+    /** Vrai si le secret partagé est renseigné : les e-mails des workflows passent alors par n8n. */
+    public boolean estConfigure() {
+        return webhookSecret != null && !webhookSecret.isBlank();
+    }
+
     /** Publie un événement JSON sans laisser une panne n8n interrompre l'opération métier. */
     public void publier(String eventType, Map<String, Object> payload) {
         if (webhookSecret == null || webhookSecret.isBlank()) {

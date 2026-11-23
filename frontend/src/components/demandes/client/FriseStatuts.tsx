@@ -11,7 +11,9 @@ interface EtapeFrise {
 /** Étapes linéaires d'une demande menée jusqu'à sa clôture. */
 const ETAPES: EtapeFrise[] = [
   { statut: "NOUVEAU", description: "Demande transmise au laboratoire." },
-  { statut: "ACCEPTEE", description: "Prise en charge par le laboratoire." },
+  { statut: "ACCEPTEE", description: "Prise en charge, échantillons attendus." },
+  { statut: "ECHANTILLONS_RECUS", description: "Échantillons reçus et conformes." },
+  { statut: "PLANIFIEE", description: "Analyses confiées aux techniciens." },
   { statut: "EN_COURS", description: "Analyses en cours de réalisation." },
   { statut: "EN_VALIDATION", description: "Contrôle et validation des résultats." },
   { statut: "TERMINEE", description: "Demande clôturée, résultats disponibles." },

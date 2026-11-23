@@ -20,6 +20,8 @@ import { formaterMontant } from "./commun";
 const VARIANTE_STATUT: Record<StatutDemande, "lime" | "mint" | "soft" | "dark" | "outline"> = {
   NOUVEAU: "lime",
   ACCEPTEE: "soft",
+  ECHANTILLONS_RECUS: "soft",
+  PLANIFIEE: "soft",
   EN_COURS: "soft",
   EN_VALIDATION: "soft",
   TERMINEE: "mint",

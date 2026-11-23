@@ -1,0 +1,98 @@
+{
+  "name": "W2 demande-acceptee",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "demande-acceptee",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "0500cad9-cf92-4746-841d-a48fca00e363",
+      "name": "Webhook (signature)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "5bc47a5a-6004-4ef5-9be7-fe5bc4ed7af1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "tluIM8zoebtaqQes",
+          "name": "LIMS Webhook Authentication"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true } }}",
+        "options": {}
+      },
+      "id": "0c4f2223-5331-44ef-a15b-22a27ddeef0f",
+      "name": "Repondre 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "LabFlow LIMS <tafraouti.sanae1@gmail.com>",
+        "toEmail": "={{ $json.body.email }}",
+        "subject": "={{ 'Demande ' + $json.body.referenceDemande + ' acceptée : déposez vos échantillons' }}",
+        "html": "=<div style=\"margin:0;padding:24px 12px;background:#F4F7F6;font-family:Arial,Helvetica,sans-serif;color:#1A2A2E\"><div style=\"display:none;max-height:0;overflow:hidden;opacity:0\">Votre demande a été acceptée par le laboratoire.</div><table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"max-width:600px;margin:0 auto;background:#FFFFFF;border-radius:16px;overflow:hidden\"><tr><td style=\"padding:22px 28px;background:#1A4A54\"><p style=\"margin:0;color:#C8E86A;font-size:13px;font-weight:bold;letter-spacing:1px\">LABFLOW LIMS</p><h1 style=\"margin:8px 0 0;color:#FFFFFF;font-size:22px;line-height:1.3\">Votre demande est acceptée</h1></td></tr><tr><td style=\"padding:28px;font-size:15px;line-height:1.6\"><p style=\"margin:0 0 12px\">{{ 'Bonjour ' + $json.body.nom + ',' }}</p><p style=\"margin:0 0 12px\">{{ 'Bonne nouvelle : ' + $json.body.nomLaboratoire + ' a accepté votre demande ' + $json.body.referenceDemande + ' (« ' + $json.body.titre + ' »).' }}</p>{{ $json.body.numeroFacture ? '<p style=\"margin:0 0 12px;padding:12px 16px;background:#F4F7F6;border-radius:12px\">Facture <b>' + $json.body.numeroFacture + '</b>' + ($json.body.montant ? ' : <b>' + $json.body.montant + ' MAD</b>' : '') + ($json.body.dateEcheance ? ', à régler avant le ' + $json.body.dateEcheance : '') + '.<br>Un paiement, même partiel, est nécessaire pour lancer les analyses.</p>' : '' }}<h2 style=\"margin:20px 0 8px;color:#1A4A54;font-size:17px\">Prochaine étape : déposer vos échantillons</h2>{{ ($json.body.echantillons || []).length ? '<ul style=\"margin:0 0 12px;padding-left:20px\">' + $json.body.echantillons.map(e => '<li style=\"margin:0 0 4px\">' + e + '</li>').join('') + '</ul>' : '<p style=\"margin:0 0 12px\">Apportez les échantillons nécessaires aux analyses demandées.</p>' }}{{ $json.body.adresseLaboratoire ? '<p style=\"margin:0 0 12px\">Adresse : ' + $json.body.adresseLaboratoire + ($json.body.telephoneLaboratoire ? '<br>Téléphone : ' + $json.body.telephoneLaboratoire : '') + '</p>' : '' }}<a href=\"{{ $json.body.lienDemande }}\" style=\"display:inline-block;margin:16px 0 8px;padding:12px 22px;border-radius:999px;background:#1A4A54;color:#FFFFFF;font-size:14px;font-weight:bold;text-decoration:none\">Suivre ma demande</a><p style=\"margin:24px 0 0;color:#5B6B70;font-size:13px\">L’équipe LabFlow</p></td></tr><tr><td style=\"padding:16px 28px 24px;color:#7A8A8E;font-size:12px\">Cet e-mail a été envoyé automatiquement. Merci de ne pas y répondre.</td></tr></table></div>",
+        "options": {}
+      },
+      "id": "118ef9d3-f173-48bd-95d7-04962fddb784",
+      "name": "E-mail client",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        448,
+        0
+      ],
+      "webhookId": "b02bdb8a-7faa-4fea-9f0f-6ea0d930eacd",
+      "credentials": {
+        "smtp": {
+          "id": "mXLSKFcgTUXitKSa",
+          "name": "LIMS SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook (signature)": {
+      "main": [
+        [
+          {
+            "node": "Repondre 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repondre 200": {
+      "main": [
+        [
+          {
+            "node": "E-mail client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}
