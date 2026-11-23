@@ -130,15 +130,16 @@ public interface DemandeRepository extends JpaRepository<Demande, Long> {
     // ---------------------------------------------------------------
 
     /**
-     * Passe la demande ACCEPTEE → EN_COURS, uniquement si elle est encore ACCEPTEE.
+     * Passe la demande en EN_COURS au premier essai démarré, si aucune analyse n'avait encore démarré
+     * (ACCEPTEE, ECHANTILLONS_RECUS ou PLANIFIEE).
      * Retourne 1 si la transition a eu lieu, 0 si la demande avait déjà un autre statut.
-     * Protège ANNULEE/REFUSEE : la condition WHERE filtre sur ACCEPTEE uniquement.
+     * Protège ANNULEE/REFUSEE : la condition WHERE filtre sur les statuts d'avant démarrage.
      */
     @Modifying(clearAutomatically = true)
     @Query("""
             UPDATE Demande d
             SET d.statut = 'EN_COURS'
-            WHERE d.id = :id AND d.statut = 'ACCEPTEE'
+            WHERE d.id = :id AND d.statut IN ('ACCEPTEE', 'ECHANTILLONS_RECUS', 'PLANIFIEE')
             """)
     int passerEnCoursSiAcceptee(@Param("id") Long id);
 

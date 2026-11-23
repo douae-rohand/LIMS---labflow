@@ -4,6 +4,8 @@ import { LIBELLE_STATUT_DEMANDE, type StatutDemande } from "@/api/demandes";
 const VARIANT: Record<StatutDemande, "lime" | "mint" | "soft" | "dark" | "outline"> = {
   NOUVEAU: "mint",
   ACCEPTEE: "lime",
+  ECHANTILLONS_RECUS: "lime",
+  PLANIFIEE: "soft",
   EN_COURS: "soft",
   EN_VALIDATION: "soft",
   TERMINEE: "dark",

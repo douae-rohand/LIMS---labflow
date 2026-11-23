@@ -25,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Stream;
 
 /**
  * Planification des analyses : affectation des lignes d'essai aux techniciens
@@ -36,10 +35,7 @@ import java.util.stream.Stream;
 public class PlanificationService {
 
     /** Demandes dont les analyses peuvent être planifiées ou suivies. */
-    public static final List<String> STATUTS_DEMANDES_ACTIVES = Stream.of(
-                    StatutDemande.ACCEPTEE, StatutDemande.EN_COURS, StatutDemande.EN_VALIDATION)
-            .flatMap(statut -> statut.aliasesPersistés().stream())
-            .toList();
+    public static final List<String> STATUTS_DEMANDES_ACTIVES = StatutDemande.noms(StatutDemande.EN_TRAITEMENT);
 
     private final LigneEssaiRepository ligneEssaiRepository;
     private final ProprieteClient proprieteClient;

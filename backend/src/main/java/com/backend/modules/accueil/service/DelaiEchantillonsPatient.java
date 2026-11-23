@@ -71,7 +71,7 @@ public class DelaiEchantillonsPatient {
             try (PreparedStatement requete = connexion.prepareStatement(
                     "SELECT d.id_demande, d.numero, d.statut, d.decideur_id FROM " + s + ".demande d"
                             + " WHERE d.client_id IS NULL AND d.patient_id IS NOT NULL"
-                            + " AND d.statut IN ('ACCEPTEE', 'EN_COURS')"
+                            + " AND d.statut IN ('ACCEPTEE', 'ECHANTILLONS_RECUS', 'PLANIFIEE')"
                             + " AND COALESCE(d.date_decision, d.date_soumission) < ?"
                             + " AND NOT EXISTS (SELECT 1 FROM " + s + ".echantillon e WHERE e.demande_id = d.id_demande)"
                             // Paiement net nul : les encaissements annulés (contre-passation) ne comptent pas.
@@ -106,7 +106,7 @@ public class DelaiEchantillonsPatient {
             }
             // Le statut est revérifié : une réception ou un paiement arrivé entre-temps l'emporte.
             int misAJour = executer(connexion, "UPDATE " + s + ".demande SET statut = 'REFUSEE', motif = ?,"
-                    + " date_decision = ? WHERE id_demande = ? AND statut IN ('ACCEPTEE', 'EN_COURS')"
+                    + " date_decision = ? WHERE id_demande = ? AND statut IN ('ACCEPTEE', 'ECHANTILLONS_RECUS', 'PLANIFIEE')"
                     + " AND NOT EXISTS (SELECT 1 FROM " + s + ".echantillon e WHERE e.demande_id = ?)",
                     MOTIF, Timestamp.from(Instant.now()), demande.id(), demande.id());
             if (misAJour == 0) {

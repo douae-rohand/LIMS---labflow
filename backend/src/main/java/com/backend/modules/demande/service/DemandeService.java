@@ -580,8 +580,9 @@ public class DemandeService {
                     "Le refus d'une demande exige un motif.");
         }
         // Les autres statuts suivent le workflow (CDC 2.2.1) et ne se forcent jamais à la main :
-        // EN_COURS à l'affectation, EN_VALIDATION à la validation technique, TERMINEE à la signature
-        // du rapport, ANNULEE par le client (avec motif), NOUVEAU à la création.
+        // ECHANTILLONS_RECUS à la réception complète, PLANIFIEE quand tout est affecté, EN_COURS au premier
+        // « Démarrer », EN_VALIDATION quand toutes les analyses sont closes, TERMINEE à l'envoi du rapport
+        // signé, ANNULEE par le client (avec motif), NOUVEAU à la création.
         throw new BusinessRuleException("STATUT_AUTOMATIQUE",
                 "Le statut « " + statut.name() + " » est fixé automatiquement par le workflow : "
                         + "il ne peut pas être modifié directement.");

@@ -98,7 +98,7 @@ public class FacturationAdminService {
     public List<DemandeFacturableDto> listerDemandesFacturables() {
         return tenantExecutor.inTenant(schemaCourant(), () ->
                 factureRepository.listerDemandesFacturables(
-                        List.of("ACCEPTEE", "EN_COURS", "EN_VALIDATION", "TERMINEE"),
+                        List.of("ACCEPTEE", "ECHANTILLONS_RECUS", "PLANIFIEE", "EN_COURS", "EN_VALIDATION", "TERMINEE"),
                         PageRequest.of(0, 200)));
     }
 
@@ -139,8 +139,7 @@ public class FacturationAdminService {
                 .orElseThrow(() -> new ResourceNotFoundException("Demande", "id", demandeId));
 
         StatutDemande statut = StatutDemande.depuis(demande.getStatut());
-        if (statut != StatutDemande.ACCEPTEE && statut != StatutDemande.EN_COURS
-                && statut != StatutDemande.EN_VALIDATION && statut != StatutDemande.TERMINEE) {
+        if (!StatutDemande.EN_TRAITEMENT.contains(statut) && statut != StatutDemande.TERMINEE) {
             throw new BusinessRuleException("DEMANDE_NON_FACTURABLE",
                     "Cette demande n'est pas facturable (statut: " + demande.getStatut() + ")");
         }

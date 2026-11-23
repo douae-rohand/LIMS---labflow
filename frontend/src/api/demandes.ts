@@ -5,6 +5,8 @@ import type { PageResponse } from "./utilisateurs";
 export type StatutDemande =
   | "NOUVEAU"
   | "ACCEPTEE"
+  | "ECHANTILLONS_RECUS"
+  | "PLANIFIEE"
   | "EN_COURS"
   | "EN_VALIDATION"
   | "TERMINEE"
@@ -14,6 +16,8 @@ export type StatutDemande =
 export const STATUTS_DEMANDE: StatutDemande[] = [
   "NOUVEAU",
   "ACCEPTEE",
+  "ECHANTILLONS_RECUS",
+  "PLANIFIEE",
   "EN_COURS",
   "EN_VALIDATION",
   "TERMINEE",
@@ -24,6 +28,8 @@ export const STATUTS_DEMANDE: StatutDemande[] = [
 export const LIBELLE_STATUT_DEMANDE: Record<StatutDemande, string> = {
   NOUVEAU: "Nouvelle",
   ACCEPTEE: "Acceptée",
+  ECHANTILLONS_RECUS: "Échantillons reçus",
+  PLANIFIEE: "Planifiée",
   EN_COURS: "En cours",
   EN_VALIDATION: "En validation",
   TERMINEE: "Terminée",

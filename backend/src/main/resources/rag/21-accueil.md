@@ -8,7 +8,7 @@ Le menu comprend : Tableau de bord, Nouvelle demande, Réception, Caisse, Client
 Dans « Clients et patients », créez la fiche du patient s'il n'existe pas encore. Puis, dans « Nouvelle demande », choisissez le patient et les analyses. Une demande enregistrée à l'accueil est acceptée d'office et sa facture est émise. Sans échantillon ou sans paiement dans les 48 heures, elle est refusée automatiquement et la facture est annulée par un avoir.
 
 ## Réceptionner un échantillon
-Dans « Réception », ouvrez la demande, vérifiez chaque échantillon puis déclarez-le conforme ou non conforme (avec un motif en cas de non-conformité). Cliquez sur une carte d'échantillon pour voir l'aperçu de son étiquette.
+Dans « Réception », ouvrez la demande, vérifiez chaque échantillon puis déclarez-le conforme ou non conforme (avec un motif en cas de non-conformité). Quand chaque analyse de la demande a un échantillon conforme, la demande passe « Échantillons reçus » ; une réception partielle ou un échantillon non conforme la laisse « Acceptée ». Cliquez sur une carte d'échantillon pour voir l'aperçu de son étiquette.
 
 ## Imprimer les étiquettes
 Depuis la réception, le bouton « Imprimer les étiquettes » produit un PDF : planche de toutes les étiquettes ou étiquette unitaire. Chaque étiquette porte un code-barres, la référence de l'échantillon, le demandeur, la nature, la date, la conservation et les analyses.

@@ -45,6 +45,7 @@ public class AffectationAnalysesService {
     private final EtatPaiementService etatPaiementService;
     private final com.backend.modules.notification.service.NotificationsLaboratoire notificationsLaboratoire;
     private final NotificationN8nService notificationN8nService;
+    private final com.backend.modules.demande.service.AvancementDemandeService avancementDemande;
 
     @Transactional
     public List<LigneTravailDto> affecter(AffecterAnalysesRequest request) {
@@ -148,11 +149,10 @@ public class AffectationAnalysesService {
                     avant == null ? null : "{\"technicienId\":" + avant + "}",
                     "{\"technicienId\":" + technicien.getId() + "}", reaffectation ? motif : null, laboratoireId);
         }
+        // La demande passe PLANIFIEE quand toutes ses analyses sont affectées ; EN_COURS viendra
+        // seulement au premier « Démarrer » du technicien.
         for (Demande demande : demandes) {
-            if (StatutDemande.depuis(demande.getStatut()) == StatutDemande.ACCEPTEE) {
-                demande.setStatut(StatutDemande.EN_COURS.name());
-                demandeRepository.save(demande);
-            }
+            avancementDemande.recalculer(demande, acteur.getEmail(), laboratoireId);
         }
         notificationsLaboratoire.notifierUtilisateurApresCommit(technicien.getId(), "ESSAIS_ATTRIBUES",
                 "De nouveaux essais vous sont attribués",
