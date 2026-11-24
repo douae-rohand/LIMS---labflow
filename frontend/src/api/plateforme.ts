@@ -186,6 +186,8 @@ export async function traiterDemandeIntegration(
   const res = await apiClient.post<ApiResponse<DemandeIntegration>>(
     `/plateforme/demandes/${id}/traiter`,
     { decision, motifRefus },
+    // L'acceptation crée le schéma du laboratoire et applique toutes ses migrations
+    { timeout: 120_000 },
   );
   return res.data;
 }

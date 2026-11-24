@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge, Button, Label, Textarea } from "@/components/lab";
+import { ApiError } from "@/api/axios";
 import { IndicateurEtapes } from "@/components/integration/IndicateurEtapes";
 import { LocationPicker } from "@/components/integration/LocationPicker";
 import {
@@ -68,7 +69,17 @@ export function PanneauDemande({
       setMotif("");
       await invalider();
     },
-    onError: (erreur) => toast.error(messageErreur(erreur, "Le traitement a échoué.")),
+    onError: async (erreur) => {
+      // Sans réponse (délai dépassé, réseau), le serveur a pu terminer : relire la demande avant de recommencer.
+      const sansReponse = erreur instanceof ApiError && erreur.status === 0;
+      toast.error(
+        sansReponse
+          ? "Le serveur n'a pas répondu à temps. Vérifiez le statut de la demande avant de recommencer."
+          : messageErreur(erreur, "Le traitement a échoué."),
+      );
+      if (sansReponse) setConfirmation(null);
+      await invalider();
+    },
   });
 
   const documentMutation = useMutation({
@@ -99,6 +110,10 @@ export function PanneauDemande({
     onError: (erreur) => toast.error(messageErreur(erreur, "L'envoi du lien a échoué.")),
   });
 
+  const fermerConfirmation = () => {
+    if (!traitement.isPending) setConfirmation(null);
+  };
+
   const dossier = demande.data;
   const enAttente = dossier?.statut === "EN_ATTENTE" || dossier?.statut === "COMPLEMENTS_DEMANDES";
   const attenteDemandeur = dossier?.statut === "COMPLEMENTS_DEMANDES";
@@ -120,7 +135,9 @@ export function PanneauDemande({
         ouvert={demandeId != null}
         large
         titre={dossier?.nomLaboratoire ?? "Demande d'intégration"}
-        onFermer={onFermer}
+        onFermer={() => {
+          if (!traitement.isPending) onFermer();
+        }}
       >
         {demande.isLoading && <p className="text-sm text-muted-foreground">Chargement…</p>}
         {demande.isError && <p className="text-sm text-red-600">Cette demande est introuvable.</p>}
@@ -346,14 +363,20 @@ export function PanneauDemande({
             ? "L'espace du laboratoire, son schéma et le compte administrateur seront créés. Cette décision est définitive."
             : "La demande sera refusée et le motif sera communiqué au demandeur."
         }
-        onFermer={() => setConfirmation(null)}
+        onFermer={fermerConfirmation}
       >
+        {traitement.isPending && confirmation === "accepter" && (
+          <p role="status" className="mb-4 text-sm text-muted-foreground">
+            Création du laboratoire en cours… Cela peut prendre quelques secondes, ne fermez pas cette page.
+          </p>
+        )}
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setConfirmation(null)}>
+          <Button variant="ghost" disabled={traitement.isPending} onClick={fermerConfirmation}>
             Annuler
           </Button>
           <Button
             loading={traitement.isPending}
+            disabled={traitement.isPending}
             onClick={() => {
               if (confirmation === "refuser" && !motif.trim()) {
                 toast.error("Le motif du refus est obligatoire.");
