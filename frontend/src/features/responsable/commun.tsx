@@ -2,6 +2,7 @@ import { ChevronDown, RefreshCw, Search, X, type LucideIcon } from "lucide-react
 import type { ReactNode } from "react";
 import { Badge, Button } from "@/components/lab";
 import { ApiError } from "@/api/axios";
+import { libelleNonDemarree } from "@/lib/statutAnalyse";
 import { useTempsReel } from "@/features/shell/TempsReel";
 import type { AnalyseTravail, EtatValidation, StatutAnalyse } from "@/api/responsable";
 
@@ -55,13 +56,29 @@ const LIBELLES_STATUT: Record<StatutAnalyse, string> = {
   NON_REALISABLE: "Non réalisable",
 };
 
+/** Analyse pas encore démarrée : le backend garde ATTENTE_ECHANTILLON même une fois l'échantillon reçu. */
+function nonDemarree(analyse: AnalyseTravail): boolean {
+  return !analyse.statut || analyse.statut === "ATTENTE_ECHANTILLON";
+}
+
+/** Analyse bloquée par son échantillon (pas encore reçu, ou reçu non conforme). */
+export function bloqueeParEchantillon(analyse: AnalyseTravail): boolean {
+  return nonDemarree(analyse) && analyse.etatEchantillon !== "CONFORME";
+}
+
+function libelleStatut(analyse: AnalyseTravail): string {
+  return nonDemarree(analyse)
+    ? libelleNonDemarree(analyse.etatEchantillon, analyse.technicienId != null)
+    : LIBELLES_STATUT[analyse.statut];
+}
+
 export function BadgeStatutAnalyse({ analyse }: { analyse: AnalyseTravail }) {
   if (analyse.enRetard) {
     return <Badge size="sm" variant="dark">En retard · {analyse.joursRetard} j</Badge>;
   }
   return (
     <Badge size="sm" variant={analyse.statut === "EN_COURS" ? "lime" : analyse.statut === "TERMINE" ? "mint" : "outline"}>
-      {LIBELLES_STATUT[analyse.statut]}
+      {libelleStatut(analyse)}
     </Badge>
   );
 }

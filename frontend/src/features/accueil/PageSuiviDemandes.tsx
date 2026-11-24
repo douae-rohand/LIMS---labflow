@@ -5,6 +5,7 @@ import { Badge, Button } from "@/components/lab";
 import { Container } from "@/components/layout/Container";
 import { LIBELLE_STATUT_DEMANDE, STATUTS_DEMANDE, type StatutDemande } from "@/api/demandes";
 import { lireSuiviDemande, listerDemandesSuivi } from "@/api/accueil";
+import { libelleNonDemarree } from "@/lib/statutAnalyse";
 import { Panneau } from "@/features/super-admin/Fenetres";
 import {
   Actualisation,
@@ -30,7 +31,6 @@ const VARIANTE_STATUT: Record<StatutDemande, "lime" | "mint" | "soft" | "dark" |
 };
 
 const LIBELLE_ANALYSE: Record<string, string> = {
-  ATTENTE_ECHANTILLON: "En attente d'échantillon",
   EN_COURS: "En cours",
   TERMINE: "Résultat saisi",
   NON_REALISABLE: "Non réalisable",
@@ -150,7 +150,7 @@ function PanneauSuivi({ demandeId, onFermer }: { demandeId: number | null; onFer
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <Tuile titre="Analyses" valeur={`${s.avancement.terminees}/${s.avancement.analyses} terminées`}
-              detail={`${s.avancement.attenteEchantillon} en attente d'échantillon · ${s.avancement.enCours} en cours`} />
+              detail={`${s.avancement.attenteEchantillon} en attente d'échantillon · ${s.avancement.aDemarrer} à démarrer · ${s.avancement.enCours} en cours`} />
             <Tuile titre="Échantillons" valeur={`${d.echantillons.filter((e) => e.conformite !== false).length} conforme(s)`}
               detail={`${d.echantillons.length} reçu(s) au total`} />
             <Tuile titre="Facture" valeur={s.facture ? (s.facture.reste === 0 ? "Réglée" : `Reste ${formaterMontant(s.facture.reste)}`) : "Pas encore émise"}
@@ -166,7 +166,9 @@ function PanneauSuivi({ demandeId, onFermer }: { demandeId: number | null; onFer
                 <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-900/10 px-3 py-2">
                   <span className="text-ink-900">{a.designation ?? a.code}<span className="text-xs text-muted-foreground"> · {a.code}</span></span>
                   <Badge size="sm" variant={a.statut === "TERMINE" ? "mint" : "outline"}>
-                    {LIBELLE_ANALYSE[a.statut ?? "ATTENTE_ECHANTILLON"] ?? a.statut}
+                    {!a.statut || a.statut === "ATTENTE_ECHANTILLON"
+                      ? libelleNonDemarree(a.etatEchantillon, a.affectee === true)
+                      : (LIBELLE_ANALYSE[a.statut] ?? a.statut)}
                   </Badge>
                 </li>
               ))}
