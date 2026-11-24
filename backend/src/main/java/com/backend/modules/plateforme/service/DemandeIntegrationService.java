@@ -265,7 +265,7 @@ public class DemandeIntegrationService {
             );
 
             DemandeIntegration refusee = demande;
-            ApresCommit.executer(() -> {
+            ApresCommit.executer(() -> taskExecutor.execute(() -> {
                 try {
                     emailService.envoyerRefusDemandeIntegration(
                             emailsNotification(refusee),
@@ -277,7 +277,7 @@ public class DemandeIntegrationService {
                 } catch (Exception emailEx) {
                     log.error("Échec de l'envoi de l'e-mail de refus : {}", emailEx.getMessage());
                 }
-            });
+            }));
             log.info("Demande d'intégration refusée : id={}, motif={}", id, demande.getMotifRefus());
             return toDto(demande, true);
         }
@@ -331,7 +331,7 @@ public class DemandeIntegrationService {
         DemandeIntegration concernee = demande;
         List<String> libelles = codes.stream().map(code -> types.get(code).getLibelle()).toList();
         String lien = frontendUrl.replaceAll("/$", "") + "/integration/complements?jeton=" + jeton;
-        ApresCommit.executer(() -> {
+        ApresCommit.executer(() -> taskExecutor.execute(() -> {
             try {
                 emailService.envoyerDemandeComplements(
                         emailsNotification(concernee),
@@ -345,7 +345,7 @@ public class DemandeIntegrationService {
             } catch (Exception emailEx) {
                 log.error("Échec de l'envoi de la demande de compléments : {}", emailEx.getMessage());
             }
-        });
+        }));
         log.info("Compléments demandés : demande={}, documents={}", id, codes);
         return toDto(demande, true);
     }

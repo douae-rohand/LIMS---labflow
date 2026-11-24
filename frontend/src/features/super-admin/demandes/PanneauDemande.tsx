@@ -106,8 +106,16 @@ export function PanneauDemande({
 
   const invitation = useMutation({
     mutationFn: () => renvoyerInvitation(demandeId as number),
-    onSuccess: () => toast.success("Le lien d'activation a été renvoyé."),
-    onError: (erreur) => toast.error(messageErreur(erreur, "L'envoi du lien a échoué.")),
+    onSuccess: ({ accepte }) => {
+      if (accepte) toast.success("Le lien d'activation a été renvoyé.");
+      else toast.error("Un nouveau lien a été créé, mais l'e-mail n'a pas pu être envoyé.");
+    },
+    onError: (erreur) =>
+      toast.error(
+        erreur instanceof ApiError && erreur.status === 0
+          ? "Le serveur n'a pas répondu à temps. L'e-mail est peut-être déjà parti : vérifiez avant de recommencer."
+          : messageErreur(erreur, "L'envoi du lien a échoué."),
+      ),
   });
 
   const fermerConfirmation = () => {
@@ -213,8 +221,13 @@ export function PanneauDemande({
                   <Lecture libelle="CIN" valeur={texte(dossier.adminCin)} />
                 </dl>
                 {dossier.statut === "ACCEPTEE" && (
-                  <Button variant="secondary" loading={invitation.isPending} onClick={() => invitation.mutate()}>
-                    Renvoyer le lien d'activation
+                  <Button
+                    variant="secondary"
+                    loading={invitation.isPending}
+                    disabled={invitation.isPending}
+                    onClick={() => invitation.mutate()}
+                  >
+                    {invitation.isPending ? "Envoi en cours…" : "Renvoyer le lien d'activation"}
                   </Button>
                 )}
               </div>
@@ -346,7 +359,7 @@ export function PanneauDemande({
             </Button>
             <Button
               loading={complements.isPending}
-              disabled={!messageComplements.trim()}
+              disabled={complements.isPending || !messageComplements.trim()}
               onClick={() => complements.mutate()}
             >
               Envoyer la demande

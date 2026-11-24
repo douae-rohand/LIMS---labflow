@@ -192,8 +192,14 @@ export async function traiterDemandeIntegration(
   return res.data;
 }
 
-export async function renvoyerInvitation(id: number): Promise<void> {
-  await apiClient.post<ApiResponse<null>>(`/plateforme/demandes/${id}/invitation`);
+export async function renvoyerInvitation(id: number): Promise<{ accepte: boolean }> {
+  const res = await apiClient.post<ApiResponse<{ accepte: boolean }>>(
+    `/plateforme/demandes/${id}/invitation`,
+    undefined,
+    // Le serveur attend le résultat de l'envoi de l'e-mail
+    { timeout: 60_000 },
+  );
+  return res.data;
 }
 
 export async function ouvrirDocumentIntegration(
