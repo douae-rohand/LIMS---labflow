@@ -7,7 +7,6 @@ import com.backend.common.tenant.TenantProvisioner;
 import com.backend.common.util.ApresCommit;
 import com.backend.common.util.ExportTableau;
 import com.backend.integration.minio.StockageFichierService;
-import com.backend.integration.n8n.NotificationEventPublisher;
 import com.backend.integration.sendgrid.EmailService;
 import com.backend.integration.sendgrid.ResultatEnvoiEmail;
 import com.backend.modules.auth.service.ActivationCompteService;
@@ -94,7 +93,6 @@ public class DemandeIntegrationService {
     private final Executor taskExecutor;
     private final MatriculeGeneratorService matriculeGeneratorService;
     private final JournalAuditService journalAuditService;
-    private final NotificationEventPublisher notificationEventPublisher;
     private final ParametrePlateformeService parametrePlateformeService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
@@ -267,10 +265,6 @@ public class DemandeIntegrationService {
             );
 
             DemandeIntegration refusee = demande;
-            Map<String, Object> evenementRefus = new HashMap<>();
-            evenementRefus.put("demandeId", refusee.getId());
-            evenementRefus.put("numero", refusee.getNumero() == null ? "" : refusee.getNumero());
-            evenementRefus.put("motif", refusee.getMotifRefus() == null ? "" : refusee.getMotifRefus());
             ApresCommit.executer(() -> {
                 try {
                     emailService.envoyerRefusDemandeIntegration(
@@ -283,7 +277,6 @@ public class DemandeIntegrationService {
                 } catch (Exception emailEx) {
                     log.error("Échec de l'envoi de l'e-mail de refus : {}", emailEx.getMessage());
                 }
-                notificationEventPublisher.publier("integration-refusee", null, evenementRefus);
             });
             log.info("Demande d'intégration refusée : id={}, motif={}", id, demande.getMotifRefus());
             return toDto(demande, true);
@@ -352,8 +345,6 @@ public class DemandeIntegrationService {
             } catch (Exception emailEx) {
                 log.error("Échec de l'envoi de la demande de compléments : {}", emailEx.getMessage());
             }
-            notificationEventPublisher.publier("integration-complements-demandes", null,
-                    Map.of("demandeId", concernee.getId(), "numero", concernee.getNumero()));
         });
         log.info("Compléments demandés : demande={}, documents={}", id, codes);
         return toDto(demande, true);
@@ -576,13 +567,6 @@ public class DemandeIntegrationService {
             String nomLabo = premierNonVide(demande.getNomLaboratoire(), demande.getRaisonSociale());
             String nomAdmin = nomComplet(demande);
             int ttlHeures = activationCompteService.getDureeHeures();
-            Laboratoire laboratoireAccepte = laboratoire;
-            Map<String, Object> evenementAcceptation = new HashMap<>();
-            evenementAcceptation.put("demandeId", acceptee.getId());
-            evenementAcceptation.put("numero", acceptee.getNumero() == null ? "" : acceptee.getNumero());
-            evenementAcceptation.put("laboratoireId", laboratoireAccepte.getId() == null ? 0L : laboratoireAccepte.getId());
-            evenementAcceptation.put("code", laboratoireAccepte.getCode() == null ? "" : laboratoireAccepte.getCode());
-            String schemaAccepte = laboratoireAccepte.getNomSchema() == null ? "" : laboratoireAccepte.getNomSchema();
 
             journalAuditService.enregistrer(
                     "ACCEPTER_DEMANDE_INTEGRATION",
@@ -618,7 +602,6 @@ public class DemandeIntegrationService {
                 } catch (Exception emailEx) {
                     log.error("Échec de l'envoi de l'email d'invitation : {}", emailEx.getMessage());
                 }
-                notificationEventPublisher.publier("integration-acceptee", schemaAccepte, evenementAcceptation);
             }));
 
             log.info("Demande d'intégration approuvée : id={}, labo={}, schema={}",
