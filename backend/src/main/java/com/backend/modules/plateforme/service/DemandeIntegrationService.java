@@ -7,7 +7,6 @@ import com.backend.common.tenant.TenantProvisioner;
 import com.backend.common.util.ApresCommit;
 import com.backend.common.util.ExportTableau;
 import com.backend.integration.minio.StockageFichierService;
-import com.backend.integration.n8n.NotificationEventPublisher;
 import com.backend.integration.sendgrid.EmailService;
 import com.backend.integration.sendgrid.ResultatEnvoiEmail;
 import com.backend.modules.auth.service.ActivationCompteService;
@@ -53,6 +52,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -90,9 +90,9 @@ public class DemandeIntegrationService {
     private final ActivationCompteService activationCompteService;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final Executor taskExecutor;
     private final MatriculeGeneratorService matriculeGeneratorService;
     private final JournalAuditService journalAuditService;
-    private final NotificationEventPublisher notificationEventPublisher;
     private final ParametrePlateformeService parametrePlateformeService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
@@ -265,11 +265,7 @@ public class DemandeIntegrationService {
             );
 
             DemandeIntegration refusee = demande;
-            Map<String, Object> evenementRefus = new HashMap<>();
-            evenementRefus.put("demandeId", refusee.getId());
-            evenementRefus.put("numero", refusee.getNumero() == null ? "" : refusee.getNumero());
-            evenementRefus.put("motif", refusee.getMotifRefus() == null ? "" : refusee.getMotifRefus());
-            ApresCommit.executer(() -> {
+            ApresCommit.executer(() -> taskExecutor.execute(() -> {
                 try {
                     emailService.envoyerRefusDemandeIntegration(
                             emailsNotification(refusee),
@@ -281,8 +277,7 @@ public class DemandeIntegrationService {
                 } catch (Exception emailEx) {
                     log.error("Échec de l'envoi de l'e-mail de refus : {}", emailEx.getMessage());
                 }
-                notificationEventPublisher.publier("integration-refusee", null, evenementRefus);
-            });
+            }));
             log.info("Demande d'intégration refusée : id={}, motif={}", id, demande.getMotifRefus());
             return toDto(demande, true);
         }
@@ -336,7 +331,7 @@ public class DemandeIntegrationService {
         DemandeIntegration concernee = demande;
         List<String> libelles = codes.stream().map(code -> types.get(code).getLibelle()).toList();
         String lien = frontendUrl.replaceAll("/$", "") + "/integration/complements?jeton=" + jeton;
-        ApresCommit.executer(() -> {
+        ApresCommit.executer(() -> taskExecutor.execute(() -> {
             try {
                 emailService.envoyerDemandeComplements(
                         emailsNotification(concernee),
@@ -350,9 +345,7 @@ public class DemandeIntegrationService {
             } catch (Exception emailEx) {
                 log.error("Échec de l'envoi de la demande de compléments : {}", emailEx.getMessage());
             }
-            notificationEventPublisher.publier("integration-complements-demandes", null,
-                    Map.of("demandeId", concernee.getId(), "numero", concernee.getNumero()));
-        });
+        }));
         log.info("Compléments demandés : demande={}, documents={}", id, codes);
         return toDto(demande, true);
     }
@@ -514,14 +507,11 @@ public class DemandeIntegrationService {
                     "L'e-mail de l'administrateur est déjà associé à un compte");
         }
 
-        boolean laboratoireCree = false;
-        boolean schemaCree = false;
-        String nomSchema = null;
         Laboratoire laboratoire = demande.getLaboratoire();
         String ancienStatut = demande.getStatut();
 
         try {
-            // Étape 1 : Créer le laboratoire (si inexistant)
+            // Étape 1 : Préparer le laboratoire (si inexistant), sans l'enregistrer
             if (laboratoire == null) {
                 String code = slugifier(StringUtils.hasText(demande.getNomLaboratoire())
                         ? demande.getNomLaboratoire() : demande.getRaisonSociale());
@@ -530,7 +520,7 @@ public class DemandeIntegrationService {
                 }
                 String nomAffiche = StringUtils.hasText(demande.getNomLaboratoire())
                         ? demande.getNomLaboratoire() : demande.getRaisonSociale();
-                laboratoire = laboratoireRepository.save(Laboratoire.builder()
+                laboratoire = Laboratoire.builder()
                         .code(code)
                         .raisonSociale(nomAffiche)
                         .ice(demande.getIce())
@@ -548,15 +538,18 @@ public class DemandeIntegrationService {
                         .nomSchema("lims_" + code)
                         .statut(STATUT_ACTIF)
                         .dateCreation(Instant.now())
-                        .build());
-                demande.setLaboratoire(laboratoire);
-                laboratoireCree = true;
+                        .build();
             }
-            nomSchema = laboratoire.getNomSchema();
 
-            // Étape 2 : Provisionner le schéma (CREATE DATABASE — commit implicite MySQL)
+            // Étape 2 : Provisionner le schéma avant toute écriture centrale : les migrations tenant
+            // lisent la table laboratoire et attendraient une ligne insérée mais pas encore validée.
+            // Le provisionneur supprime le schéma si cette transaction est annulée.
             tenantProvisioner.provisionner(laboratoire, acteurEmail);
-            schemaCree = true;
+
+            if (demande.getLaboratoire() == null) {
+                laboratoire = laboratoireRepository.save(laboratoire);
+                demande.setLaboratoire(laboratoire);
+            }
 
             // Étape 3 : Créer l'administrateur
             Utilisateur admin = creerAdministrateur(demande, laboratoire);
@@ -574,13 +567,6 @@ public class DemandeIntegrationService {
             String nomLabo = premierNonVide(demande.getNomLaboratoire(), demande.getRaisonSociale());
             String nomAdmin = nomComplet(demande);
             int ttlHeures = activationCompteService.getDureeHeures();
-            Laboratoire laboratoireAccepte = laboratoire;
-            Map<String, Object> evenementAcceptation = new HashMap<>();
-            evenementAcceptation.put("demandeId", acceptee.getId());
-            evenementAcceptation.put("numero", acceptee.getNumero() == null ? "" : acceptee.getNumero());
-            evenementAcceptation.put("laboratoireId", laboratoireAccepte.getId() == null ? 0L : laboratoireAccepte.getId());
-            evenementAcceptation.put("code", laboratoireAccepte.getCode() == null ? "" : laboratoireAccepte.getCode());
-            String schemaAccepte = laboratoireAccepte.getNomSchema() == null ? "" : laboratoireAccepte.getNomSchema();
 
             journalAuditService.enregistrer(
                     "ACCEPTER_DEMANDE_INTEGRATION",
@@ -593,7 +579,8 @@ public class DemandeIntegrationService {
                     laboratoire.getId()
             );
 
-            ApresCommit.executer(() -> {
+            // Hors de la requête : le SMTP peut mettre plusieurs dizaines de secondes.
+            ApresCommit.executer(() -> taskExecutor.execute(() -> {
                 try {
                     emailService.envoyerAcceptationDemandeIntegration(
                             emailsNotification(acceptee),
@@ -615,29 +602,16 @@ public class DemandeIntegrationService {
                 } catch (Exception emailEx) {
                     log.error("Échec de l'envoi de l'email d'invitation : {}", emailEx.getMessage());
                 }
-                notificationEventPublisher.publier("integration-acceptee", schemaAccepte, evenementAcceptation);
-            });
+            }));
 
             log.info("Demande d'intégration approuvée : id={}, labo={}, schema={}",
                     demande.getId(), laboratoire.getCode(), laboratoire.getNomSchema());
             return toDto(demande, true);
 
         } catch (RuntimeException ex) {
-            log.error("Erreur lors de l'acceptation de la demande {} (laboratoireCree={}, schemaCree={}) : {}",
-                    demande.getId(), laboratoireCree, schemaCree, ex.getMessage());
-
-            // Compensation : ne nettoyer que ce que cet appel a créé
-            if (schemaCree && nomSchema != null) {
-                try {
-                    tenantProvisioner.deprovisionner(nomSchema, acteurEmail);
-                    log.info("Compensation : schéma {} supprimé", nomSchema);
-                } catch (Exception compEx) {
-                    log.error("Échec de la compensation du schéma {} : {}", nomSchema, compEx.getMessage());
-                }
-            }
-            // Le laboratoire et l'administrateur créés dans cette transaction sont
-            // annulés par le rollback Spring. Aucun delete manuel : un laboratoire
-            // qui existait avant l'appel (laboratoireCree == false) est conservé.
+            log.error("Erreur lors de l'acceptation de la demande {} : {}", demande.getId(), ex.getMessage());
+            // Le laboratoire et l'administrateur créés dans cette transaction sont annulés par le
+            // rollback Spring ; le schéma créé par cet appel est retiré par le provisionneur.
             throw ex;
         }
     }

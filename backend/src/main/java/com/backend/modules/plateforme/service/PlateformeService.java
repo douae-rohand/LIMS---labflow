@@ -83,8 +83,10 @@ public class PlateformeService {
                 .statut(STATUT_ACTIF)
                 .build();
 
-        labo = laboratoireRepository.save(labo);
+        // Le schéma d'abord : les migrations tenant lisent la table laboratoire et attendraient
+        // une ligne insérée mais pas encore validée.
         tenantProvisioner.provisionner(labo, acteurEmail);
+        labo = laboratoireRepository.save(labo);
         journalAuditService.enregistrer(
                 "CREER_LABORATOIRE",
                 "Laboratoire",
