@@ -20,4 +20,8 @@ public class AnalyseDemandeeDto {
     private BigDecimal tarif;
     private BigDecimal montant;
     private String statut;
+    /** ATTENDU, CONFORME ou NON_CONFORME : échantillon rattaché à l'analyse. */
+    private String etatEchantillon;
+    /** Vrai si un technicien est affecté à l'analyse. */
+    private boolean affectee;
 }

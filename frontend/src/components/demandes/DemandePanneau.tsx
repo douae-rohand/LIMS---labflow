@@ -45,6 +45,7 @@ import {
   type DemandeLaboratoire,
   type StatutDemande,
 } from "@/api/demandes";
+import { libelleNonDemarree } from "@/lib/statutAnalyse";
 import { formatDate, formatDateTime } from "@/components/employes/dateUtils";
 import { StatutDemandeBadge } from "./StatutDemandeBadge";
 import { RefusDemandeModal } from "./RefusDemandeModal";
@@ -60,7 +61,6 @@ const LIBELLE_STATUT_LIGNE: Record<string, string> = {
   ANNULEE: "Annulée",
   A_REFAIRE: "À refaire",
   REPORTEE: "Reportée",
-  ATTENTE_ECHANTILLON: "En attente d'échantillon",
   NON_REALISABLE: "Non réalisable",
   RECEPTIONNE: "Réceptionné",
   EN_ANALYSE: "En analyse",
@@ -335,7 +335,9 @@ export function DemandePanneau({ demandeId, onClose }: DemandePanneauProps) {
                             {[analyse.code, analyse.methode, analyse.unite].filter(Boolean).join(" · ")}
                           </p>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {libelleStatut(analyse.statut)} · {formatMontant(analyse.montant ?? analyse.tarif)}
+                            {analyse.statut === "ATTENTE_ECHANTILLON"
+                              ? libelleNonDemarree(analyse.etatEchantillon, analyse.affectee === true)
+                              : libelleStatut(analyse.statut)} · {formatMontant(analyse.montant ?? analyse.tarif)}
                           </p>
                         </li>
                       ))}

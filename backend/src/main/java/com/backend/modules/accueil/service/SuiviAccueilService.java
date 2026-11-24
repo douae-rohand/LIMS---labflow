@@ -53,7 +53,7 @@ public class SuiviAccueilService {
                            Instant date, String acteur) {
     }
 
-    public record AvancementDto(int analyses, int attenteEchantillon, int enCours, int terminees, int nonRealisables) {
+    public record AvancementDto(int analyses, int attenteEchantillon, int aDemarrer, int enCours, int terminees, int nonRealisables) {
     }
 
     public record FactureResumeDto(Long id, String numero, BigDecimal montant, BigDecimal paye, BigDecimal reste,
@@ -79,8 +79,8 @@ public class SuiviAccueilService {
         DemandeLaboratoireDto demande = demandeService.detailLaboratoire(demandeId);
         List<AnalyseDemandeeDto> analyses = demande.getAnalyses() == null ? List.of() : demande.getAnalyses();
         AvancementDto avancement = new AvancementDto(analyses.size(),
-                compter(analyses, "ATTENTE_ECHANTILLON", true), compter(analyses, "EN_COURS", false),
-                compter(analyses, "TERMINE", false), compter(analyses, "NON_REALISABLE", false));
+                compterNonDemarrees(analyses, false), compterNonDemarrees(analyses, true),
+                compter(analyses, "EN_COURS"), compter(analyses, "TERMINE"), compter(analyses, "NON_REALISABLE"));
 
         FactureResumeDto facture = caisseRepository.facturesDeLaDemande(demandeId).stream().findFirst()
                 .map(this::resumeFacture).orElse(null);
@@ -107,10 +107,18 @@ public class SuiviAccueilService {
         return new FactureResumeDto(f.getId(), f.getNumero(), f.getMontantHt(), paye, reste, f.getStatut());
     }
 
-    /** Les analyses sans statut (créées depuis le panier) attendent elles aussi leur échantillon. */
-    private static int compter(List<AnalyseDemandeeDto> analyses, String statut, boolean inclureSansStatut) {
+    private static int compter(List<AnalyseDemandeeDto> analyses, String statut) {
+        return (int) analyses.stream().filter(a -> statut.equals(a.getStatut())).count();
+    }
+
+    /**
+     * Analyses pas encore démarrées, selon qu'un échantillon conforme est reçu ou non. Le statut reste
+     * ATTENTE_ECHANTILLON (ou absent, depuis le panier) jusqu'au démarrage par le technicien.
+     */
+    private static int compterNonDemarrees(List<AnalyseDemandeeDto> analyses, boolean echantillonConforme) {
         return (int) analyses.stream()
-                .filter(a -> statut.equals(a.getStatut()) || (inclureSansStatut && a.getStatut() == null))
+                .filter(a -> a.getStatut() == null || "ATTENTE_ECHANTILLON".equals(a.getStatut()))
+                .filter(a -> "CONFORME".equals(a.getEtatEchantillon()) == echantillonConforme)
                 .count();
     }
 

@@ -341,7 +341,7 @@ export interface EtapeSuivi {
 
 export interface SuiviDemande {
   demande: DemandeLaboratoire;
-  avancement: { analyses: number; attenteEchantillon: number; enCours: number; terminees: number; nonRealisables: number };
+  avancement: { analyses: number; attenteEchantillon: number; aDemarrer: number; enCours: number; terminees: number; nonRealisables: number };
   historique: EtapeSuivi[];
   facture: { id: number; numero: string; montant: number; paye: number; reste: number; statut: string } | null;
   rapport: { numero: string; statut: string; dateSignature?: string | null; diffuse: boolean } | null;

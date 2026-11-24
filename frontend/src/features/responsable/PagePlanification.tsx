@@ -17,6 +17,7 @@ import {
   Actualisation,
   BarreFiltres,
   BadgeStatutAnalyse,
+  bloqueeParEchantillon,
   contient,
   EnTeteResponsable,
   EtatChargement,
@@ -357,7 +358,10 @@ export function PagePlanification({
                         Non affectable : {blocage(analyse)?.toLowerCase()}
                       </span>
                     )}
-                    <BadgeStatutAnalyse analyse={analyse} />
+                    {/* La pastille d'échantillon dit déjà ce qui bloque : pas de second badge identique. */}
+                    {(analyse.enRetard || !bloqueeParEchantillon(analyse)) && (
+                      <BadgeStatutAnalyse analyse={analyse} />
+                    )}
                   </li>
                 ))}
               </ul>

@@ -1,3 +1,4 @@
+import type { EtatEchantillon } from "@/lib/statutAnalyse";
 import apiClient, { ApiError } from "./axios";
 import type { ApiResponse } from "./auth";
 import type { PageResponse } from "./utilisateurs";
@@ -84,6 +85,8 @@ export interface AnalyseDemandee {
   tarif: number | null;
   montant: number | null;
   statut: string | null;
+  etatEchantillon?: EtatEchantillon | null;
+  affectee?: boolean;
 }
 
 export interface EchantillonDemande {

@@ -1004,6 +1004,9 @@ public class DemandeService {
                 .tarif(essai == null ? null : essai.getTarif())
                 .montant(ligne.getMontant())
                 .statut(ligne.getStatut() == null ? null : ligne.getStatut().name())
+                .etatEchantillon(ligne.getEchantillon() == null ? "ATTENDU"
+                        : Boolean.TRUE.equals(ligne.getEchantillon().getConformite()) ? "CONFORME" : "NON_CONFORME")
+                .affectee(ligne.getTechnicienId() != null)
                 .build();
     }
 
